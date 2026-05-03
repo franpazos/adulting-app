@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { LogoMark } from "@/components/Logo";
 import { IconButton, Badge } from "@/components/ui";
 import { MonthSelector } from "@/components/MonthSelector";
+import { NetworkBadge } from "@/components/NetworkBadge";
 import { useUiStore } from "@/store/uiStore";
 import { cn } from "@/lib/utils/cn";
 
@@ -32,12 +33,15 @@ export function AppHeader({
             {t("app.name")}
           </span>
         </div>
-        {right ?? (
-          <IconButton aria-label="Notifications">
-            <Bell className="size-5" />
-            <Badge dot className="absolute top-2 right-2.5" />
-          </IconButton>
-        )}
+        <div className="flex items-center gap-2">
+          <NetworkBadge />
+          {right ?? (
+            <IconButton aria-label="Notifications">
+              <Bell className="size-5" />
+              <Badge dot className="absolute top-2 right-2.5" />
+            </IconButton>
+          )}
+        </div>
       </div>
       {showMonth && (
         <MonthSelector value={monthKey} onChange={setMonthKey} />

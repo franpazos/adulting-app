@@ -214,6 +214,24 @@
       "settings": "Settings"
     }
   },
+  "network": {
+    "offline": "Offline"
+  },
+  "install": {
+    "title": "Install Adulting",
+    "description": "Add it to your home screen for full-screen, offline use.",
+    "cta": "Install",
+    "dismiss": "Dismiss",
+    "iosHint": {
+      "before": "Tap ",
+      "after": " then \"Add to Home Screen\""
+    }
+  },
+  "update": {
+    "title": "New version available",
+    "description": "Refresh to load the latest fixes.",
+    "cta": "Refresh"
+  },
   "settings": {
     "appearance": "Appearance",
     "theme": "Theme",

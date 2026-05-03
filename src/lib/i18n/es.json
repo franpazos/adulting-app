@@ -214,6 +214,24 @@
       "settings": "Ajustes"
     }
   },
+  "network": {
+    "offline": "Sin conexión"
+  },
+  "install": {
+    "title": "Instala Adulting",
+    "description": "Añádela a la pantalla de inicio para uso fullscreen y offline.",
+    "cta": "Instalar",
+    "dismiss": "Descartar",
+    "iosHint": {
+      "before": "Toca ",
+      "after": " y luego \"Añadir a pantalla de inicio\""
+    }
+  },
+  "update": {
+    "title": "Nueva versión disponible",
+    "description": "Actualiza para cargar las últimas mejoras.",
+    "cta": "Actualizar"
+  },
   "settings": {
     "appearance": "Apariencia",
     "theme": "Tema",

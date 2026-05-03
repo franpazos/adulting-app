@@ -53,6 +53,12 @@
     "typescript-eslint": "^8.30.1",
     "vite": "^6.3.5",
     "vite-plugin-pwa": "^1.2.0",
-    "vitest": "^4.1.5"
+    "vitest": "^4.1.5",
+    "workbox-window": "^7.4.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "lru-cache@>=11": "^10"
+    }
   }
 }

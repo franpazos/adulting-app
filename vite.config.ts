@@ -23,8 +23,16 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
+      injectRegister: false, // we register manually in lib/pwa/registerSW.ts
       includeAssets: ["favicon.svg", "icons/*"],
+      // Allow testing the SW + offline behavior in `pnpm dev`.
+      devOptions: {
+        enabled: true,
+        type: "module",
+        navigateFallback: "index.html",
+        suppressWarnings: true,
+      },
       manifest: {
         name: "Adulting.app",
         short_name: "Adulting",
@@ -35,6 +43,9 @@ export default defineConfig({
         display: "standalone",
         orientation: "portrait",
         start_url: "/",
+        scope: "/",
+        lang: "en",
+        categories: ["finance", "productivity"],
         icons: [
           {
             src: "/icons/icon-192.svg",
@@ -46,12 +57,42 @@ export default defineConfig({
             src: "/icons/icon-512.svg",
             sizes: "512x512",
             type: "image/svg+xml",
-            purpose: "any maskable",
+            purpose: "any",
+          },
+          {
+            // Same SVG, separate entry for Android maskable shape.
+            src: "/icons/icon-512.svg",
+            sizes: "512x512",
+            type: "image/svg+xml",
+            purpose: "maskable",
           },
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,svg,woff2}"],
+        // Cache the app shell + the sqlite-wasm bundle so the app boots
+        // entirely offline. The wasm file is fetched at runtime so it
+        // needs an explicit runtimeCaching rule on top of precaching.
+        globPatterns: ["**/*.{js,css,html,svg,woff2,wasm}"],
+        navigateFallback: "/index.html",
+        navigateFallbackDenylist: [/^\/_/, /\/[^/?]+\.[^/]+$/],
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.destination === "font",
+            handler: "CacheFirst",
+            options: {
+              cacheName: "fonts",
+              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
+            },
+          },
+          {
+            urlPattern: /\.wasm$/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "wasm",
+              expiration: { maxEntries: 5, maxAgeSeconds: 60 * 60 * 24 * 365 },
+            },
+          },
+        ],
       },
     }),
   ],

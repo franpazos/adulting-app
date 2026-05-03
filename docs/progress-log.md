@@ -4,6 +4,48 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-04 — Phase 8 PWA + offline UX
+
+**What was done**
+- **Service worker registration:**
+  - `src/lib/pwa/registerSW.ts` wraps `virtual:pwa-register` from `vite-plugin-pwa`. Idempotent. Bridges Workbox events into Zustand:
+    - `onOfflineReady` → `networkStore.setOfflineReady(true)`
+    - `onNeedRefresh` → `networkStore.setNeedRefresh(true, applyFn)` so the UI can apply the update on tap
+  - Called once at app boot in `main.tsx`, before React mounts.
+  - `vite-plugin-pwa` now uses `registerType: "prompt"` (we surface updates manually) and `injectRegister: false` (we register manually so the wiring is testable).
+- **Online/offline detection:**
+  - `networkStore` reads `navigator.onLine` initially and listens for `online`/`offline` events via `startNetworkWatcher`.
+  - `NetworkBadge` (`src/components/NetworkBadge.tsx`) — small amber pill in `AppHeader` when offline. Hidden when online.
+- **Install prompt:**
+  - `installPrompt.ts` captures `beforeinstallprompt` (Chrome/Edge), `appinstalled`, and detects `display-mode: standalone`. State lives in a tiny dedicated `installStore` so the banner survives re-renders.
+  - `InstallPrompt` banner (`src/components/InstallPrompt.tsx`) appears above the bottom nav when the browser fires the event. Tapping "Install" runs `event.prompt()`. Dismissal persists in localStorage (`adulting.installDismissed = "1"`).
+  - **iOS Safari fallback:** since iOS doesn't fire `beforeinstallprompt`, we detect iOS Safari via UA + WebKit heuristic and show an instructional copy with the share icon ("Share → Add to Home Screen").
+- **Update prompt:**
+  - `UpdatePrompt` banner (`src/components/UpdatePrompt.tsx`) — appears at the top of `AppShell` with safe-area padding when a new SW is waiting. "Refresh" calls `applyUpdate()` (which runs `updateSW(true)` → reload).
+- **Manifest hardening:**
+  - Added scope, lang, categories.
+  - Maskable icon variant (Android adaptive icons crop the SVG; `purpose: "maskable"` tells the OS this asset has safe padding).
+  - `apple-touch-icon` link in `index.html` so iOS pulls our coin SVG when adding to home screen.
+  - `apple-mobile-web-app-title` set to "Adulting" (otherwise iOS shows the full title).
+- **Workbox caching:**
+  - Precache covers `js/css/html/svg/woff2/wasm` so the sqlite-wasm bundle is offline-first.
+  - Runtime caching adds dedicated CacheFirst stores for fonts and `.wasm` (1y).
+- **Build hygiene:**
+  - Installed `workbox-window` (peer needed by `virtual:pwa-register`).
+  - pnpm override `lru-cache@>=11 → ^10` because Node 18.16.1 lacks the `tracingChannel` API that `lru-cache@11`'s commonjs build calls during workbox post-build glob scanning. Babel still uses its own older lru-cache pin, so the selector targets only v11+.
+- **Verification:** `pnpm build` produces `dist/sw.js` (15 entries, ~2 MB precache including the wasm), `manifest.webmanifest` is valid, `pnpm preview` serves the SW + manifest at HTTP 200. 74/74 tests still pass.
+
+**Decisions**
+- **Manual SW registration** (not auto via the plugin's `injectRegister`) so the registration timing is explicit and the wiring into our state store is testable. The cost is one extra import in `main.tsx`.
+- **`registerType: "prompt"`** rather than `autoUpdate` so users see "new version available" and choose when to refresh. For a personal-use app this prevents data-mid-flow weirdness when Workbox swaps controllers silently.
+- **iOS Safari instructional fallback** rather than a blocking modal — iOS users can dismiss the hint and use the app in Safari indefinitely; PWA install is a nicety, not a gate.
+
+**Open follow-ups**
+- The `offlineReady` flag in `networkStore` is captured but not yet displayed. We could add a one-time toast on first install ("Now works offline") in a Phase 8b polish pass.
+- Bundle size warning: the main JS is 858 kB (256 kB gzip). Phase 10 polish should code-split routes via `React.lazy`.
+
+---
+
 ## 2026-05-04 — Phase 7 Debts FX, Settle up, Categories, Accounts
 
 **What was done**

@@ -117,11 +117,18 @@ This document is the living plan of work. Each phase ends with a checklist updat
 - [ ] Smart defaults from last entry — deferred
 - [ ] Settings expansion (Defaults, Backups & Data, About) — deferred
 
-## Phase 8 — PWA + offline
-- [ ] Service worker validation
-- [ ] Install prompt + manifest icons
-- [ ] Online/offline detection + sync badge
-- [ ] DB persistence verification across reloads
+## Phase 8 — PWA + offline ✅
+- [x] Service worker registered via `virtual:pwa-register` (Workbox under `vite-plugin-pwa`); `dist/sw.js` precaches 15 app-shell entries (~2 MB incl. sqlite-wasm)
+- [x] `registerType: "prompt"` so updates surface as a banner instead of silently auto-installing
+- [x] `devOptions.enabled = true` — SW is active in `pnpm dev` for end-to-end verification
+- [x] Manifest tightened: maskable icon entry, scope, lang, categories; apple-touch-icon and apple-mobile-web-app-title in `index.html`
+- [x] `NetworkBadge` component shows a subtle "Sin conexión / Offline" pill in the AppHeader when `navigator.onLine` is false
+- [x] `InstallPrompt` banner: triggers `beforeinstallprompt` on Chrome/Edge; iOS Safari fallback explains "Share → Add to Home Screen"; dismissal persists in localStorage; hidden when already installed
+- [x] `UpdatePrompt` banner appears at the top when a new SW is waiting; "Refresh" applies and reloads
+- [x] `networkStore` (online + offlineReady + needRefresh + applyUpdate) and `installStore` (event + dismissed + installed)
+- [x] Workbox runtime caching: fonts and `.wasm` go to long-lived CacheFirst stores
+- [x] pnpm override `lru-cache@>=11 → ^10` so workbox-build runs on Node 18 (`tracingChannel` API only in Node 19+)
+- [x] Production build verified: SW served, manifest served, full offline boot path
 
 ## Phase 9 — Google Sheets sync
 - [ ] OAuth client (no backend) — functional
