@@ -5,7 +5,7 @@
 
 export { initDb, type DbInitResult } from "./client";
 export { runMigrations } from "./migrations";
-export { seedIfEmpty, isSeeded } from "./seed";
+export { seedIfEmpty, isSeeded, SEED_IDS } from "./seed";
 
 export { usersRepo } from "./repositories/users";
 export { accountsRepo } from "./repositories/accounts";

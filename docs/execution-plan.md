@@ -69,14 +69,24 @@ This document is the living plan of work. Each phase ends with a checklist updat
 - [x] ADR-010 documents the allocation model and scope semantics
 - [x] Home page now consumes `monthlySummary` from the new module; legacy `dashboard.ts` removed
 
-## Phase 5 — Add Expense flow
-- [ ] Big amount input, date, description/merchant, category picker (recents)
-- [ ] Source segmented (`Fran` / `Sam` / `Joint`), owner segmented, shared toggle
-- [ ] Split slider (default 50/50)
-- [ ] Live consequence preview ("Pagado por Sam · pertenece a Hogar · Fran le deberá 50 €")
-- [ ] Smart defaults from last entry
-- [ ] Local write + sync queue enqueue
-- [ ] Sticky save button
+## Phase 5 — Add Expense flow ✅
+- [x] Variation B (Flow diagram) implemented per the design handoff
+- [x] Big amount input with € prefix, real-time consequence preview
+- [x] Source segmented (Fran / Sam / Joint), owner segmented (Fran / Sam / Household)
+- [x] Split slider (default 50/50) — only shown when shared with personal source
+- [x] `FlowDiagram` (Avatar source → dashed violet arrow → Avatar owner) and `SettlementChip` (live "Fran → Sam · 50 €" pill or "No settlement impact" green pill)
+- [x] `ConsequenceSentence` (i18n-aware "What happens" panel mirroring the chip)
+- [x] Category picker (horizontal chip scroller, populated from DB)
+- [x] Date input (defaults to today)
+- [x] Description input
+- [x] Sticky save FAB with violet gradient and live amount label
+- [x] Save handler: `expenseAllocator` → `transactionsRepo.create` (writes tx + allocations atomically) → `recomputeForTransaction` (writes settlement_ledger) → `dbStore.bumpVersion()` so Home re-renders
+- [x] Auto-navigates Home month selector to the saved tx's month
+- [x] `dbVersion` counter on `dbStore`, with HomePage memo deps wired to it
+- [x] EN + ES i18n for the entire flow (titles, segments, labels, live preview text, save button)
+- [x] Vitest smoke test for the save path (3 scenarios: shared from personal, joint personal, no-impact case)
+- [ ] Smart defaults from last entry — deferred to Phase 7 polish
+- [ ] Sync queue enqueue — Phase 9 (Google Sheets sync)
 
 ## Phase 6 — Transactions, Settlements, Recurring
 - [ ] Transactions list + filters + search + edit/delete with recompute

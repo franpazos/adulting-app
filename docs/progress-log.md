@@ -4,6 +4,41 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-03 — Phase 5 Add Expense (Variation B Flow diagram)
+
+**What was done**
+- Built the signature Add Expense flow following the handoff's winner Variation B (`docs/design-handoff/scripts/add-expense.jsx::AddExpenseB`).
+- New components:
+  - `Avatar.tsx` — bubble with brand-color gradients (`avatar-fran` violet, `avatar-sam` coral, `avatar-house` green, `avatar-joint` blue) defined as plain CSS in `tokens.css`. Exports `whoFromCashSource` for flow diagrams.
+  - `FlowDiagram.tsx` — source avatar → dashed violet arrow ("belongs to") → owner avatar. Pure SVG arrow, no animation library needed.
+  - `SettlementChip.tsx` — morphs between two pills: green "No settlement impact" with check, OR violet pill with two avatars and the FX-formatted amount.
+  - `ConsequenceSentence.tsx` — i18n-aware Trans-driven sentence ("Paid from Sam · belongs to Household · Fran will owe Sam 50 €"). The chip is the visual; the sentence is the screen-reader-friendly mirror.
+- New `AddExpensePage.tsx` (replaces the Phase 1 placeholder):
+  - Top nav with X close → `navigate(-1)`.
+  - Amount card with violet→surface gradient bg, big inline editor with sanitized digit/comma/period input.
+  - FlowDiagram + SettlementChip live-driven by `expenseAllocator` (the *same* function the persistence layer uses — no logic divergence).
+  - Source segmented (FRAN_PERSONAL / SAM_PERSONAL / JOINT), owner segmented (FRAN / SAM / HOUSEHOLD), and split slider that only appears when shared with a personal source.
+  - Category picker (horizontal chip scroller, reads `categoriesRepo.list("EXPENSE")`).
+  - Date input defaulting to today, description input, accent "What happens" panel echoing the consequence sentence.
+  - Sticky save FAB with the violet gradient and live amount: "Save expense · €120,00".
+- Save handler: `expenseAllocator(input)` → `transactionsRepo.create({ ..., allocations })` (writes tx + allocation rows atomically) → `recomputeForTransaction(tx.id)` (derives settlement_ledger from the just-written allocations) → `dbStore.bumpVersion()` → navigate Home, with month selector auto-jumped to the tx's month.
+- `dbStore` extended with `dbVersion: number` + `bumpVersion()`. HomePage memo dependencies updated so its summary, categories, settlements, and debts panels re-fetch after a save.
+- New i18n namespace `addExpense.*` in EN + ES, including HTML-mark-up keys (`<b>`, `<v>`, `<ok>`) consumed by `<Trans />` in the consequence sentence.
+- Smoke test `addExpense.flow.test.ts` covers three scenarios end-to-end: shared from personal (net balance shifts), joint personal (settlement to household), and Case-B no-impact (balances unchanged, allocation preserved). Total suite: 62/62 passing.
+
+**Decisions**
+- Reused `expenseAllocator` for both UI live preview and persistence — single source of truth, no chance of UI/storage drift.
+- The category picker is a horizontal scroller (not a sheet) for one-thumb reach. May upgrade to a sheet picker if the count grows beyond ~10 visible.
+- Date input is a native `<input type="date">` for now. The handoff used a "Today" pill; we'll likely add a custom date picker in Phase 7 polish.
+- Account → CashSource mapping is hard-coded against `SEED_IDS` for MVP. When users can edit/add accounts (Phase 7), this becomes a runtime lookup.
+
+**Open follow-ups**
+- Phase 6 (next): Transactions list, edit/delete (with `recomputeForTransaction` on update), Settlements page, Recurring CRUD.
+- Phase 7: smart defaults (last source/owner/category), sheet-style category picker, custom date picker, full Debts page with FX flow, Settings expansion.
+- The "Try a sample" button on the empty Transactions state still does nothing — wire it in Phase 6 to insert one of the seed cases.
+
+---
+
 ## 2026-05-03 — Phase 4 calculation engine
 
 **What was done**

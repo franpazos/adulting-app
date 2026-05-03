@@ -38,6 +38,39 @@
   "expense": {
     "add": "Add expense"
   },
+  "addExpense": {
+    "title": "Add expense",
+    "amount": "Amount",
+    "paidFrom": "Paid from",
+    "belongsTo": "Belongs to",
+    "split": "Split",
+    "splitLabel": "Fran {{fran}}% / Sam {{sam}}%",
+    "category": "Category",
+    "categoryNone": "Uncategorized",
+    "description": "Description",
+    "descriptionPlaceholder": "What was it for?",
+    "date": "Date",
+    "saveLabel": "Save expense · {{amount}}",
+    "saving": "Saving…",
+    "savedToast": "Saved",
+    "who": {
+      "fran": "Fran",
+      "sam": "Sam",
+      "household": "Household",
+      "joint": "Joint"
+    },
+    "flow": {
+      "paidBy": "Paid by",
+      "owner": "Owner",
+      "belongsTo": "belongs to"
+    },
+    "live": {
+      "noImpact": "No settlement impact",
+      "placeholder": "Enter an amount to see what will happen…",
+      "sentenceNoImpact": "Paid from <b>{{paidBy}}</b> · belongs to <b>{{belongsTo}}</b> · <ok>no settlement impact</ok>",
+      "sentenceImpact": "Paid from <b>{{paidBy}}</b> · belongs to <b>{{belongsTo}}</b> · <v>{{from}} will owe {{to}} {{amount}}</v>"
+    }
+  },
   "debts": {
     "title": "Debts",
     "empty": {

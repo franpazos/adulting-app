@@ -38,6 +38,39 @@
   "expense": {
     "add": "Añadir gasto"
   },
+  "addExpense": {
+    "title": "Añadir gasto",
+    "amount": "Importe",
+    "paidFrom": "Pagado por",
+    "belongsTo": "Pertenece a",
+    "split": "Reparto",
+    "splitLabel": "Fran {{fran}}% / Sam {{sam}}%",
+    "category": "Categoría",
+    "categoryNone": "Sin categoría",
+    "description": "Descripción",
+    "descriptionPlaceholder": "¿Para qué fue?",
+    "date": "Fecha",
+    "saveLabel": "Guardar gasto · {{amount}}",
+    "saving": "Guardando…",
+    "savedToast": "Guardado",
+    "who": {
+      "fran": "Fran",
+      "sam": "Sam",
+      "household": "Hogar",
+      "joint": "Conjunta"
+    },
+    "flow": {
+      "paidBy": "Pagado por",
+      "owner": "Pertenece a",
+      "belongsTo": "pertenece a"
+    },
+    "live": {
+      "noImpact": "Sin impacto en ajustes",
+      "placeholder": "Introduce un importe para ver qué pasará…",
+      "sentenceNoImpact": "Pagado por <b>{{paidBy}}</b> · pertenece a <b>{{belongsTo}}</b> · <ok>sin impacto en ajustes</ok>",
+      "sentenceImpact": "Pagado por <b>{{paidBy}}</b> · pertenece a <b>{{belongsTo}}</b> · <v>{{from}} le deberá a {{to}} {{amount}}</v>"
+    }
+  },
   "debts": {
     "title": "Deudas",
     "empty": {

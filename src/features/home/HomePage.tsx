@@ -23,18 +23,19 @@ export function HomePage() {
   const setScope = useUiStore((s) => s.setScope);
   const monthKey = useUiStore((s) => s.monthKey);
   const dbStatus = useDbStore((s) => s.status);
+  const dbVersion = useDbStore((s) => s.dbVersion);
 
   const summary = useMemo(
     () =>
       dbStatus === "ready"
         ? monthlySummary(monthKey, scope)
         : { income: 0, expenses: 0, recurring: 0, debtPayments: 0, available: 0 },
-    [dbStatus, monthKey, scope],
+    [dbStatus, dbVersion, monthKey, scope],
   );
 
   const categories = useMemo<CategorySliceRow[]>(
     () => (dbStatus === "ready" ? categoryBreakdown(monthKey, scope) : []),
-    [dbStatus, monthKey, scope],
+    [dbStatus, dbVersion, monthKey, scope],
   );
 
   const settlements = useMemo(() => {
@@ -45,7 +46,7 @@ export function HomePage() {
       franSamNet: settlementsRepo.netBalance("FRAN", "SAM"),
       samHouseholdNet: settlementsRepo.netBalance("SAM", "HOUSEHOLD"),
     };
-  }, [dbStatus, monthKey]);
+  }, [dbStatus, dbVersion, monthKey]);
 
   const debts = useMemo(() => {
     if (dbStatus !== "ready") return { totalEur: 0, count: 0 };
@@ -57,7 +58,7 @@ export function HomePage() {
       totalEur: eurOnly.reduce((s, d) => s + d.current_balance, 0),
       count: list.length,
     };
-  }, [dbStatus]);
+  }, [dbStatus, dbVersion]);
 
   const scopeOptions: ReadonlyArray<SegmentedOption<Scope>> = [
     { value: "household", label: t("home.scope.household") },

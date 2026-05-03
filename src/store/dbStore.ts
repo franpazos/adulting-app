@@ -11,6 +11,12 @@ interface DbState {
   error: string | null;
   /** True the very first time we seeded the DB this session. */
   seededOnThisLoad: boolean;
+  /**
+   * Monotonically incremented every time something writes to the DB.
+   * Components that read derived data (e.g. Home) include this in their
+   * `useMemo` dependencies so they re-fetch after a save.
+   */
+  dbVersion: number;
   setInitializing: () => void;
   setReady: (info: {
     backend: Backend;
@@ -18,6 +24,7 @@ interface DbState {
     seeded: boolean;
   }) => void;
   setError: (msg: string) => void;
+  bumpVersion: () => void;
 }
 
 export const useDbStore = create<DbState>((set) => ({
@@ -26,6 +33,7 @@ export const useDbStore = create<DbState>((set) => ({
   warning: null,
   error: null,
   seededOnThisLoad: false,
+  dbVersion: 0,
   setInitializing: () =>
     set({ status: "initializing", error: null, warning: null }),
   setReady: ({ backend, warning, seeded }) =>
@@ -35,6 +43,9 @@ export const useDbStore = create<DbState>((set) => ({
       warning,
       error: null,
       seededOnThisLoad: seeded,
+      // Bump on initial load so any pre-mounted readers refresh.
+      dbVersion: 1,
     }),
   setError: (msg) => set({ status: "error", error: msg }),
+  bumpVersion: () => set((s) => ({ dbVersion: s.dbVersion + 1 })),
 }));
