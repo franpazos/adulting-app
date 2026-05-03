@@ -32,12 +32,15 @@ This document is the living plan of work. Each phase ends with a checklist updat
 - [x] Home page refreshed to match reference: scope segmented, Cuenta conjunta card, Gastos por categoría list, Settlements + Deudas pair
 - [x] `AmountInput` debuted in Add Expense preview screen
 
-## Phase 2 — Shell, navigation, i18n polish
-- [ ] Header pattern with month selector (`Mayo 2026 ▾`) and notifications bell
-- [ ] Scope segmented control (`Hogar / Fran / Sam / Todo`)
-- [ ] Route transitions
-- [ ] Language switcher in Settings stub
-- [ ] Empty-state visuals on placeholder screens
+## Phase 2 — Shell, navigation, i18n polish ✅
+- [x] Header pattern with month selector (`Mayo 2026 ▾`) and notifications bell *(landed in Phase 1)*
+- [x] Scope segmented control (`Hogar / Fran / Sam / Todo`) *(landed in Phase 1)*
+- [x] Route transitions (220ms fade+slide on `Outlet` remount via `route-frame` keyframe; respects `prefers-reduced-motion`)
+- [x] `LanguageToggle` (EN / ES segmented) wired into Settings; persists via `i18next-browser-languagedetector` localStorage cache
+- [x] Illustrated empty states (`EmptyArt` ported from handoff `management.jsx`, three variants: transactions, debts, settlements). `EmptyState` extended with a `centered` variant for full-screen empty pages.
+- [x] Transactions and Debts pages now use the centered illustrated empty state with primary action
+- [x] Full i18n keys for empty-state copy and Settings sections (EN + ES)
+- [x] New `--color-violet-tint` token used by the line-art illustrations
 
 ## Phase 3 — Data model & persistence ✅
 - [x] `lib/db/client.ts` with sqlite-wasm + OPFS SAH Pool bootstrap (in-memory fallback)

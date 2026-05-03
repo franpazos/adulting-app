@@ -4,6 +4,27 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-03 — Phase 2 polish (route transitions, language switcher, illustrated empty states)
+
+**What was done**
+- Closed the remaining Phase 2 items that hadn't landed inline during Phases 1/3.
+- **Route transitions:** 220ms fade+slide animation on the `<Outlet>` via a `route-frame` keyframe + `key={location.pathname}` to force a remount on navigation. Respects `prefers-reduced-motion`.
+- **Language switcher:** new `LanguageToggle` (segmented `EN / ES`), wired into Settings. Persists via the existing `i18next-browser-languagedetector` localStorage cache (key `adulting.lang`).
+- **Illustrated empty states:**
+  - Ported the geometric line-art SVGs from the handoff (`docs/design-handoff/scripts/management.jsx::EmptyArt`) into `src/components/EmptyArt.tsx` with three variants: `transactions`, `debts`, `settlements`. All colors flow through Tailwind tokens — no hex literals.
+  - Extended `EmptyState` with a `centered` variant (full-screen, no border) for empty-page treatments. Existing `card` variant kept for inline list-style empty rows.
+  - Transactions page: centered empty state with "Try a sample" secondary action.
+  - Debts page: centered empty state when no debts exist; otherwise renders a simple list (placeholder until Phase 7 builds the full debts screen). The seed has three debts so this currently renders the list.
+- **i18n:** added namespaces for `transactions.empty.*`, `debts.empty.*`, `settlements.empty.*`, and a full `settings.*` namespace (appearance / theme / language / database / backend / seededFresh) in EN and ES dictionaries.
+- **Tokens:** added `--color-violet-tint` (light: `#EFEAFE`, dark: deep violet) and exposed it via Tailwind as `bg-violet-tint`, `text-violet-tint`, etc. Used by the empty-state illustrations.
+
+**Open follow-ups**
+- Settlements page itself is still a `ComingSoon`. When Phase 6 builds it, render `EmptyArt kind="settlements"` + "All square" copy when `netBalance` returns 0 across all party pairs.
+- Add a `LanguageToggle` shortcut in `MorePage` if user testing shows Settings is too deep.
+- Phase 4 next: pure calculation engine (expenseAllocator, settlementsEngine recompute, monthlyAggregations, availableMoney, FX helpers).
+
+---
+
 ## 2026-05-03 — Final brand assets + design handoff archived
 
 **What was done**

@@ -14,6 +14,7 @@
   --color-violet: 123 92 246;       /* #7B5CF6 */
   --color-violet-soft: 168 145 250; /* lighter accent */
   --color-violet-ink: 88 60 200;    /* pressed / on-violet text */
+  --color-violet-tint: 239 234 254; /* subtle bg behind icons / illustrations */
 
   /* Functional accents */
   --color-positive: 34 197 94;  /* #22C55E green */
@@ -36,6 +37,7 @@
   --color-violet: 139 110 250;
   --color-violet-soft: 174 154 252;
   --color-violet-ink: 200 188 254;
+  --color-violet-tint: 56 44 96;
 
   --color-positive: 52 211 110;
   --color-expense: 255 138 122;

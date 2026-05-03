@@ -16,7 +16,8 @@
     "delete": "Eliminar",
     "edit": "Editar",
     "loading": "Cargando…",
-    "currency": "EUR"
+    "currency": "EUR",
+    "trySample": "Probar con datos de ejemplo"
   },
   "home": {
     "title": "Inicio",
@@ -29,19 +30,29 @@
   },
   "transactions": {
     "title": "Movimientos",
-    "empty": "Aún no hay movimientos."
+    "empty": {
+      "title": "Todo en calma",
+      "description": "Tus movimientos aparecerán aquí en cuanto registres uno. Toca el botón + para empezar."
+    }
   },
   "expense": {
     "add": "Añadir gasto"
   },
   "debts": {
     "title": "Deudas",
-    "empty": "Aún no hay deudas."
+    "empty": {
+      "title": "Sin deudas, de momento",
+      "description": "Aquí puedes registrar préstamos, tarjetas o cualquier deuda — aparte de los Ajustes internos.",
+      "action": "+ Añadir deuda"
+    }
   },
   "settlements": {
     "title": "Ajustes / Settlements",
     "owes": "{{from}} debe a {{to}}",
-    "noBalances": "Todo cuadrado."
+    "empty": {
+      "title": "Todo cuadrado",
+      "description": "Nadie debe nada ahora mismo. Cuando alguien pague un gasto compartido desde su cuenta personal, el balance aparecerá aquí."
+    }
   },
   "more": {
     "title": "Más",
@@ -54,5 +65,19 @@
       "accounts": "Cuentas",
       "settings": "Ajustes"
     }
+  },
+  "settings": {
+    "appearance": "Apariencia",
+    "theme": "Tema",
+    "language": "Idioma",
+    "languages": {
+      "en": "Inglés",
+      "es": "Español"
+    },
+    "database": "Base de datos local",
+    "backend": "Backend",
+    "backendDurable": "OPFS (durable)",
+    "backendMemory": "en memoria",
+    "seededFresh": "Cargados datos de ejemplo en esta carga."
   }
 }

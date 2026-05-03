@@ -19,6 +19,7 @@ export default {
           DEFAULT: "rgb(var(--color-violet) / <alpha-value>)",
           soft: "rgb(var(--color-violet-soft) / <alpha-value>)",
           ink: "rgb(var(--color-violet-ink) / <alpha-value>)",
+          tint: "rgb(var(--color-violet-tint) / <alpha-value>)",
         },
         positive: "rgb(var(--color-positive) / <alpha-value>)",
         expense: "rgb(var(--color-expense) / <alpha-value>)",

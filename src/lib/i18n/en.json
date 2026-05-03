@@ -16,7 +16,8 @@
     "delete": "Delete",
     "edit": "Edit",
     "loading": "Loading…",
-    "currency": "EUR"
+    "currency": "EUR",
+    "trySample": "Try a sample"
   },
   "home": {
     "title": "Home",
@@ -29,19 +30,29 @@
   },
   "transactions": {
     "title": "Transactions",
-    "empty": "No transactions yet."
+    "empty": {
+      "title": "Quiet so far",
+      "description": "Your transactions will appear here as soon as you record one. Tap the + button below to start."
+    }
   },
   "expense": {
     "add": "Add expense"
   },
   "debts": {
     "title": "Debts",
-    "empty": "No debts yet."
+    "empty": {
+      "title": "Debt-free, for now",
+      "description": "Track loans, credit cards, or anything you owe (or are owed) — separately from internal Settlements.",
+      "action": "+ Add a debt"
+    }
   },
   "settlements": {
     "title": "Settlements",
     "owes": "{{from}} owes {{to}}",
-    "noBalances": "All balances settled."
+    "empty": {
+      "title": "All square",
+      "description": "Nobody owes anyone right now. When a shared expense gets paid from a personal account, the balance will show up here."
+    }
   },
   "more": {
     "title": "More",
@@ -54,5 +65,19 @@
       "accounts": "Accounts",
       "settings": "Settings"
     }
+  },
+  "settings": {
+    "appearance": "Appearance",
+    "theme": "Theme",
+    "language": "Language",
+    "languages": {
+      "en": "English",
+      "es": "Spanish"
+    },
+    "database": "Local database",
+    "backend": "Backend",
+    "backendDurable": "OPFS (durable)",
+    "backendMemory": "in-memory",
+    "seededFresh": "Seeded fresh dataset on this load."
   }
 }
