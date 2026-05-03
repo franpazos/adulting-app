@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Adulting.app — Design Canvas</title>
+  <link rel="stylesheet" href="styles/tokens.css"/>
+  <link rel="icon" href="brand/app-icon.svg" type="image/svg+xml"/>
+  <style>
+    html, body { margin: 0; height: 100%; background: #F1EDE6; font-family: 'Inter', system-ui, sans-serif; color: #1C2030; }
+    .canvas-shell { width: 100vw; height: 100vh; }
+    /* iframe-style isolation: each artboard wraps a .phone-surface that gets its own theme */
+    .artboard-light { --bg-canvas: #FAF8F4; }
+    .artboard-dark  { --bg-canvas: #0E0F16; }
+
+    .brand-card {
+      background: white; border-radius: 24px; padding: 28px;
+      box-shadow: 0 1px 2px rgba(28,32,48,0.04), 0 8px 24px rgba(28,32,48,0.06);
+      font-family: 'Inter', sans-serif;
+    }
+    .brand-card.dark {
+      background: #181A24; color: #F0F0F5;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+    }
+  </style>
+</head>
+<body>
+  <div class="canvas-shell" id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="scripts/ui-kit.jsx"></script>
+  <script type="text/babel" src="scripts/add-expense.jsx"></script>
+  <script type="text/babel" src="scripts/screens.jsx"></script>
+  <script type="text/babel" src="scripts/management.jsx"></script>
+
+  <script type="text/babel" data-presets="env,react">
+    const { useState, useEffect } = React;
+
+    // ── Theming wrapper for an artboard ───────────────────────────────────
+    function Themed({ dark, children, style }) {
+      return (
+        <div data-theme={dark ? 'dark' : 'light'} style={{
+          width:'100%', height:'100%',
+          background: dark ? '#0E0F16' : '#FAF8F4',
+          ...style,
+        }}>
+          {children}
+        </div>
+      );
+    }
+
+    // Wrap an iOS device with the right theme
+    function PhoneArtboard({ dark, children }) {
+      return (
+        <Themed dark={dark} style={{display:'flex', alignItems:'center', justifyContent:'center', padding: 0}}>
+          <IOSDevice width={390} height={844} dark={dark}>
+            {children}
+          </IOSDevice>
+        </Themed>
+      );
+    }
+
+    // ── Brand showcase artboard ────────────────────────────────────────────
+    function BrandShowcase({ dark }) {
+      return (
+        <Themed dark={dark} style={{padding: 36}}>
+          <div style={{display:'flex', flexDirection:'column', gap: 24}}>
+            {/* Wordmark */}
+            <div style={{
+              padding: '40px 36px', borderRadius: 24,
+              background: dark ? '#181A24' : '#FFFFFF',
+              border: `1px solid ${dark ? '#303240' : '#E2DED7'}`,
+              display:'flex', alignItems:'center', justifyContent:'center', minHeight: 180,
+            }}>
+              <div style={{display:'flex', alignItems:'baseline', gap: 14}}>
+                <ASymbol size={88}/>
+                <span style={{fontFamily:'Sora', fontWeight: 600, fontSize: 88, letterSpacing:'-0.04em', color: dark ? '#F0F0F5' : '#1C2030', lineHeight: 1}}>Adulting</span>
+                <span style={{fontFamily:'Sora', fontWeight: 500, fontSize: 88, letterSpacing:'-0.04em', color:'#7B5CF6', lineHeight: 1}}>.app</span>
+              </div>
+            </div>
+
+            {/* 3 symbol treatments + app icon (all using the NEW logo) */}
+            <div style={{display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap: 16}}>
+              <BrandTile dark={dark} title="01 · Symbol">
+                <ASymbol size={120}/>
+              </BrandTile>
+              <BrandTile dark={dark} title="02 · Mono">
+                <div style={{color: dark ? '#F0F0F5' : '#1C2030'}}>
+                  <ASymbolOutline size={120} color="currentColor" barColor="currentColor"/>
+                </div>
+              </BrandTile>
+              <BrandTile dark={dark} title="03 · Reverse">
+                <div style={{
+                  width: 132, height: 132, borderRadius: 22,
+                  background: '#1C2030',
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                }}>
+                  <ASymbol size={96}/>
+                </div>
+              </BrandTile>
+              <BrandTile dark={dark} title="04 · App icon">
+                <div style={{
+                  width: 132, height: 132, borderRadius: 30,
+                  background: 'linear-gradient(180deg, #9D85FF 0%, #7B5CF6 55%, #5B3FD9 100%)',
+                  position: 'relative', overflow:'hidden',
+                  boxShadow:'0 20px 40px -10px rgba(91,63,217,0.5), inset 0 2px 0 rgba(255,255,255,0.3)',
+                }}>
+                  <div style={{position:'absolute', inset: 0, background:'radial-gradient(ellipse at top, rgba(255,255,255,0.35), transparent 60%)'}}/>
+                  <div style={{position:'absolute', inset: 0, display:'flex', alignItems:'center', justifyContent:'center'}}>
+                    <ASymbolOutline size={92} color="#FFFFFF" barColor="#FFFFFF"/>
+                  </div>
+                </div>
+              </BrandTile>
+            </div>
+
+            {/* Color palette */}
+            <div style={{
+              padding: 24, borderRadius: 20,
+              background: dark ? '#181A24' : '#FFFFFF',
+              border: `1px solid ${dark ? '#303240' : '#E2DED7'}`,
+            }}>
+              <div style={{fontSize: 11, fontWeight: 600, letterSpacing:'0.08em', textTransform:'uppercase', color: dark ? '#828696' : '#8E92A0', marginBottom: 14}}>05 · Color palette</div>
+              <div style={{display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap: 12}}>
+                {[
+                  ['Violet','#7B5CF6','Brand'],
+                  ['Green','#22C55E','Positive'],
+                  ['Coral','#FF7D6B','Expense'],
+                  ['Blue','#3B82F6','Info / Debt'],
+                  ['Amber','#F59E0B','Pending'],
+                ].map(([n,h,r]) => (
+                  <div key={n}>
+                    <div style={{height: 64, borderRadius: 14, background: h, boxShadow:'inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 14px -4px ' + h + '99'}}/>
+                    <div style={{marginTop: 8, fontSize: 13, fontWeight: 600, color: dark ? '#F0F0F5' : '#1C2030'}}>{n}</div>
+                    <div style={{fontSize: 11, color: dark ? '#828696' : '#8E92A0', fontFamily:'Inter', letterSpacing: '0.02em'}}>{h}</div>
+                    <div style={{fontSize: 11, color: dark ? '#AFB2C0' : '#5C6070', marginTop: 2}}>{r}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Type */}
+            <div style={{
+              padding: 24, borderRadius: 20,
+              background: dark ? '#181A24' : '#FFFFFF',
+              border: `1px solid ${dark ? '#303240' : '#E2DED7'}`,
+              display:'grid', gridTemplateColumns:'1fr 1fr', gap: 24,
+            }}>
+              <div>
+                <div style={{fontSize: 11, fontWeight: 600, letterSpacing:'0.08em', textTransform:'uppercase', color:'#7B5CF6', marginBottom: 8}}>Display</div>
+                <div style={{fontFamily:'Sora', fontWeight: 600, fontSize: 32, color: dark ? '#F0F0F5' : '#1C2030', letterSpacing:'-0.025em', lineHeight: 1.05}}>Sora SemiBold</div>
+                <div style={{fontFamily:'Sora', fontWeight: 600, fontSize: 13, color: dark ? '#AFB2C0' : '#5C6070', marginTop: 6, lineHeight: 1.5}}>The quick brown fox · €24,650.00 · -€1,432.50</div>
+              </div>
+              <div>
+                <div style={{fontSize: 11, fontWeight: 600, letterSpacing:'0.08em', textTransform:'uppercase', color: dark ? '#828696' : '#8E92A0', marginBottom: 8}}>Body</div>
+                <div style={{fontFamily:'Inter', fontWeight: 400, fontSize: 32, color: dark ? '#F0F0F5' : '#1C2030', letterSpacing:'-0.01em', lineHeight: 1.1}}>Inter Regular</div>
+                <div style={{fontFamily:'Inter', fontWeight: 400, fontSize: 13, color: dark ? '#AFB2C0' : '#5C6070', marginTop: 6, lineHeight: 1.5}}>Aa Bb Cc · 0123456789 · Paid from Sam — belongs to Household</div>
+              </div>
+            </div>
+          </div>
+        </Themed>
+      );
+    }
+
+    // ── 3 new symbol variations to compare ─────────────────────────────────
+    function SymbolVariations({ dark }) {
+      const variants = [
+        {
+          id: 'V1',
+          name: 'Filled chart',
+          desc: 'Bars carved out of upper body — the counter IS the chart. Bolder, more iconic at small sizes.',
+          render: (s) => <ASymbolFilled size={s}/>,
+        },
+        {
+          id: 'V2',
+          name: 'Bars-form-A',
+          desc: 'Three ascending bars build the A silhouette plus a chevron crossbar. Most kinetic — feels like progress.',
+          render: (s) => <ASymbolBars size={s}/>,
+        },
+        {
+          id: 'V3',
+          name: 'Outlined',
+          desc: 'Stroke-only, no fill. Lightweight and modern — works on busy backgrounds and shrinks down to favicon.',
+          render: (s) => <ASymbolOutline size={s} color={dark ? '#F0F0F5' : '#1C2030'} barColor="#7B5CF6"/>,
+        },
+      ];
+      return (
+        <Themed dark={dark} style={{padding: 36}}>
+          <div style={{
+            display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap: 16,
+          }}>
+            {variants.map(v => (
+              <div key={v.id} style={{
+                padding: 24, borderRadius: 22,
+                background: dark ? '#181A24' : '#FFFFFF',
+                border: `1px solid ${dark ? '#303240' : '#E2DED7'}`,
+                display: 'flex', flexDirection:'column', gap: 16,
+                minHeight: 380,
+              }}>
+                <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                  <span style={{fontSize: 10, fontWeight: 600, letterSpacing:'0.08em', textTransform:'uppercase', color: dark ? '#828696' : '#8E92A0'}}>{v.id}</span>
+                  <span style={{fontSize: 10, fontWeight: 500, color: dark ? '#828696' : '#8E92A0'}}>16px · 32px · 96px</span>
+                </div>
+                <div style={{
+                  flex: 1, display:'flex', alignItems:'center', justifyContent:'center',
+                  padding: '20px 0',
+                }}>
+                  {v.render(140)}
+                </div>
+                {/* size scale */}
+                <div style={{
+                  padding:'14px 16px', borderRadius: 14,
+                  background: dark ? '#0E0F16' : '#FAF8F4',
+                  border: `1px solid ${dark ? '#303240' : '#E2DED7'}`,
+                  display:'flex', alignItems:'flex-end', justifyContent:'space-around', gap: 12,
+                }}>
+                  {[16, 32, 64].map(s => (
+                    <div key={s} style={{display:'flex', flexDirection:'column', alignItems:'center', gap: 6}}>
+                      {v.render(s)}
+                      <span style={{fontSize: 10, color: dark ? '#828696' : '#8E92A0', fontFamily:'Inter'}}>{s}px</span>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <div style={{fontFamily:'Sora', fontWeight: 600, fontSize: 18, color: dark ? '#F0F0F5' : '#1C2030', marginBottom: 4}}>{v.name}</div>
+                  <p style={{fontSize: 12, lineHeight: 1.5, color: dark ? '#AFB2C0' : '#5C6070', margin: 0}}>{v.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Themed>
+      );
+    }
+
+    function BrandTile({ dark, title, children }) {
+      return (
+        <div style={{
+          padding: 18, borderRadius: 18,
+          background: dark ? '#181A24' : '#FFFFFF',
+          border: `1px solid ${dark ? '#303240' : '#E2DED7'}`,
+          display:'flex', flexDirection:'column', alignItems:'center', gap: 14,
+          minHeight: 180, justifyContent:'center',
+        }}>
+          <div style={{fontSize: 10, fontWeight: 600, letterSpacing:'0.08em', textTransform:'uppercase', color: dark ? '#828696' : '#8E92A0', alignSelf:'flex-start'}}>{title}</div>
+          <div style={{flex: 1, display:'flex', alignItems:'center', justifyContent:'center'}}>{children}</div>
+        </div>
+      );
+    }
+
+    // ── App ───────────────────────────────────────────────────────────────
+    function App() {
+      const phoneW = 420, phoneH = 880;
+
+      return (
+        <DesignCanvas
+          title="Adulting.app — Soft Premium"
+          subtitle="Winner: B · Flow diagram. Plus brand, settlements, FX, recurring, categories, accounts, settings, empty states."
+        >
+          <DCSection id="brand" title="Brand assets" subtitle="Primary lockup updated · 3 new symbol variations to compare">
+            <DCArtboard id="brand-light" label="Primary · Light" width={1100} height={920}>
+              <BrandShowcase dark={false}/>
+            </DCArtboard>
+            <DCArtboard id="brand-dark" label="Primary · Dark" width={1100} height={920}>
+              <BrandShowcase dark={true}/>
+            </DCArtboard>
+            <DCArtboard id="brand-variations-light" label="3 new symbol variations · Light" width={1100} height={520}>
+              <SymbolVariations dark={false}/>
+            </DCArtboard>
+            <DCArtboard id="brand-variations-dark" label="3 new symbol variations · Dark" width={1100} height={520}>
+              <SymbolVariations dark={true}/>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="winner" title="✓ Winner — Variation B (Flow diagram)" subtitle="The chosen direction: avatar-to-avatar money flow with live consequence preview">
+            <DCArtboard id="winner-light" label="B · Flow diagram · Light" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={false}><AddExpenseB/></PhoneArtboard>
+            </DCArtboard>
+            <DCArtboard id="winner-dark" label="B · Flow diagram · Dark" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={true}><AddExpenseB/></PhoneArtboard>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="add-expense" title="Add Expense — 5 variations explored" subtitle="Same model, different mental frames. Each shows the live consequence preview.">
+            <DCArtboard id="exp-a-light" label="A · Classic stacked · Light" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={false}><AddExpenseA/></PhoneArtboard>
+            </DCArtboard>
+            <DCArtboard id="exp-a-dark"  label="A · Classic stacked · Dark"  width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={true}><AddExpenseA/></PhoneArtboard>
+            </DCArtboard>
+            <DCArtboard id="exp-b-light" label="B · Flow diagram · Light" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={false}><AddExpenseB/></PhoneArtboard>
+            </DCArtboard>
+            <DCArtboard id="exp-b-dark"  label="B · Flow diagram · Dark"  width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={true}><AddExpenseB/></PhoneArtboard>
+            </DCArtboard>
+            <DCArtboard id="exp-c-light" label="C · Numpad · Light" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={false}><AddExpenseC/></PhoneArtboard>
+            </DCArtboard>
+            <DCArtboard id="exp-c-dark"  label="C · Numpad · Dark"  width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={true}><AddExpenseC/></PhoneArtboard>
+            </DCArtboard>
+            <DCArtboard id="exp-d-light" label="D · Bottom-sheet · Light" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={false}><AddExpenseD/></PhoneArtboard>
+            </DCArtboard>
+            <DCArtboard id="exp-d-dark"  label="D · Bottom-sheet · Dark"  width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={true}><AddExpenseD/></PhoneArtboard>
+            </DCArtboard>
+            <DCArtboard id="exp-e-light" label="E · Sentence builder · Light" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={false}><AddExpenseE/></PhoneArtboard>
+            </DCArtboard>
+            <DCArtboard id="exp-e-dark"  label="E · Sentence builder · Dark"  width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={true}><AddExpenseE/></PhoneArtboard>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="settlements" title="Settlements" subtitle="Avatar-to-avatar net balance cards · internal accounting only">
+            <DCArtboard id="settle-light" label="Light" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={false}><SettlementsScreen/></PhoneArtboard>
+            </DCArtboard>
+            <DCArtboard id="settle-dark" label="Dark" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={true}><SettlementsScreen/></PhoneArtboard>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="usd-debt" title="Pay debt — USD with FX" subtitle="Multi-currency form: input in USD, see live EUR impact at current rate">
+            <DCArtboard id="usd-light" label="Light" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={false}><DebtPaymentUSD/></PhoneArtboard>
+            </DCArtboard>
+            <DCArtboard id="usd-dark" label="Dark" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={true}><DebtPaymentUSD/></PhoneArtboard>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="home" title="Home dashboard" subtitle="Where Add Expense lives — gives context for the FAB and bottom nav">
+            <DCArtboard id="home-light" label="Light" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={false}><HomeScreen/></PhoneArtboard>
+            </DCArtboard>
+            <DCArtboard id="home-dark" label="Dark" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={true}><HomeScreen/></PhoneArtboard>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="recurring" title="Recurring — list + form" subtitle="Monthly auto-bookkeeping for salary, rent, subscriptions, debt payments">
+            <DCArtboard id="rec-list-light" label="List · Light" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={false}><RecurringScreen/></PhoneArtboard>
+            </DCArtboard>
+            <DCArtboard id="rec-list-dark" label="List · Dark" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={true}><RecurringScreen/></PhoneArtboard>
+            </DCArtboard>
+            <DCArtboard id="rec-form-light" label="Form · Light" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={false}><RecurringForm/></PhoneArtboard>
+            </DCArtboard>
+            <DCArtboard id="rec-form-dark" label="Form · Dark" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={true}><RecurringForm/></PhoneArtboard>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="categories" title="Categories" subtitle="Manage expense and income categories with colors and icons">
+            <DCArtboard id="cat-light" label="Light" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={false}><CategoriesScreen/></PhoneArtboard>
+            </DCArtboard>
+            <DCArtboard id="cat-dark" label="Dark" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={true}><CategoriesScreen/></PhoneArtboard>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="accounts" title="Accounts" subtitle="Personal, joint, and multi-currency accounts with estimated total">
+            <DCArtboard id="acc-light" label="Light" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={false}><AccountsScreen/></PhoneArtboard>
+            </DCArtboard>
+            <DCArtboard id="acc-dark" label="Dark" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={true}><AccountsScreen/></PhoneArtboard>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="settings" title="Settings" subtitle="Appearance, defaults, sync, data — grouped iOS-style lists">
+            <DCArtboard id="set-light" label="Light" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={false}><SettingsScreen/></PhoneArtboard>
+            </DCArtboard>
+            <DCArtboard id="set-dark" label="Dark" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={true}><SettingsScreen/></PhoneArtboard>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="empty" title="Empty states" subtitle="Sober, encouraging — never cute. Geometric line-art only.">
+            <DCArtboard id="empty-tx-light" label="Transactions · Light" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={false}><EmptyTransactions/></PhoneArtboard>
+            </DCArtboard>
+            <DCArtboard id="empty-tx-dark" label="Transactions · Dark" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={true}><EmptyTransactions/></PhoneArtboard>
+            </DCArtboard>
+            <DCArtboard id="empty-debt-light" label="Debts · Light" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={false}><EmptyDebts/></PhoneArtboard>
+            </DCArtboard>
+            <DCArtboard id="empty-settle-light" label="Settlements · Light" width={phoneW} height={phoneH}>
+              <PhoneArtboard dark={false}><EmptySettlements/></PhoneArtboard>
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>

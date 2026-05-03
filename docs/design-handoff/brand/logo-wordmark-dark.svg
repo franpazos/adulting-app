@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 200" width="760" height="200" fill="none">
+  <title>Adulting.app — Wordmark (Dark Mode)</title>
+  <defs>
+    <linearGradient id="awmdPrimary" x1="40" y1="20" x2="160" y2="180" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#A790FF"></stop>
+      <stop offset="0.55" stop-color="#7B5CF6"></stop>
+      <stop offset="1" stop-color="#5B3FD9"></stop>
+    </linearGradient>
+    <linearGradient id="awmdHighlight" x1="100" y1="20" x2="100" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.5"></stop>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"></stop>
+    </linearGradient>
+    
+  </defs>
+  <g>
+    <path d="M100 18 L172 168 Q174 173 169 178 L150 188 Q145 190 142 184 L100 96 L58 184 Q55 190 50 188 L31 178 Q26 173 28 168 L100 18 Z" fill="url(#awmdPrimary)"></path>
+    <path d="M100 18 L172 168 Q174 173 169 178 L161 182 L100 56 L39 182 L31 178 Q26 173 28 168 L100 18 Z" fill="url(#awmdHighlight)" opacity="0.9"></path>
+    <g fill="#FFFFFF" opacity="0.95">
+      <rect x="78" y="138" width="12" height="20" rx="3"></rect>
+      <rect x="94" y="128" width="12" height="30" rx="3"></rect>
+      <rect x="110" y="118" width="12" height="40" rx="3"></rect>
+    </g>
+  </g>
+  <text class="awmd-word" x="220" y="138" fill="#FAFAFC">Adulting</text>
+  <text class="awmd-suffix" x="618" y="138" fill="#9D85FF">.app</text>
+</svg>

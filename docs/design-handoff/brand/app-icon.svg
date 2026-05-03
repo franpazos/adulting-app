@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" fill="none">
+  <title>Adulting.app — App Icon</title>
+  <defs>
+    
+    <linearGradient id="iconBg" x1="0" y1="0" x2="0" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9D85FF"></stop>
+      <stop offset="0.55" stop-color="#7B5CF6"></stop>
+      <stop offset="1" stop-color="#5B3FD9"></stop>
+    </linearGradient>
+    
+    <radialGradient id="iconSheen" cx="0.5" cy="0" r="0.85" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.35"></stop>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.06"></stop>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"></stop>
+    </radialGradient>
+    
+    <linearGradient id="iconBottomShade" x1="0" y1="0" x2="0" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0.6" stop-color="#000000" stop-opacity="0"></stop>
+      <stop offset="1" stop-color="#3A28A0" stop-opacity="0.45"></stop>
+    </linearGradient>
+    
+    <clipPath id="iconClip">
+      <path d="M512 0&#xA;               C 768 0  896 0  960 64&#xA;               C 1024 128  1024 256  1024 512&#xA;               C 1024 768  1024 896  960 960&#xA;               C 896 1024  768 1024  512 1024&#xA;               C 256 1024  128 1024  64 960&#xA;               C 0 896  0 768  0 512&#xA;               C 0 256  0 128  64 64&#xA;               C 128 0  256 0  512 0 Z"></path>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#iconClip)">
+    
+    <rect width="1024" height="1024" fill="url(#iconBg)"></rect>
+    
+    <rect width="1024" height="1024" fill="url(#iconSheen)"></rect>
+    
+    <rect width="1024" height="1024" fill="url(#iconBottomShade)"></rect>
+
+    
+    <g transform="translate(512 512) scale(2.95) translate(-100 -100)">
+      <path d="M100 18 L172 168 Q174 173 169 178 L150 188 Q145 190 142 184 L100 96 L58 184 Q55 190 50 188 L31 178 Q26 173 28 168 L100 18 Z" fill="#FFFFFF"></path>
+      <g fill="#7B5CF6">
+        <rect x="78" y="138" width="12" height="20" rx="3"></rect>
+        <rect x="94" y="128" width="12" height="30" rx="3"></rect>
+        <rect x="110" y="118" width="12" height="40" rx="3"></rect>
+      </g>
+    </g>
+
+    
+    <path d="M512 8&#xA;             C 766 8  892 8  954 70&#xA;             C 1016 132  1016 258  1016 512&#xA;             C 1016 766  1016 892  954 954&#xA;             C 892 1016  766 1016  512 1016&#xA;             C 258 1016  132 1016  70 954&#xA;             C 8 892  8 766  8 512&#xA;             C 8 258  8 132  70 70&#xA;             C 132 8  258 8  512 8 Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.15" stroke-width="2"></path>
+  </g>
+</svg>

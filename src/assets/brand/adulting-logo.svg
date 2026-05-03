@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="Adulting.app symbol">
+  <defs>
+    <linearGradient id="leftFace" x1="0.1" y1="0" x2="0.9" y2="1">
+      <stop offset="0%" stop-color="#C9BEFF"></stop>
+      <stop offset="50%" stop-color="#9C8BF0"></stop>
+      <stop offset="100%" stop-color="#6E5DD4"></stop>
+    </linearGradient>
+
+    <linearGradient id="rightFace" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#9583EC"></stop>
+      <stop offset="55%" stop-color="#6E5DD4"></stop>
+      <stop offset="100%" stop-color="#4B3BA8"></stop>
+    </linearGradient>
+
+    <linearGradient id="apexFold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E9E2FF"></stop>
+      <stop offset="100%" stop-color="#9C8BF0" stop-opacity="0"></stop>
+    </linearGradient>
+
+    <linearGradient id="innerLeft" x1="0.1" y1="0" x2="0.9" y2="1">
+      <stop offset="0%" stop-color="#C9BEFF"></stop>
+      <stop offset="50%" stop-color="#9C8BF0"></stop>
+      <stop offset="100%" stop-color="#6E5DD4"></stop>
+    </linearGradient>
+
+    <linearGradient id="innerRight" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#9583EC"></stop>
+      <stop offset="55%" stop-color="#6E5DD4"></stop>
+      <stop offset="100%" stop-color="#4B3BA8"></stop>
+    </linearGradient>
+
+    
+    <linearGradient id="seamShadow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2A1F66" stop-opacity="0"></stop>
+      <stop offset="50%" stop-color="#2A1F66" stop-opacity="0.55"></stop>
+      <stop offset="100%" stop-color="#2A1F66" stop-opacity="0"></stop>
+    </linearGradient>
+
+    <linearGradient id="barFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8C7BEC"></stop>
+      <stop offset="100%" stop-color="#5E4DC4"></stop>
+    </linearGradient>
+
+    
+    <filter id="creaseShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2.2"></feGaussianBlur>
+      <feOffset dx="0" dy="2.5" result="off"></feOffset>
+      <feComponentTransfer><feFuncA type="linear" slope="0.55"></feFuncA></feComponentTransfer>
+      <feMerge>
+        <feMergeNode></feMergeNode>
+        <feMergeNode in="SourceGraphic"></feMergeNode>
+      </feMerge>
+    </filter>
+
+    
+    <filter id="valleyShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.8"></feGaussianBlur>
+    </filter>
+  </defs>
+
+  
+  <path d="M 120 26 L 220 214 L 176 214 L 120 108 Z" fill="url(#rightFace)"></path>
+
+  
+  <path d="M 120 26 L 20 214 L 64 214 L 120 108 Z" fill="url(#leftFace)"></path>
+
+  
+  <path d="M 120 26 L 113 60 L 120 70 L 127 60 Z" fill="url(#apexFold)"></path>
+
+  
+  
+  <g filter="url(#creaseShadow)">
+    <path d="M 120 138 L 48.5 160.6 L 92.1 160.8 L 120 152 Z" fill="url(#innerLeft)"></path>
+    <path d="M 120 138 L 191.5 160.6 L 147.9 160.8 L 120 152 Z" fill="url(#innerRight)"></path>
+  </g>
+
+  
+  <path d="M 120 134 L 48.5 156.6 L 51 160 L 120 138 Z" fill="#FFFFFF" opacity="0.32"></path>
+  <path d="M 120 134 L 191.5 156.6 L 189 160 L 120 138 Z" fill="#FFFFFF" opacity="0.22"></path>
+
+  
+  <path d="M 120 138 L 120 152 L 92.1 160.8 L 48.5 160.6 Z" fill="#1F1556" opacity="0.16" filter="url(#valleyShadow)"></path>
+  <path d="M 120 138 L 120 152 L 147.9 160.8 L 191.5 160.6 Z" fill="#1F1556" opacity="0.26" filter="url(#valleyShadow)"></path>
+
+  
+  <path d="M 120 138 L 120 152" stroke="#FFFFFF" stroke-opacity="0.5" stroke-width="1.1" stroke-linecap="round"></path>
+
+  
+  <g>
+    <rect x="102" y="200" width="11" height="14" rx="2.2" fill="url(#barFill)"></rect>
+    <rect x="114.5" y="190" width="11" height="24" rx="2.2" fill="url(#barFill)"></rect>
+    <rect x="127" y="180" width="11" height="34" rx="2.2" fill="url(#barFill)"></rect>
+  </g>
+</svg>

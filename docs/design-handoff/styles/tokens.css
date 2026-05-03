@@ -1,0 +1,138 @@
+/* Adulting.app — Soft Premium tokens (mirrors src/styles/tokens.css) */
+
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Brand */
+  --violet: #7B5CF6;
+  --violet-soft: #A891FA;
+  --violet-ink: #5B3FD9;
+  --violet-tint: #EFEAFE;
+
+  /* Functional */
+  --positive: #22C55E;
+  --expense: #FF7D6B;
+  --info: #3B82F6;
+  --warning: #F59E0B;
+
+  /* Light neutrals */
+  --bg: #FAF8F4;
+  --surface: #FFFFFF;
+  --surface-2: #F5F3EF;
+  --border: #E2DED7;
+  --border-strong: #D5D1C8;
+  --text-1: #1C2030;
+  --text-2: #5C6070;
+  --text-3: #8E92A0;
+
+  /* Type */
+  --font-display: 'Sora', system-ui, -apple-system, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* Radii */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --r-2xl: 28px;
+  --r-pill: 999px;
+
+  /* Shadows — light */
+  --shadow-card: 0 1px 2px rgba(28,32,48,0.04), 0 4px 12px rgba(28,32,48,0.04);
+  --shadow-pop: 0 8px 24px rgba(28,32,48,0.08), 0 2px 6px rgba(28,32,48,0.04);
+  --shadow-fab: 0 8px 24px rgba(123,92,246,0.4), 0 2px 6px rgba(123,92,246,0.3);
+}
+
+[data-theme="dark"] {
+  --violet: #8B6EFA;
+  --violet-soft: #AE9AFC;
+  --violet-ink: #C8BCFE;
+  --violet-tint: rgba(139,110,250,0.14);
+
+  --positive: #34D36E;
+  --expense: #FF8A7A;
+  --info: #60A5FA;
+  --warning: #FBAF38;
+
+  --bg: #0E0F16;
+  --surface: #181A24;
+  --surface-2: #20222E;
+  --border: #303240;
+  --border-strong: #3D4050;
+  --text-1: #F0F0F5;
+  --text-2: #AFB2C0;
+  --text-3: #828696;
+
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.25);
+  --shadow-pop: 0 8px 24px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.3);
+  --shadow-fab: 0 8px 24px rgba(123,92,246,0.55), 0 2px 6px rgba(123,92,246,0.4);
+}
+
+/* Themed phone surface — applied to .phone-surface inside an artboard */
+.phone-surface {
+  background: var(--bg);
+  color: var(--text-1);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.4;
+  letter-spacing: -0.005em;
+  height: 100%;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.phone-surface * { box-sizing: border-box; }
+
+/* Type helpers */
+.t-display { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.025em; }
+.t-num { font-family: var(--font-display); font-feature-settings: 'tnum' 1, 'lnum' 1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.t-mono-num { font-family: var(--font-body); font-feature-settings: 'tnum' 1, 'lnum' 1; font-variant-numeric: tabular-nums; }
+.t-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
+.t-meta { font-size: 12px; color: var(--text-3); }
+
+/* Card */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-card);
+}
+
+/* Pill */
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 28px; padding: 0 12px;
+  border-radius: var(--r-pill);
+  font-size: 13px; font-weight: 500;
+  background: var(--surface-2); color: var(--text-2);
+  border: 1px solid var(--border);
+}
+
+.pill-violet {
+  background: var(--violet); color: white; border-color: transparent;
+}
+
+/* Tinted bg utilities */
+.bg-violet-tint { background: var(--violet-tint); }
+
+/* Avatar */
+.avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 600; font-size: 13px;
+  color: white;
+  flex-shrink: 0;
+}
+.avatar-fran { background: linear-gradient(135deg, #7B5CF6 0%, #5B3FD9 100%); }
+.avatar-sam  { background: linear-gradient(135deg, #FF7D6B 0%, #E55A48 100%); }
+.avatar-house { background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%); }
+.avatar-joint { background: linear-gradient(135deg, #3B82F6 0%, #1E5FD9 100%); }
+
+/* Hide scroll inside phones */
+.phone-surface .scrollarea {
+  height: 100%;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.phone-surface .scrollarea::-webkit-scrollbar { display: none; }

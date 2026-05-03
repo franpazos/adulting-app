@@ -4,6 +4,29 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-03 — Final brand assets + design handoff archived
+
+**What was done**
+- Replaced the placeholder logo with Fran's final SVGs:
+  - `src/assets/brand/adulting-logo.svg` (abstract A with chart bars) → inlined as `LogoMark` in `src/components/Logo.tsx` with React-namespaced gradient ids (prefixed `al-*`) so multiple instances can render side-by-side without id collisions.
+  - `src/assets/brand/adulting-logo-coin.svg` (violet coin) → copied to `public/icons/favicon.svg`, `icon-192.svg`, `icon-512.svg`. The PWA install prompt and browser tab now show the final coin.
+- Archived the Claude Design handoff bundle into `docs/design-handoff/` (HTML canvas, JSX prototypes, design tokens, image uploads). **Per Fran's instruction: ignore the brand assets in the handoff (`brand/*.svg`); the canonical logo + icon are the SVGs above.** Use the rest of the handoff (`scripts/*.jsx`, `Adulting Design Canvas.html`, `styles/tokens.css`) as the visual reference for upcoming screens.
+- `LogoMark` now accepts `style` and `title` props so `LogoWordmark` can size it via CSS without re-creating the SVG. API stays backward-compatible with existing `<LogoMark className="size-7" />` call sites.
+
+**Design handoff highlights (for future phases)**
+- **Add Expense** — five variations explored. **Winner: Variation B (Flow diagram)** — avatar-to-avatar money flow (Paid by → belongs to) with a settlement chip showing the consequence. Live consequence sentence in a card below. Sticky FAB to save.
+- Settlements screen with avatar-to-avatar net balance cards.
+- Multi-currency debt payment with FX (USD input, live EUR impact).
+- Home dashboard, Recurring (list + form), Categories, Accounts, Settings, Empty states for Transactions / Debts / Settlements.
+- Tokens in `docs/design-handoff/styles/tokens.css` are nearly identical to ours; the only deltas are `--violet-tint` and slightly different shadow definitions — worth aligning in Phase 5/7 polish.
+
+**Open follow-ups**
+- Phase 4 (next): pure calculation engine. Use the `computeConsequence(amount, source, owner, split)` from `docs/design-handoff/scripts/add-expense.jsx` as the reference implementation for `expenseAllocator` + `settlementsEngine`.
+- Phase 5: build Add Expense as Variation B (Flow diagram). Wire `computeConsequence` into the live preview.
+- Phase 7: align Home with the handoff's Home screen and adopt the avatar gradients (`avatar-fran`, `avatar-sam`, `avatar-house`, `avatar-joint`) defined in the handoff tokens.
+
+---
+
 ## 2026-05-03 — Phase 3 data model & persistence
 
 > Decision: skipped Phase 2 (route transitions, language switcher) and went straight to Phase 3 to unblock Phase 4. Phase 2 polish is small and will be absorbed inline.

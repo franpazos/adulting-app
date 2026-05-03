@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" fill="none">
+  <title>Adulting.app — Symbol (Monochrome)</title>
+  <path d="M100 18 L172 168 Q174 173 169 178 L150 188 Q145 190 142 184 L100 96 L58 184 Q55 190 50 188 L31 178 Q26 173 28 168 L100 18 Z" fill="currentColor"></path>
+  <g fill="#FFFFFF">
+    <rect x="78" y="138" width="12" height="20" rx="3"></rect>
+    <rect x="94" y="128" width="12" height="30" rx="3"></rect>
+    <rect x="110" y="118" width="12" height="40" rx="3"></rect>
+  </g>
+</svg>

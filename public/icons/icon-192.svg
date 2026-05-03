@@ -1,19 +1,97 @@
-<svg viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 350" role="img" aria-label="Adulting.app coin">
   <defs>
-    <radialGradient id="bg" cx="50%" cy="40%" r="65%">
-      <stop offset="0%" stop-color="#9C7CF8" />
-      <stop offset="100%" stop-color="#6B49E8" />
+    <radialGradient id="coinBg" cx="0.32" cy="0.28" r="0.95">
+      <stop offset="0%" stop-color="#A99BF5"></stop>
+      <stop offset="55%" stop-color="#7B6CE0"></stop>
+      <stop offset="100%" stop-color="#5847B8"></stop>
     </radialGradient>
-    <linearGradient id="mark" x1="0" y1="0" x2="0" y2="192" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#FFFFFF" />
-      <stop offset="100%" stop-color="#F1ECFF" />
+
+    
+    <linearGradient id="coinSide" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3B2DA0"></stop>
+      <stop offset="100%" stop-color="#1F1556"></stop>
+    </linearGradient>
+
+    
+    <radialGradient id="coinInnerShadow" cx="0.5" cy="0.95" r="0.7">
+      <stop offset="60%" stop-color="#2A1F66" stop-opacity="0"></stop>
+      <stop offset="100%" stop-color="#2A1F66" stop-opacity="0.45"></stop>
+    </radialGradient>
+
+    <linearGradient id="coinRim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.5"></stop>
+      <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0"></stop>
+      <stop offset="100%" stop-color="#2A1F66" stop-opacity="0.4"></stop>
+    </linearGradient>
+
+    <radialGradient id="coinGloss" cx="0.5" cy="0.05" r="0.7">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.35"></stop>
+      <stop offset="60%" stop-color="#FFFFFF" stop-opacity="0"></stop>
+    </radialGradient>
+
+    <filter id="coinDrop" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="10"></feGaussianBlur>
+      <feOffset dx="0" dy="14" result="off"></feOffset>
+      <feComponentTransfer><feFuncA type="linear" slope="0.55"></feFuncA></feComponentTransfer>
+      <feMerge>
+        <feMergeNode></feMergeNode>
+        <feMergeNode in="SourceGraphic"></feMergeNode>
+      </feMerge>
+    </filter>
+
+    
+    <filter id="coinSideBlur" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="0.6"></feGaussianBlur>
+    </filter>
+
+    
+    <linearGradient id="roofLineLeft" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0"></stop>
+      <stop offset="30%" stop-color="#5E4DC4" stop-opacity="1"></stop>
+      <stop offset="100%" stop-color="#5E4DC4" stop-opacity="1"></stop>
+    </linearGradient>
+    <linearGradient id="roofLineRight" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#5E4DC4" stop-opacity="1"></stop>
+      <stop offset="70%" stop-color="#5E4DC4" stop-opacity="1"></stop>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"></stop>
     </linearGradient>
   </defs>
-  <circle cx="96" cy="96" r="92" fill="url(#bg)" />
-  <circle cx="96" cy="96" r="92" fill="none" stroke="white" stroke-opacity="0.18" stroke-width="2" />
-  <g transform="translate(96 100)">
-    <path d="M0 -50 L40 50 H24 L0 -10 L-24 50 H-40 Z" fill="url(#mark)" />
-    <rect x="-7" y="22" width="5" height="20" rx="1.5" fill="#7B5CF6" />
-    <rect x="0" y="14" width="5" height="28" rx="1.5" fill="#7B5CF6" />
+
+  
+  <g filter="url(#coinDrop)">
+    
+    <ellipse cx="160" cy="170" rx="148" ry="148" fill="url(#coinSide)"></ellipse>
+
+    
+    <circle cx="160" cy="160" r="148" fill="url(#coinBg)"></circle>
+    <circle cx="160" cy="160" r="148" fill="url(#coinInnerShadow)"></circle>
+    <circle cx="160" cy="160" r="148" fill="url(#coinGloss)"></circle>
+    <circle cx="160" cy="160" r="147" fill="none" stroke="url(#coinRim)" stroke-width="2"></circle>
+  </g>
+
+  
+  
+  
+  
+  <g transform="translate(22.7 -7.7) scale(1.144)">
+    
+    <path d="M 120 26 L 220 214 L 176 214 L 120 108 Z" fill="#FFFFFF"></path>
+    <path d="M 120 26 L 20 214 L 64 214 L 120 108 Z" fill="#FFFFFF"></path>
+
+    
+    <path d="M 120 138 L 48.5 160.6 L 92.1 160.8 L 120 152 Z" fill="#FFFFFF"></path>
+    <path d="M 120 138 L 191.5 160.6 L 147.9 160.8 L 120 152 Z" fill="#FFFFFF"></path>
+
+    
+    <path d="M 56.1 158.2 L 120 138" fill="none" stroke="url(#roofLineLeft)" stroke-width="2.4" stroke-linecap="butt"></path>
+    <path d="M 120 138 L 183.9 158.2" fill="none" stroke="url(#roofLineRight)" stroke-width="2.4" stroke-linecap="butt"></path>
+
+    
+    <g>
+      <rect x="102" y="200" width="11" height="14" rx="2.2" fill="#FFFFFF"></rect>
+      <rect x="114.5" y="190" width="11" height="24" rx="2.2" fill="#FFFFFF"></rect>
+      <rect x="127" y="180" width="11" height="34" rx="2.2" fill="#FFFFFF"></rect>
+    </g>
   </g>
 </svg>

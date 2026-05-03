@@ -65,10 +65,21 @@ pnpm test         # vitest (once configured in package.json — Phase 0+)
 4. UI work: respect the Soft Premium brand direction. Use existing tokens and components.
 5. Update `docs/progress-log.md` when you wrap.
 
-## Logo & icon swap path
+## Logo & icon
 
-The logo and PWA icons are **placeholders**. When Fran provides the final SVGs:
-- Replace `src/components/Logo.tsx` (`LogoMark`, `LogoWordmark`)
-- Replace `public/icons/favicon.svg`, `icon-192.svg`, `icon-512.svg`
+Final SVGs are in place:
+- `src/assets/brand/adulting-logo.svg` — abstract A with chart bars (inlined into `src/components/Logo.tsx` as `LogoMark`).
+- `src/assets/brand/adulting-logo-coin.svg` — violet coin (used for `public/icons/favicon.svg`, `icon-192.svg`, `icon-512.svg`).
 
-No layout changes should be needed.
+If the brand evolves, update both the `src/assets/brand/*.svg` files and the inline copy inside `Logo.tsx` so the on-screen mark stays in sync with the asset of record.
+
+## Design reference
+
+The Claude Design handoff bundle is archived under `docs/design-handoff/`. **Treat it as a visual reference, not code to import.** The most useful files:
+- `Adulting Design Canvas.html` + `scripts/*.jsx` — every screen Fran designed (Add Expense variations A–E, Settlements, USD debt payment, Home, Recurring, Categories, Accounts, Settings, empty states).
+- `styles/tokens.css` — design tokens (95% identical to ours).
+- **Add Expense winner: Variation B (Flow diagram)** in `scripts/add-expense.jsx` (`AddExpenseB`).
+
+When implementing a screen, read the relevant handoff JSX first to absorb the visual language, then re-implement in our React + Tailwind stack — don't copy the prototype's HTML/CSS directly.
+
+**Ignore `docs/design-handoff/brand/*.svg`** — those are earlier design iterations. The canonical brand assets are the ones in `src/assets/brand/`.
