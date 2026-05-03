@@ -4,6 +4,29 @@ Short, dated records of decisions that shape the codebase. Each entry is an ADR-
 
 ---
 
+## ADR-009 — happy-dom over jsdom for Vitest environment
+**Date:** 2026-05-03
+**Status:** Accepted
+**Context:** `jsdom@29` ships a CJS `html-encoding-sniffer` that does `require()` on the ESM `@exodus/bytes`, which Node 18 rejects (`ERR_REQUIRE_ESM`). Pinning jsdom to v25 was an option but `happy-dom` is faster, ESM-friendly, and already supports everything we need (DOM + globalThis.crypto).
+**Decision:** Use `happy-dom` as the default Vitest environment.
+**Consequences:** None observable for our test surface. If a future test hits a jsdom-only API (rare in Testing Library), switch that file with `// @vitest-environment jsdom` and add jsdom locally.
+
+---
+
+## ADR-008 — sqlite-wasm on the main thread (no worker yet)
+**Date:** 2026-05-03
+**Status:** Accepted
+**Context:** Two viable patterns for `@sqlite.org/sqlite-wasm`:
+  1. **Worker promiser** — DB owned by a Web Worker, all queries are async messages. Required by Safari for OPFS sync access handles.
+  2. **Main-thread OPFS SAH Pool** — synchronous queries, simpler call sites, works on Chrome/Edge.
+**Decision:** Main-thread for now via `installOpfsSAHPoolVfs()` with an in-memory fallback. The interface in `src/lib/db/client.ts` (`exec` / `selectAll` / `selectOne` / `transaction`) is small and synchronous, so swapping to a worker later is a self-contained change.
+**Consequences:**
+- Tests run under happy-dom on Node where OPFS isn't available — falls through to `:memory:` cleanly.
+- Safari users would see the in-memory fallback today (data lost on reload). Acceptable: this is a personal app for Fran on Mac/Chrome. When mobile Safari support matters, swap to the worker promiser behind the same module surface.
+- `transaction()` is reentrant via a depth counter so seed and repository code can both wrap their own writes without nested-BEGIN errors.
+
+---
+
 ## ADR-007 — Placeholder logo until final SVG arrives
 **Date:** 2026-05-03
 **Status:** Accepted (temporary)

@@ -6,11 +6,14 @@ import "./index.css";
 import "@/lib/i18n";
 import { router } from "@/app/router";
 import { ThemeProvider } from "@/lib/theme/ThemeProvider";
+import { AppBoot } from "@/app/AppBoot";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>
-      <RouterProvider router={router} />
+      <AppBoot>
+        <RouterProvider router={router} />
+      </AppBoot>
     </ThemeProvider>
   </StrictMode>,
 );

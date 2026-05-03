@@ -39,14 +39,19 @@ This document is the living plan of work. Each phase ends with a checklist updat
 - [ ] Language switcher in Settings stub
 - [ ] Empty-state visuals on placeholder screens
 
-## Phase 3 — Data model & persistence
-- [ ] `lib/db` with sqlite-wasm + OPFS bootstrap
-- [ ] Migration runner
-- [ ] SQL migrations for all tables in `data-model.md`
-- [ ] Typed repositories per entity
-- [ ] Multi-currency fields on `transactions` and `debt_payments` (`exchange_rate`, `amount_in_account_currency`, `amount_in_debt_currency`)
-- [ ] Seed data (Fran, Sam, accounts, categories, recurring, debts, sample transactions covering Cases A–E)
-- [ ] Zustand store: month selector, scope, theme, language, sync state
+## Phase 3 — Data model & persistence ✅
+- [x] `lib/db/client.ts` with sqlite-wasm + OPFS SAH Pool bootstrap (in-memory fallback)
+- [x] Reentrant `transaction()` with auto-rollback on throw
+- [x] Migration runner with `schema_migrations` tracking and idempotency
+- [x] SQL migrations for all tables (`0001_initial_schema`)
+- [x] Typed repositories: users, accounts, categories, transactions (with allocations + month-keyed indexes), recurring, debts, debt_payments, settlements
+- [x] Multi-currency fields on `transactions` and `debt_payments` (`exchange_rate`, `amount_in_account_currency`, `amount_in_debt_currency`)
+- [x] Seed data covering Cases A–E + salaries + recurring + USD debt to family (ADR-004)
+- [x] `useDbStore` (Zustand) with backend / warning / seeded flags
+- [x] `AppBoot` splash that initializes DB → migrations → seed before rendering
+- [x] `lib/calculations/dashboard.ts` (read-only aggregations consumed by Home)
+- [x] Home wired to live DB data; Settings shows DB backend pill
+- [x] Vitest smoke suite (10/10) — DB bootstrap, migrations idempotency, seed, settlements ledger for Cases A/D/E, dashboard summary, category breakdown
 
 ## Phase 4 — Calculation engine (pure, tested)
 - [ ] `expenseAllocator` (source vs owner vs split)

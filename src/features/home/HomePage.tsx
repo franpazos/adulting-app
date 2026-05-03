@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronRight, Users, Scale, Wallet } from "lucide-react";
 import {
@@ -8,18 +9,55 @@ import {
 } from "@/components/ui";
 import { AppHeader } from "@/components/AppHeader";
 import { useUiStore, type Scope } from "@/store/uiStore";
-
-const FAKE_AMOUNTS = {
-  income: 2980,
-  expenses: 1432.5,
-  recurring: 620,
-  available: 927.5,
-};
+import { useDbStore } from "@/store/dbStore";
+import {
+  categoryBreakdown,
+  dashboardSummary,
+  type CategorySliceRow,
+} from "@/lib/calculations/dashboard";
+import { debtsRepo, settlementsRepo } from "@/lib/db";
 
 export function HomePage() {
   const { t } = useTranslation();
   const scope = useUiStore((s) => s.scope);
   const setScope = useUiStore((s) => s.setScope);
+  const monthKey = useUiStore((s) => s.monthKey);
+  const dbStatus = useDbStore((s) => s.status);
+
+  const summary = useMemo(
+    () =>
+      dbStatus === "ready"
+        ? dashboardSummary(monthKey, scope)
+        : { income: 0, expenses: 0, recurring: 0, available: 0 },
+    [dbStatus, monthKey, scope],
+  );
+
+  const categories = useMemo<CategorySliceRow[]>(
+    () => (dbStatus === "ready" ? categoryBreakdown(monthKey, scope) : []),
+    [dbStatus, monthKey, scope],
+  );
+
+  const settlements = useMemo(() => {
+    if (dbStatus !== "ready") {
+      return { franSamNet: 0, samHouseholdNet: 0 };
+    }
+    return {
+      franSamNet: settlementsRepo.netBalance("FRAN", "SAM"),
+      samHouseholdNet: settlementsRepo.netBalance("SAM", "HOUSEHOLD"),
+    };
+  }, [dbStatus, monthKey]);
+
+  const debts = useMemo(() => {
+    if (dbStatus !== "ready") return { totalEur: 0, count: 0 };
+    const list = debtsRepo.list();
+    // For Phase 3 the Deudas card sums only EUR debts. Multi-currency
+    // display is wired properly in Phase 7.
+    const eurOnly = list.filter((d) => d.currency_code === "EUR");
+    return {
+      totalEur: eurOnly.reduce((s, d) => s + d.current_balance, 0),
+      count: list.length,
+    };
+  }, [dbStatus]);
 
   const scopeOptions: ReadonlyArray<SegmentedOption<Scope>> = [
     { value: "household", label: t("home.scope.household") },
@@ -46,15 +84,21 @@ export function HomePage() {
             <span className="grid place-items-center size-9 rounded-xl bg-violet/10 text-violet">
               <Users className="size-4.5" />
             </span>
-            <h2 className="h-card">Cuenta conjunta</h2>
+            <h2 className="h-card">
+              {scope === "household" ? "Cuenta conjunta" : "Resumen del mes"}
+            </h2>
           </div>
           <ChevronRight className="size-4 text-text-muted mt-2" />
         </div>
         <div className="grid grid-cols-2 gap-x-4 gap-y-5">
-          <Stat label="Ingresos del mes" value={FAKE_AMOUNTS.income} tone="positive" />
-          <Stat label="Gastos del mes" value={FAKE_AMOUNTS.expenses} tone="expense" />
-          <Stat label="Recurrentes" value={FAKE_AMOUNTS.recurring} />
-          <Stat label="Disponible estimado" value={FAKE_AMOUNTS.available} tone="violet" />
+          <Stat label="Ingresos del mes" value={summary.income} tone="positive" />
+          <Stat label="Gastos del mes" value={summary.expenses} tone="expense" />
+          <Stat label="Recurrentes" value={summary.recurring} />
+          <Stat
+            label="Disponible estimado"
+            value={summary.available}
+            tone="violet"
+          />
         </div>
       </Card>
 
@@ -63,21 +107,28 @@ export function HomePage() {
           <h2 className="h-card">Gastos por categoría</h2>
           <ChevronRight className="size-4 text-text-muted mt-1" />
         </div>
-        <ul className="space-y-3">
-          {CATEGORIES.map((c) => (
-            <li key={c.name} className="flex items-center gap-3">
-              <span
-                className="size-2.5 rounded-full"
-                style={{ background: c.color }}
-              />
-              <span className="flex-1 text-sm">{c.name}</span>
-              <span className="t-label tabular-nums">{c.percent}%</span>
-              <span className="font-medium tabular-nums tracking-tight">
-                {formatEUR(c.amount)}
-              </span>
-            </li>
-          ))}
-        </ul>
+        {categories.length === 0 ? (
+          <p className="t-label">Sin gastos este mes.</p>
+        ) : (
+          <ul className="space-y-3">
+            {categories.map((c) => (
+              <li
+                key={c.category_id ?? c.name}
+                className="flex items-center gap-3"
+              >
+                <span
+                  className="size-2.5 rounded-full"
+                  style={{ background: c.color ?? "#9CA3AF" }}
+                />
+                <span className="flex-1 text-sm">{c.name}</span>
+                <span className="t-label tabular-nums">{c.percent}%</span>
+                <span className="font-medium tabular-nums tracking-tight">
+                  {formatEUR(c.amount)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </Card>
 
       <div className="grid grid-cols-2 gap-3">
@@ -87,11 +138,22 @@ export function HomePage() {
               <Scale className="size-4" />
             </span>
             <h3 className="text-sm font-semibold leading-tight">
-              Ajustes /<br />Settlements
+              Ajustes /<br />
+              Settlements
             </h3>
           </div>
-          <SmallStat label="Fran debe a Sam" value={20} tone="expense" />
-          <SmallStat label="Sam debe al hogar" value={0} tone="positive" />
+          <SettlementRow
+            label="Fran ↔ Sam"
+            net={settlements.franSamNet}
+            namePos="Fran debe a Sam"
+            nameNeg="Sam debe a Fran"
+          />
+          <SettlementRow
+            label="Sam ↔ Hogar"
+            net={settlements.samHouseholdNet}
+            namePos="Sam debe al hogar"
+            nameNeg="Hogar debe a Sam"
+          />
         </Card>
         <Card className="space-y-3">
           <div className="flex items-center gap-2">
@@ -101,10 +163,10 @@ export function HomePage() {
             <h3 className="text-sm font-semibold">Deudas</h3>
           </div>
           <div>
-            <p className="t-label">Total pendiente</p>
-            <p className="t-amount">{formatEUR(450)}</p>
+            <p className="t-label">Total pendiente (EUR)</p>
+            <p className="t-amount">{formatEUR(debts.totalEur)}</p>
           </div>
-          <Pill tone="info">2 deudas activas</Pill>
+          <Pill tone="info">{debts.count} deuda{debts.count === 1 ? "" : "s"}</Pill>
         </Card>
       </div>
     </div>
@@ -134,30 +196,31 @@ function Stat({ label, value, tone = "default" }: StatProps) {
   );
 }
 
-function SmallStat({ label, value, tone }: StatProps) {
-  const toneClass =
-    tone === "positive"
-      ? "text-positive"
-      : tone === "expense"
-        ? "text-expense"
-        : "text-text-primary";
+function SettlementRow({
+  label,
+  net,
+  namePos,
+  nameNeg,
+}: {
+  label: string;
+  net: number;
+  namePos: string;
+  nameNeg: string;
+}) {
+  const display = Math.abs(net);
+  const tone = net === 0 ? "text-text-secondary" : net > 0 ? "text-expense" : "text-positive";
+  const name = net === 0 ? label : net > 0 ? namePos : nameNeg;
   return (
     <div>
-      <p className="t-label text-xs">{label}</p>
-      <p className={`font-display text-lg font-semibold tabular-nums ${toneClass}`}>
-        {formatEUR(value)}
+      <p className="t-label text-xs">{name}</p>
+      <p
+        className={`font-display text-lg font-semibold tabular-nums ${tone}`}
+      >
+        {formatEUR(display)}
       </p>
     </div>
   );
 }
-
-const CATEGORIES = [
-  { name: "Hogar", percent: 42, amount: 601.5, color: "#22C55E" },
-  { name: "Alimentación", percent: 24, amount: 343.2, color: "#7B5CF6" },
-  { name: "Transporte", percent: 15, amount: 214.75, color: "#F59E0B" },
-  { name: "Ocio", percent: 10, amount: 143.8, color: "#FF7D6B" },
-  { name: "Otros", percent: 9, amount: 129.25, color: "#9CA3AF" },
-];
 
 function formatEUR(n: number): string {
   return new Intl.NumberFormat("es-ES", {
