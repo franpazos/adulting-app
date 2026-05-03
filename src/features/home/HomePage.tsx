@@ -12,9 +12,9 @@ import { useUiStore, type Scope } from "@/store/uiStore";
 import { useDbStore } from "@/store/dbStore";
 import {
   categoryBreakdown,
-  dashboardSummary,
+  monthlySummary,
   type CategorySliceRow,
-} from "@/lib/calculations/dashboard";
+} from "@/lib/calculations";
 import { debtsRepo, settlementsRepo } from "@/lib/db";
 
 export function HomePage() {
@@ -27,8 +27,8 @@ export function HomePage() {
   const summary = useMemo(
     () =>
       dbStatus === "ready"
-        ? dashboardSummary(monthKey, scope)
-        : { income: 0, expenses: 0, recurring: 0, available: 0 },
+        ? monthlySummary(monthKey, scope)
+        : { income: 0, expenses: 0, recurring: 0, debtPayments: 0, available: 0 },
     [dbStatus, monthKey, scope],
   );
 

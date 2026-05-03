@@ -4,6 +4,36 @@ Short, dated records of decisions that shape the codebase. Each entry is an ADR-
 
 ---
 
+## ADR-010 — Allocation model and scope semantics
+**Date:** 2026-05-03
+**Status:** Accepted
+**Context:** Spec §4 reference cases describe shared expenses as "household expenses +N (full)" while also splitting the cost between people for settlement purposes. This left two viable allocation shapes:
+  1. **Single allocation row to HOUSEHOLD**, with split info stored separately for settlements.
+  2. **Two allocation rows (FRAN + SAM)** that already encode the split.
+
+Choosing the wrong one cascades into how the Home dashboard scopes (`Hogar / Fran / Sam / Todo`) compute their numbers.
+
+**Decision:** Adopt model #2 — `transaction_allocations` represents the **breakdown of who economically owns what share** of a transaction:
+  - **Personal expense** (owner FRAN or SAM): exactly one allocation row to that person at 100%.
+  - **Shared expense** (owner HOUSEHOLD): two rows, FRAN and SAM, with `share_percent` summing to 100. The HOUSEHOLD owner is *inferred* from "this tx has ≥2 allocation rows" (or a single explicit HOUSEHOLD row, also accepted).
+
+  The split percentage lives on the allocation rows themselves; no separate column needed.
+
+**Scope semantics on the dashboard:**
+  - **`fran` / `sam`** — personal P&L. Filter income/expenses by `transaction_allocations.owner_type = scope`. This naturally includes the person's *share* of shared expenses.
+  - **`household`** — the joint household-cashflow view. Income is unfiltered (the household sees all incoming money). Expenses are restricted to *shared* transactions only (multi-row alloc OR single HOUSEHOLD row). Recurring items filtered to `owner_type='HOUSEHOLD'`.
+  - **`all`** — no filter; sums everything.
+
+  The "shared transaction" predicate is encoded as `(SELECT COUNT(*) FROM transaction_allocations WHERE transaction_id = t.id) > 1 OR EXISTS (SELECT 1 FROM transaction_allocations WHERE owner_type='HOUSEHOLD')`.
+
+**Consequences:**
+  - `expenseAllocator(amount, source, owner, splitFranPercent)` is the single source of truth for which rows go where; reused by Add Expense (live preview) and `settlementsEngine.recomputeForTransaction` (write path).
+  - `inferOwnerFromAllocations` and `inferSplitFranPercent` let recompute work on existing seeded/imported data without storing the inputs again.
+  - The Phase 3 seed already used this model — no migration needed.
+  - If we later need an explicit `economic_owner` column for query performance, we can derive it from allocations during a later migration without breaking the API.
+
+---
+
 ## ADR-009 — happy-dom over jsdom for Vitest environment
 **Date:** 2026-05-03
 **Status:** Accepted

@@ -12,7 +12,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { initDb, runMigrations, seedIfEmpty, settlementsRepo, debtsRepo } from "@/lib/db";
 import { _resetDbForTests, selectScalar } from "@/lib/db/client";
-import { categoryBreakdown, dashboardSummary } from "@/lib/calculations/dashboard";
+
+// Note: scope-aware aggregations and category breakdown are tested in
+// `src/lib/calculations/__tests__/aggregations.test.ts`. This file only
+// covers DB bootstrap and seed correctness.
 
 beforeEach(async () => {
   _resetDbForTests();
@@ -102,45 +105,4 @@ describe("seed data", () => {
     expect(samHouseholdNet).toBeCloseTo(40, 5);
   });
 
-  it("dashboard summary for HOUSEHOLD scope returns positive available money", () => {
-    const monthKey = new Date().toISOString().slice(0, 7);
-    const summary = dashboardSummary(monthKey, "household");
-    // Household has zero income (none of the seed income is owned by HOUSEHOLD)
-    // but household has its share of shared expenses (100 + 75 = 175 total, half each = 87.5 to HOUSEHOLD-NONE)
-    // Wait — household allocations only happen on owner=HOUSEHOLD txns; the shared groceries are
-    // allocated to FRAN/SAM individually here, not HOUSEHOLD. So household scope should be 0/0.
-    // We assert structure is valid regardless of exact numbers.
-    expect(typeof summary.income).toBe("number");
-    expect(typeof summary.expenses).toBe("number");
-    expect(typeof summary.recurring).toBe("number");
-    expect(typeof summary.available).toBe("number");
-  });
-
-  it("dashboard summary for ALL scope sums Fran + Sam", () => {
-    const monthKey = new Date().toISOString().slice(0, 7);
-    const summary = dashboardSummary(monthKey, "all");
-    // Two salaries: 1980 + 1000 = 2980
-    expect(summary.income).toBeCloseTo(2980, 5);
-    // Expenses sum of all share_amounts:
-    //   A: 50 (Fran) + 50 (Sam) = 100
-    //   B: 18 (Sam) = 18
-    //   C: 37.5 + 37.5 = 75
-    //   D: 40 (Sam) = 40
-    //   E: 70 (Fran) + 30 (Sam) = 100
-    // Total = 333
-    expect(summary.expenses).toBeCloseTo(333, 5);
-  });
-
-  it("category breakdown returns sorted slices with percents that approach 100", () => {
-    const monthKey = new Date().toISOString().slice(0, 7);
-    const slices = categoryBreakdown(monthKey, "all");
-    expect(slices.length).toBeGreaterThan(0);
-    // Sorted by amount desc
-    for (let i = 1; i < slices.length; i++) {
-      expect(slices[i - 1]!.amount).toBeGreaterThanOrEqual(slices[i]!.amount);
-    }
-    const totalPercent = slices.reduce((s, r) => s + r.percent, 0);
-    // Rounding may make this 99-101
-    expect(Math.abs(totalPercent - 100)).toBeLessThanOrEqual(2);
-  });
 });

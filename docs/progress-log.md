@@ -4,6 +4,35 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-03 — Phase 4 calculation engine
+
+**What was done**
+- New `src/lib/calculations/` module with four files plus a barrel:
+  - `allocator.ts` — pure `expenseAllocator(amount, source, owner, splitFranPercent)` returning `{ allocations, settlements }`. Implements the five reference cases from spec §4 and the natural edge cases. Also exports `cashSourceFromAccount(account, fixtures)` so feature code can derive the `CashSource` enum from a DB account row without duplicating logic.
+  - `fx.ts` — multi-currency helpers: `fromDebtToAccount`, `fromAccountToDebt`, `quoteFromDebtAmount`, `quoteFromAccountAmount`, `isSameCurrency`. Convention is "rate = debt units per 1 account unit". `InvalidExchangeRateError` thrown on non-positive rates.
+  - `settlements.ts` — DB-aware `recomputeForTransaction(txId)`: wipes existing ledger entries linked to the tx, re-derives them from current allocations + source account via `expenseAllocator`, writes new entries inside a single DB transaction. Idempotent. Also exports `inferOwnerFromAllocations` and `inferSplitFranPercent`.
+  - `aggregations.ts` — `monthlySummary(monthKey, scope)` returning `{ income, expenses, recurring, debtPayments, available }`, plus `availableMoney` and `categoryBreakdown`. Scope semantics defined in ADR-010.
+- Deleted the legacy `dashboard.ts` (its surface is now `monthlySummary` + `categoryBreakdown` from the calculations barrel). Home wired to the new module.
+- Updated `db.smoke.test.ts` to remove the redundant dashboard-summary tests (now covered more rigorously in `aggregations.test.ts`).
+
+**Decisions**
+- ADR-010: settled the allocation model. `transaction_allocations` rows encode the **breakdown of economic ownership**, not a single-row "this is HOUSEHOLD". Personal = one row at 100%; shared = two rows summing to 100%. Owner inferred from row count + types. Split percentages live on the rows; no separate column needed.
+- ADR-010 also pinned scope semantics: `fran/sam` filter by allocations.owner_type (includes share of shared); `household` is shared-expenses-only but full income; `all` is unfiltered. Encoded as `SHARED_TX_PREDICATE` SQL fragment.
+
+**Tests (59/59 passing)**
+- `allocator.test.ts` (24): all five cases, zero amount, 0/100 and 100/0 splits, default split, rounding invariant (Sam derived by subtraction), paid-by-other-personal-account, split clamping. `cashSourceFromAccount` mappings.
+- `fx.test.ts` (10): direction-explicit conversions, rounding, round-trip, invalid rate.
+- `settlements.test.ts` (5): recompute matches seed, edit-amount adjusts, soft-delete clears, full-DB-rebuild preserves net Fran↔Sam = 20, idempotent on repeat call.
+- `aggregations.test.ts` (12): per-scope income/expenses/recurring/available numbers calibrated to the seed (FRAN 157.50 expenses, SAM 175.50, HOUSEHOLD 275 shared-only, ALL 333; recurring HOUSEHOLD 995; available formula).
+- Existing `db.smoke.test.ts` (8): bootstrap, idempotency, seed correctness, ledger Cases A/D.
+
+**Open follow-ups**
+- Phase 5 (next): wire Add Expense flow with the live `expenseAllocator` preview and persistence using `recomputeForTransaction`. Use the handoff Variation B (Flow diagram) as the visual reference.
+- Phase 7: when the Debts page gets its full UI, the FX form will use `quoteFromDebtAmount` so users can input "$100" and see the live EUR impact.
+- The `ALL` scope's expense total (333) intentionally double-counts personal shares vs the household-only 275 — they answer different questions. If a future view wants "headline household total without double counting", expose a fourth helper rather than re-pivot the existing scopes.
+
+---
+
 ## 2026-05-03 — Phase 2 polish (route transitions, language switcher, illustrated empty states)
 
 **What was done**

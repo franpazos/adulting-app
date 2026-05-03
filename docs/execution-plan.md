@@ -56,13 +56,18 @@ This document is the living plan of work. Each phase ends with a checklist updat
 - [x] Home wired to live DB data; Settings shows DB backend pill
 - [x] Vitest smoke suite (10/10) — DB bootstrap, migrations idempotency, seed, settlements ledger for Cases A/D/E, dashboard summary, category breakdown
 
-## Phase 4 — Calculation engine (pure, tested)
-- [ ] `expenseAllocator` (source vs owner vs split)
-- [ ] `settlementsEngine` (create/edit/delete recompute, net balances)
-- [ ] `monthlyAggregations` (per scope: Fran, Sam, Household, Joint)
-- [ ] `availableMoney` (per spec §13.4)
-- [ ] FX conversion helpers for multi-currency debt payments
-- [ ] Vitest coverage for Cases A–E + edits + deletes + netting
+## Phase 4 — Calculation engine (pure, tested) ✅
+- [x] `expenseAllocator(amount, source, owner, splitFranPercent)` — pure, no DB; covers Cases A–E and the natural edges (zero amount, 0/100 split, paid by other personal account, splitFranPercent clamped)
+- [x] `cashSourceFromAccount(account, fixtures)` — bridge from an Account row to the `CashSource` enum
+- [x] `settlementsEngine.recomputeForTransaction(txId)` — DB-aware: wipes existing ledger entries for the tx, re-derives via `expenseAllocator` from the current allocations + source account, idempotent
+- [x] `inferOwnerFromAllocations` and `inferSplitFranPercent` — work over existing rows (seed + future imports)
+- [x] `monthlySummary(monthKey, scope)` — per scope: income, expenses, recurring, debt payments, available
+- [x] `categoryBreakdown(monthKey, scope)` — same scope semantics, sorted by amount desc
+- [x] `availableMoney(monthKey, scope)` — convenience wrapper around `monthlySummary`
+- [x] FX helpers (`fromDebtToAccount`, `fromAccountToDebt`, `quoteFromDebtAmount`, `quoteFromAccountAmount`, `isSameCurrency`) — pure, throw on non-positive rates
+- [x] Vitest coverage: 49 new tests across `allocator`, `fx`, `settlements`, `aggregations`. Total suite 59/59 passing.
+- [x] ADR-010 documents the allocation model and scope semantics
+- [x] Home page now consumes `monthlySummary` from the new module; legacy `dashboard.ts` removed
 
 ## Phase 5 — Add Expense flow
 - [ ] Big amount input, date, description/merchant, category picker (recents)
