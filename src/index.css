@@ -28,4 +28,34 @@
   h1, h2, h3, h4 {
     @apply font-display tracking-tight;
   }
+
+  /* iOS-feel tap highlight removed for branded controls */
+  button, a {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer components {
+  /* Reusable typography classes — keep mobile-first and disciplined */
+  .h-display {
+    @apply font-display text-3xl font-semibold tracking-tight;
+  }
+  .h-section {
+    @apply font-display text-xl font-semibold tracking-tight;
+  }
+  .h-card {
+    @apply font-display text-base font-semibold;
+  }
+  .t-eyebrow {
+    @apply text-xs font-semibold uppercase tracking-widest text-text-muted;
+  }
+  .t-label {
+    @apply text-sm text-text-secondary;
+  }
+  .t-amount {
+    @apply font-display text-2xl font-semibold tabular-nums tracking-tight;
+  }
+  .t-amount-lg {
+    @apply font-display text-4xl font-semibold tabular-nums tracking-tight;
+  }
 }

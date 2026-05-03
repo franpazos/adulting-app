@@ -21,13 +21,16 @@ This document is the living plan of work. Each phase ends with a checklist updat
 - [x] Documentation skeleton (`docs/`, `CLAUDE.md`, `README.md`)
 - [ ] Verify dev server boots cleanly
 
-## Phase 1 — Design system (Soft Premium)
-- [ ] Tokens audit + finalize neutrals against the reference dashboard
-- [ ] Base components: `Card`, `Button`, `Input`, `SegmentedControl`, `Pill`, `Badge`, `Sheet`/`Drawer`, `Toggle`, `Slider`, `IconButton`, `EmptyState`
-- [ ] Typography scale (display vs body, mobile-first)
-- [ ] Safe-area handling polish (notch + home indicator)
-- [ ] Theme toggle component (used in Settings later)
-- [ ] Loading + skeleton primitives
+## Phase 1 — Design system (Soft Premium) ✅
+- [x] Tokens audit + finalize neutrals against the reference dashboard
+- [x] Base components: `Card`, `Button`, `Input`/`AmountInput`, `SegmentedControl`, `Pill`, `Badge`, `Sheet`, `Toggle`, `Slider`, `IconButton`, `EmptyState`, `Skeleton`
+- [x] Typography scale (display vs body, mobile-first) via `.h-display`, `.h-section`, `.h-card`, `.t-eyebrow`, `.t-label`, `.t-amount`, `.t-amount-lg`
+- [x] Safe-area handling polish (`pt-safe-top`, `pb-safe-bottom`, viewport-fit=cover)
+- [x] `ThemeToggle` wired in `/settings`
+- [x] `MonthSelector` + `AppHeader` (logo + bell + month pill)
+- [x] `useUiStore` (Zustand+persist) for `monthKey` + `scope`
+- [x] Home page refreshed to match reference: scope segmented, Cuenta conjunta card, Gastos por categoría list, Settlements + Deudas pair
+- [x] `AmountInput` debuted in Add Expense preview screen
 
 ## Phase 2 — Shell, navigation, i18n polish
 - [ ] Header pattern with month selector (`Mayo 2026 ▾`) and notifications bell

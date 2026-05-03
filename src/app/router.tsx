@@ -5,6 +5,7 @@ import { TransactionsPage } from "@/features/transactions/TransactionsPage";
 import { AddExpensePage } from "@/features/add-expense/AddExpensePage";
 import { DebtsPage } from "@/features/debts/DebtsPage";
 import { MorePage } from "@/features/more/MorePage";
+import { SettingsPage } from "@/features/settings/SettingsPage";
 
 export const router = createBrowserRouter([
   {
@@ -16,12 +17,12 @@ export const router = createBrowserRouter([
       { path: "add", element: <AddExpensePage /> },
       { path: "debts", element: <DebtsPage /> },
       { path: "more", element: <MorePage /> },
+      { path: "settings", element: <SettingsPage /> },
       // Phase 4+ screens scaffolded later:
       { path: "settlements", element: <ComingSoon name="Settlements" /> },
       { path: "recurring", element: <ComingSoon name="Recurring" /> },
       { path: "categories", element: <ComingSoon name="Categories" /> },
       { path: "accounts", element: <ComingSoon name="Accounts" /> },
-      { path: "settings", element: <ComingSoon name="Settings" /> },
     ],
   },
 ]);
