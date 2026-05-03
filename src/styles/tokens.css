@@ -1,0 +1,53 @@
+/*
+ * Adulting.app — Design Tokens (Soft Premium)
+ *
+ * Functional palette anchored on violet #7B5CF6.
+ * All values are R G B triplets (no commas) so Tailwind alpha-value syntax works:
+ *   bg-violet/40, text-positive/80, etc.
+ *
+ * Light mode = warm off-white backgrounds, deep navy-charcoal text.
+ * Dark mode  = deep charcoal background with subtle violet-tinted surfaces.
+ */
+
+:root {
+  /* Brand — Violet */
+  --color-violet: 123 92 246;       /* #7B5CF6 */
+  --color-violet-soft: 168 145 250; /* lighter accent */
+  --color-violet-ink: 88 60 200;    /* pressed / on-violet text */
+
+  /* Functional accents */
+  --color-positive: 34 197 94;  /* #22C55E green */
+  --color-expense: 255 125 107; /* #FF7D6B coral */
+  --color-info: 59 130 246;     /* #3B82F6 blue */
+  --color-warning: 245 158 11;  /* #F59E0B amber */
+
+  /* Light neutrals — warm */
+  --color-bg: 250 248 244;            /* warm off-white */
+  --color-surface: 255 255 255;       /* clean white card */
+  --color-surface-2: 245 243 239;     /* slightly elevated alt */
+  --color-border: 226 222 215;        /* low-contrast warm border */
+  --color-text-primary: 28 32 48;     /* deep navy-charcoal */
+  --color-text-secondary: 92 96 112;  /* muted gray-blue */
+  --color-text-muted: 142 146 160;    /* tertiary gray */
+}
+
+.dark {
+  /* Brand stays vivid but controlled */
+  --color-violet: 139 110 250;
+  --color-violet-soft: 174 154 252;
+  --color-violet-ink: 200 188 254;
+
+  --color-positive: 52 211 110;
+  --color-expense: 255 138 122;
+  --color-info: 96 165 250;
+  --color-warning: 251 175 56;
+
+  /* Dark neutrals — deep charcoal with violet whisper */
+  --color-bg: 14 15 22;            /* near-black with subtle blue */
+  --color-surface: 24 26 36;       /* elevated card */
+  --color-surface-2: 32 34 46;     /* alt elevated */
+  --color-border: 48 50 64;        /* soft dark border */
+  --color-text-primary: 240 240 245;
+  --color-text-secondary: 175 178 192;
+  --color-text-muted: 130 134 150;
+}

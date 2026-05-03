@@ -1,0 +1,58 @@
+{
+  "app": {
+    "name": "Adulting.app",
+    "tagline": "Calma. Premium. Sin esfuerzo."
+  },
+  "nav": {
+    "home": "Inicio",
+    "transactions": "Movimientos",
+    "add": "Añadir",
+    "debts": "Deudas",
+    "more": "Más"
+  },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "loading": "Cargando…",
+    "currency": "EUR"
+  },
+  "home": {
+    "title": "Inicio",
+    "scope": {
+      "household": "Hogar",
+      "fran": "Fran",
+      "sam": "Sam",
+      "all": "Todo"
+    }
+  },
+  "transactions": {
+    "title": "Movimientos",
+    "empty": "Aún no hay movimientos."
+  },
+  "expense": {
+    "add": "Añadir gasto"
+  },
+  "debts": {
+    "title": "Deudas",
+    "empty": "Aún no hay deudas."
+  },
+  "settlements": {
+    "title": "Ajustes / Settlements",
+    "owes": "{{from}} debe a {{to}}",
+    "noBalances": "Todo cuadrado."
+  },
+  "more": {
+    "title": "Más",
+    "household": "Hogar",
+    "preferences": "Preferencias",
+    "items": {
+      "settlements": "Ajustes / Settlements",
+      "recurring": "Recurrentes",
+      "categories": "Categorías",
+      "accounts": "Cuentas",
+      "settings": "Ajustes"
+    }
+  }
+}

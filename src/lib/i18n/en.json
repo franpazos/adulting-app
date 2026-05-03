@@ -1,0 +1,58 @@
+{
+  "app": {
+    "name": "Adulting.app",
+    "tagline": "Calm. Premium. Effortless."
+  },
+  "nav": {
+    "home": "Home",
+    "transactions": "Transactions",
+    "add": "Add",
+    "debts": "Debts",
+    "more": "More"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "loading": "Loading…",
+    "currency": "EUR"
+  },
+  "home": {
+    "title": "Home",
+    "scope": {
+      "household": "Household",
+      "fran": "Fran",
+      "sam": "Sam",
+      "all": "All"
+    }
+  },
+  "transactions": {
+    "title": "Transactions",
+    "empty": "No transactions yet."
+  },
+  "expense": {
+    "add": "Add expense"
+  },
+  "debts": {
+    "title": "Debts",
+    "empty": "No debts yet."
+  },
+  "settlements": {
+    "title": "Settlements",
+    "owes": "{{from}} owes {{to}}",
+    "noBalances": "All balances settled."
+  },
+  "more": {
+    "title": "More",
+    "household": "Household",
+    "preferences": "Preferences",
+    "items": {
+      "settlements": "Settlements",
+      "recurring": "Recurring",
+      "categories": "Categories",
+      "accounts": "Accounts",
+      "settings": "Settings"
+    }
+  }
+}
