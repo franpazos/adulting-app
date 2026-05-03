@@ -30,6 +30,13 @@
   },
   "transactions": {
     "title": "Transactions",
+    "count_one": "{{count}} transaction",
+    "count_other": "{{count}} transactions",
+    "editTitle": "Edit expense",
+    "saveLabel": "Save changes",
+    "confirmDelete": "Delete this transaction? This cannot be undone.",
+    "notFound": "Transaction not found.",
+    "backToList": "Back to transactions",
     "empty": {
       "title": "Quiet so far",
       "description": "Your transactions will appear here as soon as you record one. Tap the + button below to start."
@@ -81,10 +88,57 @@
   },
   "settlements": {
     "title": "Settlements",
+    "back": "Back",
     "owes": "{{from}} owes {{to}}",
+    "outstanding": "Outstanding",
+    "openCount_zero": "0 open balances",
+    "openCount_one": "{{count}} open balance",
+    "openCount_other": "{{count}} open balances",
+    "internalNote": "internal accounting only",
+    "recentActivity": "Recent activity",
+    "reason": {
+      "sharedPersonal": "Shared expense, personal source",
+      "sharedPersonalCustom": "Shared expense, custom split",
+      "personalJoint": "Personal expense, joint source",
+      "personalOther": "Paid from another account"
+    },
     "empty": {
       "title": "All square",
       "description": "Nobody owes anyone right now. When a shared expense gets paid from a personal account, the balance will show up here."
+    }
+  },
+  "recurring": {
+    "title": "Recurring",
+    "new": "New recurring",
+    "newTitle": "New recurring",
+    "editTitle": "Edit recurring",
+    "monthly": "monthly",
+    "monthlyIn": "Monthly in",
+    "monthlyOut": "Monthly out",
+    "empty": "No active recurring items.",
+    "confirmDeactivate": "Deactivate this recurring item? It stops counting toward future months.",
+    "types": {
+      "expense": "Expense",
+      "income": "Income",
+      "debt": "Debt payment"
+    },
+    "sections": {
+      "income": "Incomes",
+      "expense": "Expenses",
+      "debt": "Debt payments"
+    },
+    "fields": {
+      "type": "Type",
+      "name": "Name",
+      "namePlaceholder": "e.g. Rent, Salary, Loan…",
+      "amount": "Amount",
+      "paidFrom": "Paid from",
+      "owner": "Owner",
+      "category": "Category",
+      "startDate": "Starts on",
+      "autoInclude": "Forecast",
+      "autoIncludeLabel": "Include in monthly forecast",
+      "autoIncludeHint": "Counts toward available money projections."
     }
   },
   "more": {

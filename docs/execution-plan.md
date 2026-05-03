@@ -88,10 +88,18 @@ This document is the living plan of work. Each phase ends with a checklist updat
 - [ ] Smart defaults from last entry — deferred to Phase 7 polish
 - [ ] Sync queue enqueue — Phase 9 (Google Sheets sync)
 
-## Phase 6 — Transactions, Settlements, Recurring
-- [ ] Transactions list + filters + search + edit/delete with recompute
-- [ ] Settlements page (net balances, ledger history, record settlement payment)
-- [ ] Recurring CRUD (expense/income/debt payment) with monthly projection inclusion
+## Phase 6 — Transactions, Settlements, Recurring ✅
+- [x] Transactions list at `/transactions` with month-aware data, avatar + category + amount rows, "Shared" pill on multi-allocation rows, "Debt" pill on debt payments
+- [x] Edit page at `/transactions/:id` reusing the shared `TransactionForm` component (extracted from AddExpensePage); loads existing values via `inferOwnerFromAllocations` + `inferSplitFranPercent`
+- [x] Soft-delete with confirm dialog → `transactionsRepo.softDelete` + `recomputeForTransaction` clears the ledger entry, settlements update everywhere
+- [x] Settlements page at `/settlements` with three balance cards (Fran↔Sam, Fran↔Household, Sam↔Household) showing direction and amount, recent activity ledger list with reasons in plain language, "All square" empty state
+- [x] Recurring list at `/recurring` with monthly in/out totals + grouped sections (Incomes, Expenses, Debt payments), tap row → edit
+- [x] Recurring form at `/recurring/new` and `/recurring/:id` with type segmented, name, amount, source, owner, category, start date, auto-include toggle; deactivate via trash icon
+- [x] `transactionsRepo.update` and `softDelete`; `recurringRepo.update` and `deactivate`
+- [x] EN + ES copy for transactions list/edit, settlements (open count, recent activity, reason labels), recurring (sections, fields)
+- [x] Vitest coverage (10 new): edit-amount/split/source recompute paths, soft-delete clears settlements, soft-deleted txs hidden from list, recurring deactivate semantics. Total suite 69/69 passing.
+- [ ] Filters/search on transactions — deferred to Phase 7 polish
+- [ ] "Settle up" CTA on balance cards (writes a `SETTLEMENT_PAYMENT` tx) — deferred to Phase 7
 
 ## Phase 7 — Home dashboard, Debts, More
 - [ ] Home cards (Household, Joint, Categories donut, Settlements summary, Debts summary, Fran summary, Sam summary)

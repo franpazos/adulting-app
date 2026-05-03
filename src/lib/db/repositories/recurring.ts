@@ -1,4 +1,4 @@
-import { exec, selectAll, selectOne } from "../client";
+import { exec, selectAll, selectOne, transaction } from "../client";
 import type { RecurringItem, RecurringType } from "../types";
 import { coerceBooleans, fromBool, newId, nowIso } from "./_helpers";
 
@@ -75,5 +75,49 @@ export const recurringRepo = {
       ],
     );
     return r;
+  },
+
+  update(id: string, input: Omit<CreateRecurringInput, "id">): RecurringItem {
+    const now = nowIso();
+    transaction(() => {
+      exec(
+        `UPDATE recurring_items SET
+           type = ?, name = ?, amount = ?, currency_code = ?, frequency = ?,
+           start_date = ?, end_date = ?, category_id = ?, source_account_id = ?,
+           owner_type = ?, default_shared_split_percent = ?,
+           is_active = ?, auto_include_in_projection = ?, auto_generate_transaction = ?,
+           updated_at = ?
+         WHERE id = ?`,
+        [
+          input.type,
+          input.name,
+          input.amount,
+          input.currency_code,
+          input.frequency,
+          input.start_date,
+          input.end_date,
+          input.category_id ?? null,
+          input.source_account_id ?? null,
+          input.owner_type,
+          input.default_shared_split_percent ?? null,
+          fromBool(input.is_active),
+          fromBool(input.auto_include_in_projection),
+          fromBool(input.auto_generate_transaction),
+          now,
+          id,
+        ],
+      );
+    });
+    const r = this.getById(id);
+    if (!r) throw new Error(`RecurringItem ${id} disappeared after update`);
+    return r;
+  },
+
+  /** Soft delete by deactivation. We keep history rather than hard-delete. */
+  deactivate(id: string): void {
+    exec(
+      "UPDATE recurring_items SET is_active = 0, updated_at = ? WHERE id = ?",
+      [nowIso(), id],
+    );
   },
 };

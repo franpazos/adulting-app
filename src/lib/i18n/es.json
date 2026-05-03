@@ -30,6 +30,13 @@
   },
   "transactions": {
     "title": "Movimientos",
+    "count_one": "{{count}} movimiento",
+    "count_other": "{{count}} movimientos",
+    "editTitle": "Editar gasto",
+    "saveLabel": "Guardar cambios",
+    "confirmDelete": "¿Eliminar este movimiento? Esta acción no se puede deshacer.",
+    "notFound": "Movimiento no encontrado.",
+    "backToList": "Volver a Movimientos",
     "empty": {
       "title": "Todo en calma",
       "description": "Tus movimientos aparecerán aquí en cuanto registres uno. Toca el botón + para empezar."
@@ -81,10 +88,57 @@
   },
   "settlements": {
     "title": "Ajustes / Settlements",
+    "back": "Volver",
     "owes": "{{from}} debe a {{to}}",
+    "outstanding": "Pendiente",
+    "openCount_zero": "0 balances abiertos",
+    "openCount_one": "{{count}} balance abierto",
+    "openCount_other": "{{count}} balances abiertos",
+    "internalNote": "contabilidad interna",
+    "recentActivity": "Actividad reciente",
+    "reason": {
+      "sharedPersonal": "Gasto compartido, cuenta personal",
+      "sharedPersonalCustom": "Gasto compartido, reparto personalizado",
+      "personalJoint": "Gasto personal, cuenta conjunta",
+      "personalOther": "Pagado desde otra cuenta"
+    },
     "empty": {
       "title": "Todo cuadrado",
       "description": "Nadie debe nada ahora mismo. Cuando alguien pague un gasto compartido desde su cuenta personal, el balance aparecerá aquí."
+    }
+  },
+  "recurring": {
+    "title": "Recurrentes",
+    "new": "Nuevo recurrente",
+    "newTitle": "Nuevo recurrente",
+    "editTitle": "Editar recurrente",
+    "monthly": "mensual",
+    "monthlyIn": "Entradas/mes",
+    "monthlyOut": "Salidas/mes",
+    "empty": "No hay recurrentes activos.",
+    "confirmDeactivate": "¿Desactivar este recurrente? Dejará de contar en los próximos meses.",
+    "types": {
+      "expense": "Gasto",
+      "income": "Ingreso",
+      "debt": "Pago deuda"
+    },
+    "sections": {
+      "income": "Ingresos",
+      "expense": "Gastos",
+      "debt": "Pagos de deuda"
+    },
+    "fields": {
+      "type": "Tipo",
+      "name": "Nombre",
+      "namePlaceholder": "p. ej. Alquiler, Nómina, Préstamo…",
+      "amount": "Importe",
+      "paidFrom": "Pagado por",
+      "owner": "Pertenece a",
+      "category": "Categoría",
+      "startDate": "Comienza el",
+      "autoInclude": "Previsión",
+      "autoIncludeLabel": "Incluir en la previsión mensual",
+      "autoIncludeHint": "Cuenta para el dinero disponible estimado."
     }
   },
   "more": {

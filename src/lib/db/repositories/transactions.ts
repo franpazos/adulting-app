@@ -165,6 +165,87 @@ export const transactionsRepo = {
     ).map(mapAlloc);
   },
 
+  /**
+   * Update a transaction's editable fields and replace its allocations
+   * atomically. The caller is responsible for running
+   * `recomputeForTransaction(id)` after this returns so the settlement
+   * ledger reflects the new state.
+   */
+  update(
+    id: string,
+    input: Omit<CreateTransactionInput, "id" | "type"> & {
+      type?: TransactionType;
+    },
+  ): Transaction {
+    const now = nowIso();
+    transaction(() => {
+      exec(
+        `UPDATE transactions SET
+           type = COALESCE(?, type),
+           date = ?, month_key = ?, amount = ?, currency_code = ?,
+           description = ?, notes = ?, category_id = ?,
+           source_account_id = ?, created_by_user_id = ?, merchant = ?,
+           exchange_rate = ?, amount_in_account_currency = ?, amount_in_debt_currency = ?,
+           updated_at = ?
+         WHERE id = ?`,
+        [
+          input.type ?? null,
+          input.date,
+          monthKeyFromDate(input.date),
+          input.amount,
+          input.currency_code,
+          input.description ?? null,
+          input.notes ?? null,
+          input.category_id ?? null,
+          input.source_account_id,
+          input.created_by_user_id ?? null,
+          input.merchant ?? null,
+          input.exchange_rate ?? null,
+          input.amount_in_account_currency ?? null,
+          input.amount_in_debt_currency ?? null,
+          now,
+          id,
+        ],
+      );
+      exec(
+        "DELETE FROM transaction_allocations WHERE transaction_id = ?",
+        [id],
+      );
+      for (const alloc of input.allocations) {
+        exec(
+          `INSERT INTO transaction_allocations (id, transaction_id, owner_type,
+            share_percent, share_amount, settlement_effect_type, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            newId(),
+            id,
+            alloc.owner_type,
+            alloc.share_percent,
+            alloc.share_amount,
+            alloc.settlement_effect_type ?? null,
+            now,
+            now,
+          ],
+        );
+      }
+    });
+    const tx = this.getById(id);
+    if (!tx) throw new Error(`Transaction ${id} disappeared after update`);
+    return tx;
+  },
+
+  /**
+   * Soft-delete a transaction. The caller must run
+   * `recomputeForTransaction(id)` afterwards so dependent ledger entries
+   * are wiped.
+   */
+  softDelete(id: string): void {
+    exec(
+      "UPDATE transactions SET is_deleted = 1, updated_at = ? WHERE id = ?",
+      [nowIso(), id],
+    );
+  },
+
   /** Sum of `share_amount` for a given owner across a month, by transaction type. */
   monthOwnerTotal(
     monthKey: string,

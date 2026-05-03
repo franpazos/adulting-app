@@ -4,6 +4,52 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-03 — Phase 6 Transactions, Settlements, Recurring
+
+**What was done**
+- **Transactions list** at `/transactions` (`TransactionsPage`):
+  - Reads `transactionsRepo.listByMonth(monthKey)` keyed off `dbVersion` so saves/edits/deletes propagate.
+  - New `TransactionRow` component: avatar (from source), description/category, amount with positive/negative tone. "Shared" pill (violet) when allocation has >1 row; "Debt" pill (info) for `DEBT_PAYMENT` type.
+  - Tap row → `/transactions/:id`. Empty state still uses `EmptyArt kind="transactions"`.
+- **Edit transaction** at `/transactions/:id` (`EditExpensePage`):
+  - Loads tx + allocations, infers initial form values via `inferOwnerFromAllocations` and `inferSplitFranPercent` (reused from the calculation engine).
+  - Reuses the new `TransactionForm` component extracted from `AddExpensePage` so Add and Edit can never visually drift.
+  - Save → `transactionsRepo.update(id, ...)` (atomic: UPDATE row + DELETE allocations + INSERT new ones) → `recomputeForTransaction(id)` → `bumpVersion`.
+  - Trash button → `transactionsRepo.softDelete` + recompute (clears the ledger entry).
+- **Settlements page** at `/settlements` (`SettlementsPage`):
+  - Three balance cards covering all party pairs (Fran↔Sam, Fran↔Household, Sam↔Household). Each card auto-orients so the arrow always points debtor → creditor.
+  - "Outstanding" hero number sums the open balances; "All square" empty state when everything is zero.
+  - Recent activity list reads `settlementsRepo.list().slice(0, 6)` with reason translated to a friendly label.
+  - Subtle violet radial wash on each card, matching the handoff visual.
+- **Recurring** at `/recurring` (`RecurringPage`) and `/recurring/new`/`/recurring/:id` (`RecurringFormPage`):
+  - List shows monthly in/out totals + sections for Incomes / Expenses / Debt payments. Each row has a tone-coded icon, owner avatar, category, and amount.
+  - Form covers type segmented (Expense / Income / Debt payment), name, amount, source, owner, category, start date, auto-include toggle.
+  - Edit/deactivate paths via `recurringRepo.update` + `recurringRepo.deactivate`.
+- **Repos extended:**
+  - `transactionsRepo.update(id, input)` — atomic UPDATE + DELETE allocations + INSERT.
+  - `transactionsRepo.softDelete(id)` — flips `is_deleted = 1`. `recomputeForTransaction` reads this flag and wipes derived ledger entries.
+  - `recurringRepo.update(id, input)`, `recurringRepo.deactivate(id)`.
+- **Shared infra:**
+  - `accountIdToCashSource` in `features/add-expense/sources.ts` — reverse map for edit mode.
+  - `TransactionForm` extracted from `AddExpensePage`. `AddExpensePage` is now ~100 lines (was ~290).
+  - `SaveFab` extracted with a `labelKey` override so Edit can show "Save changes" instead of "Save expense · €X".
+- **Routes wired:** `/transactions/:id`, `/settlements`, `/recurring`, `/recurring/new`, `/recurring/:id`. The `ComingSoon` stubs for these routes are gone.
+- **i18n** namespaces extended in EN + ES: `transactions.empty.*`, `transactions.editTitle`, `transactions.confirmDelete`, plural `transactions.count`, `settlements.outstanding/openCount/recentActivity/reason.*`, full `recurring.*`.
+- **Tests (69/69 passing):** new `editDelete.test.ts` (10 cases) covers edit-amount, edit-split, edit-source, soft-delete settlements clear, listByMonth filtering, and recurring deactivate. Total suite 7 files / 69 passing.
+
+**Decisions**
+- `TransactionForm` is a controlled component (parent owns `values` + `onChange`). Keeps Add and Edit in sync without state drift.
+- Edit flow always re-derives owner/split from allocations rather than storing them on `transactions` directly. Aligns with ADR-010 (allocations are the source of truth for ownership shape).
+- Recurring deactivate is a soft delete (`is_active = 0`). We retain history so monthly forecasts in past months are still accurate.
+- Settlements page sorts by direction always positive (debtor → creditor). The repo `netBalance(a, b)` keeps the sign; the page flips it for display.
+
+**Open follow-ups**
+- Phase 7 (next): full Debts page (incl. USD FX flow), Categories management, Accounts management, Settings expansion, settle-up CTA on balance cards (writes `SETTLEMENT_PAYMENT` tx that nets out a balance).
+- The TransactionsPage doesn't yet have filters or search. Add a filter bar (person/source/category/shared/recurring) + free-text search in Phase 7.
+- The RecurringPage shows totals but doesn't currently project them onto the Home dashboard's recurring line — that wiring already exists in `aggregations.ts` (it sums `recurring_items` directly), so totals are consistent.
+
+---
+
 ## 2026-05-03 — Phase 5 Add Expense (Variation B Flow diagram)
 
 **What was done**
