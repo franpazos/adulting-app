@@ -80,11 +80,72 @@
   },
   "debts": {
     "title": "Debts",
+    "add": "Add debt",
+    "detailTitle": "Debt",
+    "totalOutstanding": "Total outstanding",
+    "summary_one": "{{count}} active debt",
+    "summary_other": "{{count}} active debts",
+    "currentBalance": "Current balance",
+    "paid": "{{paid}} of {{total}}",
+    "minimumPayment": "Minimum {{amount}}",
+    "dueDay": "Due day {{day}}",
+    "history": "Payment history",
+    "noPayments": "No payments yet.",
+    "payCta": "Pay debt",
+    "balance": "Balance",
+    "notFound": "Debt not found.",
+    "backToList": "Back to debts",
     "empty": {
       "title": "Debt-free, for now",
       "description": "Track loans, credit cards, or anything you owe (or are owed) — separately from internal Settlements.",
       "action": "+ Add a debt"
     }
+  },
+  "payDebt": {
+    "title": "Pay debt",
+    "amount": "Payment amount",
+    "exchange": "Exchange",
+    "youPay": "You pay",
+    "eurImpact": "EUR impact",
+    "rate": "Rate (debt per 1 EUR)",
+    "newBalance": "New balance after payment",
+    "fxCaveat": "FX rate caveat: EUR impact is calculated at the rate above. Final bank rate may differ; we'll reconcile when the transaction syncs.",
+    "saveLabel": "Record payment · {{amount}}",
+    "txDescription": "Payment — {{name}}"
+  },
+  "settleUp": {
+    "title": "Settle up",
+    "cta": "Settle up",
+    "outstanding": "Outstanding",
+    "amount": "Payment amount",
+    "partial": "{{remaining}} will remain after this payment.",
+    "saveLabel": "Record settlement · {{amount}}",
+    "txDescription": "Settlement: {{from}} → {{to}}"
+  },
+  "categories": {
+    "title": "Categories",
+    "add": "Add category",
+    "newTitle": "New category",
+    "editTitle": "Edit category",
+    "expense": "Expenses",
+    "income": "Income",
+    "empty": "No categories yet.",
+    "kind": {
+      "expense": "Expense",
+      "income": "Income"
+    },
+    "fields": {
+      "kind": "Kind",
+      "name": "Name",
+      "namePlaceholder": "e.g. Groceries, Salary…",
+      "color": "Color"
+    }
+  },
+  "accounts": {
+    "title": "Accounts",
+    "totals": "Totals by currency",
+    "estimatedBalance": "Estimated balance",
+    "balanceNote": "Computed from initial balance plus realised transactions."
   },
   "settlements": {
     "title": "Settlements",

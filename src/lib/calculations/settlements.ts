@@ -112,8 +112,11 @@ export function recomputeForTransaction(
     if (!ctx) return;
     const { transaction: tx, allocations, account } = ctx;
 
-    // Settlements are only meaningful for non-deleted EXPENSE transactions.
-    if (tx.is_deleted || tx.type !== "EXPENSE") return;
+    // Settlements are derived from EXPENSE and DEBT_PAYMENT transactions.
+    // SETTLEMENT_PAYMENT carries its own manual reverse entry and INCOME /
+    // TRANSFER never produce settlements.
+    if (tx.is_deleted) return;
+    if (tx.type !== "EXPENSE" && tx.type !== "DEBT_PAYMENT") return;
     if (allocations.length === 0) return;
 
     const result = expenseAllocator({

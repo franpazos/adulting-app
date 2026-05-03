@@ -1,4 +1,4 @@
-import { exec, selectAll, selectOne } from "../client";
+import { exec, selectAll, selectOne, transaction } from "../client";
 import type { Debt, DebtPayment, OwnerType } from "../types";
 import { coerceBooleans, fromBool, newId, nowIso } from "./_helpers";
 
@@ -67,7 +67,54 @@ export const debtsRepo = {
     );
     return d;
   },
+
+  /** Apply a delta (signed, in debt currency) to the running balance. */
+  adjustBalance(id: string, delta: number): void {
+    const debt = this.getById(id);
+    if (!debt) throw new Error(`Debt ${id} not found`);
+    const next = round2(debt.current_balance + delta);
+    exec(
+      "UPDATE debts SET current_balance = ?, updated_at = ? WHERE id = ?",
+      [next, nowIso(), id],
+    );
+  },
+
+  update(id: string, input: Omit<CreateDebtInput, "id">): Debt {
+    const now = nowIso();
+    transaction(() => {
+      exec(
+        `UPDATE debts SET
+           name = ?, owner_type = ?, original_amount = ?, current_balance = ?,
+           currency_code = ?, interest_rate = ?, minimum_payment = ?,
+           payment_day = ?, strategy_priority = ?, notes = ?, is_active = ?,
+           updated_at = ?
+         WHERE id = ?`,
+        [
+          input.name,
+          input.owner_type,
+          input.original_amount,
+          input.current_balance,
+          input.currency_code,
+          input.interest_rate,
+          input.minimum_payment,
+          input.payment_day,
+          input.strategy_priority,
+          input.notes,
+          fromBool(input.is_active),
+          now,
+          id,
+        ],
+      );
+    });
+    const d = this.getById(id);
+    if (!d) throw new Error(`Debt ${id} disappeared after update`);
+    return d;
+  },
 };
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
 
 interface CreateDebtPaymentInput
   extends Omit<DebtPayment, "id" | "created_at" | "updated_at"> {

@@ -11,7 +11,13 @@ import { useTranslation } from "react-i18next";
 import { ArrowRight, ChevronLeft } from "lucide-react";
 
 import { Avatar } from "@/components/Avatar";
-import { Card, CardEyebrow, IconButton, EmptyState } from "@/components/ui";
+import {
+  Button,
+  Card,
+  CardEyebrow,
+  IconButton,
+  EmptyState,
+} from "@/components/ui";
 import { EmptyArt } from "@/components/EmptyArt";
 
 import { settlementsRepo } from "@/lib/db";
@@ -112,6 +118,7 @@ export function SettlementsPage() {
 
 function BalanceCard({ balance }: { balance: BalanceLine }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const fromName = whoLabel(balance.from, t);
   const toName = whoLabel(balance.to, t);
 
@@ -157,6 +164,20 @@ function BalanceCard({ balance }: { balance: BalanceLine }) {
             {toName}
           </span>
         </div>
+      </div>
+
+      <div className="relative pt-3 mt-3 border-t border-border">
+        <Button
+          size="sm"
+          block
+          onClick={() =>
+            navigate(
+              `/settlements/settle?from=${balance.from}&to=${balance.to}`,
+            )
+          }
+        >
+          {t("settleUp.cta")}
+        </Button>
       </div>
     </Card>
   );

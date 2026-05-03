@@ -80,11 +80,72 @@
   },
   "debts": {
     "title": "Deudas",
+    "add": "Añadir deuda",
+    "detailTitle": "Deuda",
+    "totalOutstanding": "Total pendiente",
+    "summary_one": "{{count}} deuda activa",
+    "summary_other": "{{count}} deudas activas",
+    "currentBalance": "Saldo actual",
+    "paid": "{{paid}} de {{total}}",
+    "minimumPayment": "Mínimo {{amount}}",
+    "dueDay": "Día {{day}}",
+    "history": "Historial de pagos",
+    "noPayments": "Aún no hay pagos.",
+    "payCta": "Pagar deuda",
+    "balance": "Saldo",
+    "notFound": "Deuda no encontrada.",
+    "backToList": "Volver a Deudas",
     "empty": {
       "title": "Sin deudas, de momento",
       "description": "Aquí puedes registrar préstamos, tarjetas o cualquier deuda — aparte de los Ajustes internos.",
       "action": "+ Añadir deuda"
     }
+  },
+  "payDebt": {
+    "title": "Pagar deuda",
+    "amount": "Importe del pago",
+    "exchange": "Cambio",
+    "youPay": "Pagas",
+    "eurImpact": "Impacto en EUR",
+    "rate": "Tipo (moneda deuda por 1 EUR)",
+    "newBalance": "Saldo tras el pago",
+    "fxCaveat": "Aviso de tipo de cambio: el impacto en EUR se calcula al tipo introducido. El tipo bancario final puede diferir; lo conciliaremos cuando se sincronice.",
+    "saveLabel": "Registrar pago · {{amount}}",
+    "txDescription": "Pago — {{name}}"
+  },
+  "settleUp": {
+    "title": "Saldar",
+    "cta": "Saldar",
+    "outstanding": "Pendiente",
+    "amount": "Importe del pago",
+    "partial": "Quedarán {{remaining}} pendientes tras este pago.",
+    "saveLabel": "Registrar pago · {{amount}}",
+    "txDescription": "Liquidación: {{from}} → {{to}}"
+  },
+  "categories": {
+    "title": "Categorías",
+    "add": "Añadir categoría",
+    "newTitle": "Nueva categoría",
+    "editTitle": "Editar categoría",
+    "expense": "Gastos",
+    "income": "Ingresos",
+    "empty": "Aún no hay categorías.",
+    "kind": {
+      "expense": "Gasto",
+      "income": "Ingreso"
+    },
+    "fields": {
+      "kind": "Tipo",
+      "name": "Nombre",
+      "namePlaceholder": "p. ej. Alimentación, Nómina…",
+      "color": "Color"
+    }
+  },
+  "accounts": {
+    "title": "Cuentas",
+    "totals": "Totales por moneda",
+    "estimatedBalance": "Saldo estimado",
+    "balanceNote": "Calculado a partir del saldo inicial más los movimientos registrados."
   },
   "settlements": {
     "title": "Ajustes / Settlements",

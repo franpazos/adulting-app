@@ -4,6 +4,51 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-04 — Phase 7 Debts FX, Settle up, Categories, Accounts
+
+**What was done**
+- **Debts list** (`DebtsPage`): redesigned from the simple list to a real screen — totals card grouped by currency (EUR + USD shown separately), rows with avatar + currency pill + minimum payment + chevron. Tap → detail.
+- **Debt detail** (`DebtDetailPage` at `/debts/:id`): hero with avatar, current balance + progress bar (paid / original × 100), minimum payment + due day metadata, payment history list (with FX rate + EUR impact when applicable), sticky "Pay debt" CTA.
+- **Pay Debt with FX** (`PayDebtPage` at `/debts/:id/pay`):
+  - Big amount input in debt currency with $/£/€ prefix.
+  - **FX exchange card** (only visible when debt currency ≠ EUR): "You pay $X" ↔ "EUR impact €Y", an editable rate (`debt-units per 1 EUR`), and the new balance preview. Both sides are editable — typing in EUR back-computes the debt amount via `fromAccountToDebt` and vice versa via `fromDebtToAccount`.
+  - Preset chips ($50/$100/$250/$500 for FX, €25/€50/€100/€200 same-currency).
+  - FX caveat banner reminding the user the bank rate may differ.
+  - Save flow: `expenseAllocator(amount=eurAmount, source, owner=debt.owner_type)` → `transactionsRepo.create(type='DEBT_PAYMENT', exchange_rate, amount_in_*)` → `debtPaymentsRepo.create` → `debtsRepo.adjustBalance(-debtAmount)` → `recomputeForTransaction`.
+- **Settle up** (`SettleUpPage` at `/settlements/settle?from=&to=`):
+  - Pre-fills the outstanding balance for the (`from`, `to`) pair.
+  - Partial amounts: "X € will remain after this payment" hint when amount < outstanding.
+  - Save flow: writes a `SETTLEMENT_PAYMENT` tx (cash flows from→to, allocation 100% to creditor) plus a reverse-direction `settlement_ledger` entry (`from=to`, `to=from`) that cancels the original debt direction. Since `recomputeForTransaction` only manages EXPENSE/DEBT_PAYMENT-derived entries, the manual reverse entry is preserved.
+- **"Settle up" CTA** added to every `BalanceCard` on `/settlements`. Single-tap → navigates with `?from&to` query params.
+- **Categories CRUD**:
+  - `CategoriesPage` lists Expense and Income groups separately, tap row → edit.
+  - `CategoryFormPage` covers create + edit with kind segmented and a 12-color palette picker (uses ring-2 for active state). Inline `updateCategoryInline` helper avoids broadening the repo for a single call site.
+- **Accounts read-only** (`AccountsPage`):
+  - Per-account card with avatar (inferred from account name for now), type/currency pills, and computed estimated balance.
+  - Totals card grouped by currency. Estimated balance = `initial_balance + Σ INCOME − Σ (EXPENSE | DEBT_PAYMENT | SETTLEMENT_PAYMENT | TRANSFER)`.
+- **Repos extended:**
+  - `debtsRepo.adjustBalance(id, delta)` (rounded to 2dp) and `debtsRepo.update`.
+- **Bug fix discovered by tests:** `recomputeForTransaction` previously short-circuited unless `tx.type === 'EXPENSE'`. Debt payments from joint accounts (Sam pays a personal-owned debt from JOINT) need to trigger the same Case-D settlement (Sam owes Household). Updated to process both `EXPENSE` and `DEBT_PAYMENT`. SETTLEMENT_PAYMENT remains skipped because its ledger entry is written manually by SettleUpPage.
+- **Routes wired:** `/debts/:id`, `/debts/:id/pay`, `/settlements/settle`, `/categories`, `/categories/new`, `/categories/:id`, `/accounts`. The `ComingSoon` stubs for these are gone.
+- **i18n** (EN + ES) namespaces extended with `debts.*` (totalOutstanding, summary plural, currentBalance, paid, minimumPayment, dueDay, history, payCta, etc.), `payDebt.*` (exchange, youPay, eurImpact, rate, fxCaveat, saveLabel), `settleUp.*` (cta, outstanding, partial, saveLabel), `categories.*` (kind segmented + fields), `accounts.*` (totals, estimatedBalance, balanceNote).
+- **Tests (74/74 passing — 8 files):** new `payDebt.flow.test.ts` covers
+  - USD debt paid from EUR account with rate 1.08 (balance decrements by USD amount, account debited by EUR amount, debt_payments row carries both)
+  - Joint-source debt payment for a personal debt → Sam owes Household 25 (the bug-fix scenario)
+  - Settle-up zeroing Fran↔Sam balance
+  - Partial settle-up reducing 20 → 12
+  - `adjustBalance` rounds to 2dp
+
+**Decisions**
+- For the FX flow, store the exchange rate as **debt-units per 1 EUR** (e.g. `1.08` for "1 € = $1.08"). This matches the design handoff visual ("1 € = $1.0825") and lets the user reason about "for every euro I spend, how many of the debt currency does it cover?" `fx.ts` was already aligned with this convention.
+- Settlement payments are recorded as a **separate ledger entry** (not via the allocator) because their semantic is the inverse: cash flows from debtor to creditor, and the goal is to cancel an existing balance, not to allocate spending. Keeping them out of `recomputeForTransaction` avoids the engine re-deriving them away.
+- Account avatars are inferred from the account name (`includes("fran")`, `includes("sam")`) for now. When the Accounts CRUD lands (Phase 7b or later), each account will store an explicit `owner` field for UI purposes.
+
+**Open follow-ups**
+- Phase 8 (next): PWA install prompt, online/offline badge, sync queue UI, service worker validation. The DB layer is already offline-first; this phase wraps the install + UX polish.
+- Phase 7b (deferred polish): Home dashboard expansion (Joint snapshot card, donut chart, multiple summary cards), filters + search on Transactions, smart defaults from last entry, Settings expansion (Defaults / Backups / About), Accounts CRUD.
+
+---
+
 ## 2026-05-03 — Phase 6 Transactions, Settlements, Recurring
 
 **What was done**

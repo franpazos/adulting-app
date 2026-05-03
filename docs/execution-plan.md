@@ -101,11 +101,21 @@ This document is the living plan of work. Each phase ends with a checklist updat
 - [ ] Filters/search on transactions — deferred to Phase 7 polish
 - [ ] "Settle up" CTA on balance cards (writes a `SETTLEMENT_PAYMENT` tx) — deferred to Phase 7
 
-## Phase 7 — Home dashboard, Debts, More
-- [ ] Home cards (Household, Joint, Categories donut, Settlements summary, Debts summary, Fran summary, Sam summary)
-- [ ] Scope segmented binding to data
-- [ ] Debts page (list by owner, totals, multi-currency, monthly payment)
-- [ ] More rows: Settlements, Recurring, Categories, Accounts, Settings (Appearance / Language / Defaults / Google Sheets / Backups & Data / About)
+## Phase 7 — Home dashboard, Debts, More ✅ (core)
+- [x] Debts list at `/debts` with avatar + currency pill + balance + minimum payment, totals card grouped by currency
+- [x] Debt detail at `/debts/:id` with progress bar (paid / original), payment history, "Pay" CTA
+- [x] **Pay Debt with FX** at `/debts/:id/pay`: amount in debt currency, live EUR impact via `fromDebtToAccount`, editable rate, two-way input (edit either side), preset chips, FX caveat banner. Save flow: `expenseAllocator` → `transactionsRepo.create(DEBT_PAYMENT)` → `debtPaymentsRepo.create` → `debtsRepo.adjustBalance(-debtAmount)` → `recomputeForTransaction`. Same-currency case collapses the FX card.
+- [x] Settle-up at `/settlements/settle?from=&to=`: pre-filled with current outstanding, partial-amount note, save writes `SETTLEMENT_PAYMENT` tx + reverse-direction ledger entry (preserved by recompute since recompute only manages EXPENSE/DEBT_PAYMENT entries)
+- [x] "Settle up" CTA on each `BalanceCard` in `/settlements`
+- [x] Categories CRUD at `/categories`, `/categories/new`, `/categories/:id` with kind segmented + 12-color palette picker
+- [x] Accounts read-only at `/accounts` with computed estimated balance per account, totals grouped by currency
+- [x] Bug fix: `recomputeForTransaction` now also processes `DEBT_PAYMENT` (was EXPENSE-only) so settlements stay consistent when debts are paid from a non-owner account
+- [x] EN + ES copy for debts, payDebt, settleUp, categories, accounts namespaces
+- [x] Vitest coverage: USD-debt-from-EUR-account, joint-source-personal-debt settlement, settle-up zeroing balance, partial settle-up, balance rounding (74/74 passing)
+- [ ] Home dashboard polish (Joint snapshot card, donut chart, debts/category/people summary cards) — deferred to a future polish pass
+- [ ] Filters/search on Transactions — deferred
+- [ ] Smart defaults from last entry — deferred
+- [ ] Settings expansion (Defaults, Backups & Data, About) — deferred
 
 ## Phase 8 — PWA + offline
 - [ ] Service worker validation
