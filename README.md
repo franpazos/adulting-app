@@ -46,7 +46,16 @@ pnpm test       # vitest (added once tests land)
 
 ## SQLite & OPFS
 
-The dev server sets `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` so that SQLite-wasm can persist via the Origin Private File System. Production hosting must replicate these headers.
+The dev server sets `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` so that SQLite-wasm can persist via the Origin Private File System. Production hosting replicates these headers via `vercel.json` — see [`docs/deployment.md`](./docs/deployment.md).
+
+## Deploy
+
+```bash
+pnpm dlx vercel        # first-time prompt-driven deploy
+pnpm dlx vercel --prod # promote to production
+```
+
+`vercel.json` ships with the COOP/COEP headers, SW cache rules, and SPA fallback the app needs. Full guide (including iPhone install steps) in [`docs/deployment.md`](./docs/deployment.md).
 
 ## Google Sheets sync
 

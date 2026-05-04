@@ -30,6 +30,9 @@ stats.html
 # PWA generated artifacts
 dev-dist
 
+# Vercel
+.vercel
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

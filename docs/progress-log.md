@@ -4,6 +4,28 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-04 — Vercel deploy preparation
+
+**What was done**
+- Added `vercel.json` with the three things the app needs in production:
+  1. **COOP/COEP headers** on `/(.*)` — without these, sqlite-wasm OPFS silently degrades to in-memory and data evaporates on reload (ADR-008).
+  2. **Cache headers**: `/sw.js`, `/workbox-*.js`, and `/index.html` get `max-age=0, must-revalidate` so update prompts surface promptly; `/assets/*` and `/fonts/*` get `max-age=31536000, immutable` since Vite emits hashed filenames.
+  3. **SPA fallback** rewrite `/(.*) → /index.html`. Vercel checks for real files first, so `/assets/foo.js` is served as-is and only client-only paths like `/transactions/abc` fall through.
+- `framework: "vite"` declared explicitly so Vercel auto-detects the right buildCommand and outputDirectory.
+- `installCommand: pnpm install --frozen-lockfile` enforces the lockfile in CI deploys.
+- Added `.vercel` to `.gitignore` so local CLI state doesn't land in commits.
+- New `docs/deployment.md` covering: what each `vercel.json` rule does, first-time CLI deploy, GitHub continuous deploy, header verification with `curl -I`, iPhone install steps, troubleshooting (OPFS not persisting, SW 404, stale versions).
+- README updated to point at the deploy guide.
+
+**Decisions**
+- **Phase 9 OAuth caveat noted in deployment.md**: `COOP=same-origin` blocks `window.opener` access from popup callbacks. When Phase 9 lands, switch to OAuth via redirect or relax COOP to `same-origin-allow-popups`.
+
+**Open follow-ups**
+- Run `pnpm dlx vercel` to actually deploy and verify the headers in the wild.
+- After install on iPhone, validate that OPFS persists across reloads in Safari iOS (Phase 8 verified Chrome desktop).
+
+---
+
 ## 2026-05-04 — Phase 8 PWA + offline UX
 
 **What was done**
