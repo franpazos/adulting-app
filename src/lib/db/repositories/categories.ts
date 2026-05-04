@@ -1,6 +1,7 @@
 import { exec, selectAll, selectOne } from "../client";
 import type { Category, CategoryKind } from "../types";
 import { coerceBooleans, fromBool, newId, nowIso } from "./_helpers";
+import { enqueueChange } from "@/lib/sync/queue";
 
 const BOOL_KEYS = ["is_default"] as const satisfies ReadonlyArray<keyof Category>;
 
@@ -68,6 +69,7 @@ export const categoriesRepo = {
         c.updated_at,
       ],
     );
+    enqueueChange("category", c.id, "CREATE");
     return c;
   },
 };

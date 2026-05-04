@@ -8,6 +8,7 @@ import type {
   SyncStatus,
 } from "../types";
 import { coerceBooleans, fromBool, newId, nowIso } from "./_helpers";
+import { enqueueChange } from "@/lib/sync/queue";
 
 const BOOL_KEYS = ["is_deleted"] as const satisfies ReadonlyArray<keyof Transaction>;
 
@@ -128,6 +129,7 @@ export const transactionsRepo = {
           ],
         );
       }
+      enqueueChange("transaction", tx.id, "CREATE");
     });
 
     return tx;
@@ -228,6 +230,7 @@ export const transactionsRepo = {
           ],
         );
       }
+      enqueueChange("transaction", id, "UPDATE");
     });
     const tx = this.getById(id);
     if (!tx) throw new Error(`Transaction ${id} disappeared after update`);
@@ -244,6 +247,7 @@ export const transactionsRepo = {
       "UPDATE transactions SET is_deleted = 1, updated_at = ? WHERE id = ?",
       [nowIso(), id],
     );
+    enqueueChange("transaction", id, "DELETE");
   },
 
   /** Sum of `share_amount` for a given owner across a month, by transaction type. */

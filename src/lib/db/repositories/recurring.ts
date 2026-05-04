@@ -1,6 +1,7 @@
 import { exec, selectAll, selectOne, transaction } from "../client";
 import type { RecurringItem, RecurringType } from "../types";
 import { coerceBooleans, fromBool, newId, nowIso } from "./_helpers";
+import { enqueueChange } from "@/lib/sync/queue";
 
 const BOOL_KEYS = [
   "is_active",
@@ -74,6 +75,7 @@ export const recurringRepo = {
         r.updated_at,
       ],
     );
+    enqueueChange("recurring_item", r.id, "CREATE");
     return r;
   },
 
@@ -108,6 +110,7 @@ export const recurringRepo = {
         ],
       );
     });
+    enqueueChange("recurring_item", id, "UPDATE");
     const r = this.getById(id);
     if (!r) throw new Error(`RecurringItem ${id} disappeared after update`);
     return r;
@@ -119,5 +122,6 @@ export const recurringRepo = {
       "UPDATE recurring_items SET is_active = 0, updated_at = ? WHERE id = ?",
       [nowIso(), id],
     );
+    enqueueChange("recurring_item", id, "UPDATE");
   },
 };

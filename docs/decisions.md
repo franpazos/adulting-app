@@ -4,6 +4,26 @@ Short, dated records of decisions that shape the codebase. Each entry is an ADR-
 
 ---
 
+## ADR-012 — Sheets sync: snapshot push first, incremental later
+**Date:** 2026-05-04
+**Status:** Accepted (Phase 9a)
+**Context:** Two devices need to share a ledger. The spec (§14) chose Google Sheets as the sync target. Two architectures considered for the push direction:
+  1. **Snapshot push** — every sync, the whole local DB is dumped into the raw_* tabs (clear + write).
+  2. **Incremental push** — drain the `sync_queue` and apply per-row upserts.
+
+**Decision:** Phase 9a uses snapshot. Reasons:
+  - Correctness over speed: snapshot guarantees the Sheet matches local state exactly, including deletions, regardless of queue weirdness.
+  - Volume is low (a 2-user household will write tens of rows per day at most).
+  - Simpler code path: no row-finding logic in the Sheet, no edge cases when a sync fails midway.
+  - The `sync_queue` is still populated by repos so we can switch to incremental in 9b without touching repo code.
+
+**Consequences:**
+  - A push call writes ~9 `clearValues` + ~9 `updateValues` per sync regardless of how few rows changed. Acceptable for our scale.
+  - After a successful push, all queue items are marked SYNCED so the "pending changes" UI resets.
+  - Phase 9b adds **pull + reconciliation** so both devices converge. Without pull, push from two devices can race — last writer wins, which is an acceptable tradeoff while pull is being built.
+
+---
+
 ## ADR-011 — Node 22 LTS as the runtime baseline
 **Date:** 2026-05-04
 **Status:** Accepted (supersedes the temporary lru-cache override from Phase 8)

@@ -3,6 +3,7 @@ import { Database } from "lucide-react";
 import { Card, CardEyebrow, Pill } from "@/components/ui";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { SyncCard } from "@/features/sync/SyncCard";
 import { useDbStore } from "@/store/dbStore";
 
 export function SettingsPage() {
@@ -25,6 +26,11 @@ export function SettingsPage() {
           <span className="text-sm font-medium">{t("settings.language")}</span>
           <LanguageToggle />
         </Card>
+      </section>
+
+      <section className="space-y-2">
+        <CardEyebrow>{t("sync.section")}</CardEyebrow>
+        <SyncCard />
       </section>
 
       <section className="space-y-2">

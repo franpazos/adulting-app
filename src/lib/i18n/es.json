@@ -217,6 +217,29 @@
   "network": {
     "offline": "Sin conexión"
   },
+  "sync": {
+    "section": "Sincronización en la nube",
+    "title": "Google Sheets",
+    "intro": "Conecta tu cuenta de Google para que tú y Sam veáis los mismos datos en ambos móviles.",
+    "connectGoogle": "Conectar con Google",
+    "connecting": "Conectando…",
+    "connected": "Conectado",
+    "disconnected": "Desconectado",
+    "disconnect": "Desconectar",
+    "notConfigured": "Falta VITE_GOOGLE_CLIENT_ID. Configúralo en .env.local para dev o en las env vars de Vercel para producción.",
+    "pasteSheetIntro": "Pega la URL de un Google Sheet existente. La app añadirá pestañas raw_* sin tocar tus otras pestañas.",
+    "connectSheet": "Conectar Sheet",
+    "invalidUrl": "No pude extraer un ID de spreadsheet de esa URL.",
+    "account": "Cuenta",
+    "sheet": "Sheet",
+    "lastPush": "Último push",
+    "never": "nunca",
+    "pendingChanges": "Cambios pendientes",
+    "pushNow": "Sincronizar ahora",
+    "pushing": "Sincronizando…",
+    "pushedJustNow": "Sincronizado",
+    "unlinkSheet": "Desvincular Sheet"
+  },
   "install": {
     "title": "Instala Adulting",
     "description": "Añádela a la pantalla de inicio para uso fullscreen y offline.",

@@ -20,6 +20,10 @@
       content="Local-first finance for households of two — calm, premium, effortless."
     />
     <title>Adulting.app</title>
+    <!-- Google Identity Services — provides window.google.accounts for OAuth.
+         Loaded async/defer so it doesn't block app boot. The auth layer in
+         src/lib/google/auth.ts waits for window.google before issuing requests. -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
   </head>
   <body>
     <div id="root"></div>

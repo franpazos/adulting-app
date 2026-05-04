@@ -1,6 +1,7 @@
 import { exec, selectAll, selectOne } from "../client";
 import type { User } from "../types";
 import { coerceBooleans, fromBool, newId, nowIso } from "./_helpers";
+import { enqueueChange } from "@/lib/sync/queue";
 
 const BOOL_KEYS = ["is_active"] as const satisfies ReadonlyArray<keyof User>;
 
@@ -37,6 +38,7 @@ export const usersRepo = {
        VALUES (?, ?, ?, ?, ?)`,
       [u.id, u.name, fromBool(u.is_active), u.created_at, u.updated_at],
     );
+    enqueueChange("user", u.id, "CREATE");
     return u;
   },
 };

@@ -131,11 +131,29 @@ This document is the living plan of work. Each phase ends with a checklist updat
 - [x] Production build verified: SW served, manifest served, full offline boot path
 
 ## Phase 9 — Google Sheets sync
-- [ ] OAuth client (no backend) — functional
-- [ ] Sync queue worker with retry
-- [ ] Raw tab writers (`raw_transactions`, `raw_transaction_allocations`, `raw_recurring_items`, `raw_debts`, `raw_debt_payments`, `raw_settlements`, `raw_monthly_snapshots`, `raw_accounts`, `raw_categories`)
-- [ ] Month-sync service (ensure tabs/structure for active month)
-- [ ] Explicit import flow
+### 9a — Push (snapshot) ✅
+- [x] Google Identity Services token client (`lib/google/auth.ts`) with implicit OAuth flow
+- [x] `authStore` with persistence; `getValidToken()` re-prompts when expired
+- [x] Sheets API client (`lib/google/sheets-api.ts`): getSpreadsheet, addSheet, getValues, updateValues, clearValues
+- [x] `parseSpreadsheetId` accepts URL or raw ID
+- [x] `RAW_TABS` definitions for all 9 entities + `ensureRawTabs` (creates missing, refreshes headers)
+- [x] Per-entity row mappers (`writers.ts`); `buildSnapshot` reads SQLite into snapshot data
+- [x] Sync queue helpers (`queue.ts`); repositories enqueue on every write
+- [x] `pushAll(spreadsheetId)` snapshot writer that clears + writes each raw_* tab and marks queue synced
+- [x] `syncStore` + `SyncCard` UI in Settings with three states (not connected / no sheet bound / fully connected)
+- [x] COOP relaxed to `same-origin-allow-popups` (vercel.json + vite.config) so OAuth popup keeps `window.opener`
+- [x] EN + ES i18n for the sync namespace
+- [x] 11 new tests (writers column counts, boolean coercion, snapshot completeness, queue lifecycle, column letter math). Total 85/85 passing.
+
+### 9b — Pull + reconcile (next)
+- [ ] Reader functions (row → entity per tab)
+- [ ] `pullAll`: download all raw_* tabs, reconcile by id + updated_at, soft-delete locally rows missing remotely
+- [ ] "Sync now" runs pull then push
+- [ ] Conflict resolution rules (local wins by default unless user-confirmed otherwise)
+- [ ] Auto-sync on app boot + after writes (debounced)
+- [ ] Sync status badge in AppHeader (idle / syncing / error)
+- [ ] Month-sync service for the formatted monthly tabs (spec §14.6)
+- [ ] Explicit import-from-Sheets flow
 
 ## Phase 10 — Polish
 - [ ] Motion (sheet/card/theme transitions)

@@ -217,6 +217,29 @@
   "network": {
     "offline": "Offline"
   },
+  "sync": {
+    "section": "Cloud sync",
+    "title": "Google Sheets",
+    "intro": "Connect your Google account so you and Sam see the same data on both phones.",
+    "connectGoogle": "Connect with Google",
+    "connecting": "Connecting…",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "disconnect": "Disconnect",
+    "notConfigured": "VITE_GOOGLE_CLIENT_ID is missing. Set it in .env.local for dev or in Vercel env vars for production.",
+    "pasteSheetIntro": "Paste the URL of an existing Google Sheet. The app will add raw_* tabs to it without touching your other sheets.",
+    "connectSheet": "Connect sheet",
+    "invalidUrl": "Couldn't read a spreadsheet ID from that URL.",
+    "account": "Account",
+    "sheet": "Sheet",
+    "lastPush": "Last push",
+    "never": "never",
+    "pendingChanges": "Pending changes",
+    "pushNow": "Push now",
+    "pushing": "Pushing…",
+    "pushedJustNow": "Pushed just now",
+    "unlinkSheet": "Unlink sheet"
+  },
   "install": {
     "title": "Install Adulting",
     "description": "Add it to your home screen for full-screen, offline use.",

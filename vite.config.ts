@@ -10,10 +10,13 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  // sqlite-wasm requires COOP/COEP for OPFS-backed persistence
+  // sqlite-wasm requires COOP/COEP for OPFS-backed persistence.
+  // `same-origin-allow-popups` (vs strict `same-origin`) lets Google's OAuth
+  // popup retain access to window.opener, which is needed by the Google
+  // Identity Services token client.
   server: {
     headers: {
-      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
       "Cross-Origin-Embedder-Policy": "require-corp",
     },
   },

@@ -1,6 +1,7 @@
 import { exec, selectAll, selectOne, transaction } from "../client";
 import type { Debt, DebtPayment, OwnerType } from "../types";
 import { coerceBooleans, fromBool, newId, nowIso } from "./_helpers";
+import { enqueueChange } from "@/lib/sync/queue";
 
 const DEBT_BOOL_KEYS = ["is_active"] as const satisfies ReadonlyArray<keyof Debt>;
 
@@ -65,6 +66,7 @@ export const debtsRepo = {
         d.updated_at,
       ],
     );
+    enqueueChange("debt", d.id, "CREATE");
     return d;
   },
 
@@ -77,6 +79,7 @@ export const debtsRepo = {
       "UPDATE debts SET current_balance = ?, updated_at = ? WHERE id = ?",
       [next, nowIso(), id],
     );
+    enqueueChange("debt", id, "UPDATE");
   },
 
   update(id: string, input: Omit<CreateDebtInput, "id">): Debt {
@@ -106,6 +109,7 @@ export const debtsRepo = {
         ],
       );
     });
+    enqueueChange("debt", id, "UPDATE");
     const d = this.getById(id);
     if (!d) throw new Error(`Debt ${id} disappeared after update`);
     return d;
@@ -157,6 +161,7 @@ export const debtPaymentsRepo = {
         p.updated_at,
       ],
     );
+    enqueueChange("debt_payment", p.id, "CREATE");
     return p;
   },
 };

@@ -4,6 +4,57 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-04 — Phase 9a Google Sheets sync (push)
+
+**What was done**
+
+Push half of the Google Sheets sync. The app can now connect to a Google account and push a complete snapshot of the local SQLite into raw_* tabs of a user-specified spreadsheet. Pull + auto-sync land in 9b.
+
+- **OAuth via Google Identity Services** (`src/lib/google/auth.ts`):
+  - Loads `https://accounts.google.com/gsi/client` async from `index.html`.
+  - `waitForGis()` polls until `window.google.accounts` is ready before any auth attempt.
+  - `login()` opens the GIS token client popup, captures the access token and expiry, stores them in `authStore`, and opportunistically fetches the user's email via OIDC userinfo for display.
+  - `getValidToken()` re-prompts when the cached token has <60s of life left.
+  - `logout()` revokes the token and clears local state. Best-effort — clears locally even if revoke fails.
+  - `GoogleAuthError` for typed error handling at call sites.
+- **Stores:**
+  - `authStore` (persisted): status / token / email / error.
+  - `syncStore` (persisted): `sheet` binding (id + title), phase, lastPushAt, lastError, pendingChanges.
+- **Sheets API client** (`src/lib/google/sheets-api.ts`): `getSpreadsheet`, `addSheet`, `getValues`, `updateValues`, `clearValues`. Authorized fetch wrapper handles token refresh + JSON error reporting via `SheetsApiError`.
+- **Drive helpers** (`src/lib/google/drive-api.ts`): `parseSpreadsheetId` accepts either a full Sheets URL or a raw ID.
+- **Tab management** (`src/lib/sync/tabs.ts`):
+  - `RAW_TABS` declares 9 tabs with canonical column order: `raw_users`, `raw_accounts`, `raw_categories`, `raw_transactions`, `raw_transaction_allocations`, `raw_recurring_items`, `raw_debts`, `raw_debt_payments`, `raw_settlement_ledger`.
+  - `ensureRawTabs(spreadsheetId)` adds missing tabs (no-op if present), then writes the canonical header row to row 1 of each. **Never touches non-raw tabs** — your existing monthly tabs and formulas stay untouched.
+  - `columnLetter(n)` for the spreadsheet column math (1→A, 27→AA, etc).
+- **Row mappers** (`src/lib/sync/writers.ts`): pure functions per entity emitting `(string|number|boolean|null)[]` cells in header order. Booleans coerce to 0/1 to match SQLite. `buildSnapshot()` reads all rows from local DB (including soft-deleted) and returns the full snapshot.
+- **Sync queue** (`src/lib/sync/queue.ts`): `enqueueChange(entity, id, action)`, `listPending`, `markAllSynced(ids)`, `markFailed(id, error)`. Repositories call `enqueueChange` on every create/update/delete (including `transactionsRepo.softDelete`, `debtsRepo.adjustBalance`, etc.).
+- **Push worker** (`src/lib/sync/push.ts`): `pushAll(spreadsheetId)` calls `ensureRawTabs`, builds the snapshot, then for each tab clears row 2+ and writes the new rows. Captures pending queue ids before pushing so anything enqueued mid-push survives. Marks captured ids as SYNCED on success.
+- **`SyncCard` UI** (`src/features/sync/SyncCard.tsx`) in Settings:
+  - State 1 (no Google token): "Connect with Google" button → triggers `login()`.
+  - State 2 (token but no sheet): paste-URL input. Validates by fetching `getSpreadsheet(id)`; rejects with friendly error if sheet doesn't exist or user lacks access.
+  - State 3 (fully connected): account email, sheet title (linked), last push relative-time, pending changes counter, "Push now" button (with phase-aware spinner/icon), unlink + disconnect actions.
+- **COOP relaxed** to `same-origin-allow-popups` (vercel.json + vite.config dev server) so the GIS popup retains `window.opener`. `Cross-Origin-Embedder-Policy: require-corp` stays — OPFS continues to work.
+- **Configuration:**
+  - `index.html` loads the GIS script.
+  - `.env.example` documents `VITE_GOOGLE_CLIENT_ID`. Set it in `.env.local` for dev and in Vercel Project Settings → Environment Variables for production.
+  - `src/lib/google/types.d.ts` declares the minimal `window.google.accounts` types we use.
+- **i18n** (EN + ES): full `sync.*` namespace covering connect/disconnect, intro copy, paste-URL flow, push status, error messages, "not configured" state.
+- **Tests (85/85 passing — 9 files):** `src/lib/sync/__tests__/sync.test.ts` adds 11 cases covering RAW_TABS shape, column letter math, every row mapper's column count vs its tab header count, boolean coercion, snapshot inclusion of soft-deleted rows, queue lifecycle (enqueue → listPending → markAllSynced → markFailed bumps attempt_count).
+
+**Decisions**
+- ADR-012 documents the snapshot-vs-incremental tradeoff: 9a uses snapshot for correctness simplicity; 9b can switch to incremental without changing repo code (queue is already populated).
+- `same-origin-allow-popups` is the right COOP value for OAuth-via-popup. It still isolates us from arbitrary cross-origin iframes; OPFS sync access handles continue to work.
+- Sheet binding stored in `syncStore` (localStorage) so it survives reloads but is per-device. Each device chooses (or pastes) its own sheet — both should pick the same one.
+- Repos enqueue **inside** their existing DB transaction so a write + its queue entry are atomic. If the write rolls back, the queue entry rolls back too.
+
+**Open follow-ups**
+- **Phase 9b — pull + reconcile.** Without pull, two devices pushing in alternation overwrite each other. Pull-then-push on every "Sync now" + auto-sync on boot will fix it.
+- The "pending changes" counter shows post-seed inflation (~50 items) until the first successful push because the seed enqueues every row. Phase 9b can short-circuit enqueue during seed if desired, or just let the first push absorb the seed.
+- Auto-push on save (debounced ~3s) is deferred to 9b along with pull.
+- The user must add `VITE_GOOGLE_CLIENT_ID` to Vercel env vars after creating the OAuth client. Without it the SyncCard shows "not configured" copy and the rest of the app works as before.
+
+---
+
 ## 2026-05-04 — Vercel deploy preparation
 
 **What was done**

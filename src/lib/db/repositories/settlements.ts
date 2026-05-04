@@ -1,6 +1,7 @@
 import { exec, selectAll, selectScalar } from "../client";
 import type { OwnerType, SettlementLedgerEntry } from "../types";
 import { newId, nowIso } from "./_helpers";
+import { enqueueChange } from "@/lib/sync/queue";
 
 interface CreateLedgerInput
   extends Omit<SettlementLedgerEntry, "id" | "created_at" | "updated_at"> {
@@ -46,6 +47,7 @@ export const settlementsRepo = {
         e.updated_at,
       ],
     );
+    enqueueChange("settlement", e.id, "CREATE");
     return e;
   },
 

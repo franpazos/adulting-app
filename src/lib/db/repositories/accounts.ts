@@ -1,6 +1,7 @@
 import { exec, selectAll, selectOne } from "../client";
 import type { Account, AccountType } from "../types";
 import { coerceBooleans, fromBool, newId, nowIso } from "./_helpers";
+import { enqueueChange } from "@/lib/sync/queue";
 
 const BOOL_KEYS = ["is_archived"] as const satisfies ReadonlyArray<keyof Account>;
 
@@ -62,6 +63,7 @@ export const accountsRepo = {
         a.updated_at,
       ],
     );
+    enqueueChange("account", a.id, "CREATE");
     return a;
   },
 };
