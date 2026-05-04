@@ -35,14 +35,15 @@ If you're an agent picking this project up cold, read 1 → 2 → 4 → 7 → 8 
 
 ## Tech stack at a glance
 
+- **Node 22 LTS** (pinned in `.nvmrc`; minimum 20.19 declared in `package.json` engines)
 - React 19 + TypeScript + Vite 6
 - Tailwind v3 (CSS-variable tokens) + Radix-flavored shadcn-style primitives (built locally as needed)
 - React Router v7
 - Zustand for UI/session state
 - SQLite via `@sqlite.org/sqlite-wasm` with OPFS persistence (requires COOP/COEP)
 - i18next + react-i18next (en + es)
-- vite-plugin-pwa for installability
-- Vitest + Testing Library for tests
+- vite-plugin-pwa + Workbox for installability and offline boot
+- Vitest + Testing Library + happy-dom for tests
 - Google Sheets API client-side (Phase 9)
 - pnpm
 

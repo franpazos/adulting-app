@@ -4,6 +4,21 @@ Short, dated records of decisions that shape the codebase. Each entry is an ADR-
 
 ---
 
+## ADR-011 — Node 22 LTS as the runtime baseline
+**Date:** 2026-05-04
+**Status:** Accepted (supersedes the temporary lru-cache override from Phase 8)
+**Context:** Phase 8 (PWA) failed to build under Node 18.16.1 because `lru-cache@11`'s commonjs build calls `tracingChannel`, an API only present in Node 19+. We worked around it with a pnpm override pinning v11+ down to v10. Node 18 reached end-of-life in April 2025 anyway.
+**Decision:** Adopt Node 22 LTS (Jod) as the project baseline:
+  - `.nvmrc` pins `22` so any nvm-aware shell auto-switches when entering the directory.
+  - `package.json` `engines` declares `node: ">=20.19.0"` (allow Node 20+ as a floor; Vite 7 needs the .19 patch).
+  - The `pnpm.overrides.lru-cache` workaround from Phase 8 is removed.
+**Consequences:**
+- Anyone cloning the repo needs Node 20.19+ or 22+. CI (when added) should pin 22.
+- The build is now ~30 KB smaller in node_modules (no v10 fallback) and `lru-cache` resolves to its current major.
+- We can later upgrade to Vite 7 (Node 20.19+ requirement) without runtime work.
+
+---
+
 ## ADR-010 — Allocation model and scope semantics
 **Date:** 2026-05-03
 **Status:** Accepted

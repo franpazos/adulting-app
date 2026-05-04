@@ -33,7 +33,7 @@ pnpm install
 pnpm dev        # http://localhost:5173
 ```
 
-`pnpm` 10+ and Node 18+ are required.
+**Node 22 LTS** (pinned in `.nvmrc`; minimum 20.19 enforced via `package.json` engines) and **pnpm 10+** are required. If you use nvm, `cd` into the directory and run `nvm use` to pick up the correct Node automatically.
 
 ### Other commands
 
