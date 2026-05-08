@@ -4,6 +4,49 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-08 — Phase 10 polish (charts, motion, a11y, code-splitting, README)
+
+**What was done**
+
+Closed Phase 10. Five sub-items, all landed.
+
+- **Code-split routes** (`src/app/router.tsx`): every feature page wrapped in `React.lazy` + `Suspense`, except `HomePage` which stays eager (it's the landing page, lazy-loading it would only buy a loading flash). New `lazyNamed()` helper handles named-export modules so we don't need to default-export every page. Fallback is a discreet `LogoMark` pulse.
+  - Bundle impact: main JS dropped from 896 kB → 802 kB (266 kB → 244 kB gzip). Per-route chunks land in 3–10 kB / 1–4 kB gzip range. The remaining bulk in main is sqlite-wasm + React + zustand + lucide; further wins would require lazy DB init, deferred.
+- **Charts** on Home:
+  - `src/components/charts/DonutChart.tsx`: pure SVG, declarative slices `{ id, percent, color }`, with `minPercent` threshold that merges tiny wedges into a neutral "Other" slice so the donut doesn't fragment visually. `centerLabel` slot via `<foreignObject>`.
+  - `src/components/charts/CompareBar.tsx`: horizontal stacked bar for income vs expenses with a `transition-[width]` so values animate when the month/scope changes.
+  - Wired into `HomePage`: donut next to the category list, CompareBar below the stats grid (only when there's at least one income or expense).
+  - No charting dependency added — both components are <100 lines each.
+- **Motion polish** (`src/index.css`):
+  - Body and any `[data-theme-surface]` element transitions `bg-color`, `color`, `border-color` over 220 ms cubic-bezier on theme switch — light/dark/system flips no longer hard-cut.
+  - `.tap-card` utility: `transform scale(0.985)` on `:active` for tappable cards (140 ms ease).
+  - `.pop-in` keyframe (240 ms scale 0.94 → 1.02 → 1) applied to `SettlementChip` with a `key` prop tied to the consequence so the chip pulses every time source/owner/amount changes the result.
+  - All three gated by `@media (prefers-reduced-motion: reduce)`.
+- **Accessibility audit pass**:
+  - `IconButton` now guarantees a 44 × 44 px tappable area regardless of visual size, via a transparent `::before { inset: 0; m-auto; h-11; w-11 }` pseudo-element. No layout impact, fixes Apple HIG / WCAG 2.5.5.
+  - `BottomNav`: `+` button gets `focus-visible:ring-4` (more pronounced for the primary action), nav items get `focus-visible:ring-2` + `min-h-11` and rounded focus area.
+  - `SegmentedControl` buttons get `focus-visible:ring-2` + `min-h-9`.
+  - `AppShell` gets a "Skip to content" link — `sr-only` until focused, then becomes a fixed violet pill at top-left, hrefs to `#main-content` so keyboard users can bypass the nav.
+- **README** rewritten end-to-end:
+  - Replaces the placeholder structure that hadn't been updated since Phase 0.
+  - Sections: at-a-glance feature list, agent reading order, dev commands, env vars, architecture in one screen + layering rules, **persistence strategy** (3-tier), **Google Sheets sync workflow** (how OAuth + bind + auto-sync interact), deploy guide (with Vercel + Google Cloud OAuth setup checklist), testing layout, contributing rules.
+- **Build clean:** typecheck passes, 97/97 tests, production build green.
+
+**Decisions**
+- **Hand-rolled SVG charts over a library.** For two visualizations on one screen, importing recharts/visx (~80 kB) would have erased the code-splitting win. The donut + bar combined are <2 kB gzipped.
+- **`HomePage` stays eager.** Code-splitting it would mean every cold start shows the fallback while the chunk fetches, just to avoid duplicating ~6 kB. Net negative UX.
+- **44 px hit target via pseudo-element**, not visual resize. Several existing `IconButton` instances are deliberately compact (e.g. close-X in headers); blowing them up to 44 px would have rebroken the tight visual rhythm. The pseudo-element is the right escape hatch — invisible, doesn't affect layout, captures taps in the surrounding gutter.
+- **Skip-link before nav**, not via `aria-skip-content` attribute. Standard accessible pattern, works in every screen reader, no extra dependencies.
+
+**Open follow-ups**
+- The bundle warning (`> 500 kB`) still fires on the main chunk. Future polish could lazy-load `@sqlite.org/sqlite-wasm` itself (defer DB init until after first paint) — but that would change the boot ordering meaningfully, so deferred.
+- The `tap-card` utility is defined but not yet applied to any specific Card on screens — opportunistic adoption when feature work touches a tappable card.
+- A formal Lighthouse / axe audit hasn't been run; the changes here are the obvious-wins pass. A future polish session could run an automated audit and patch whatever remains.
+
+**Phase 10 closes the original execution plan.** Remaining work is opportunistic polish (Home dashboard expansion, Transactions filters/search, Add Expense smart defaults, Settings expansion, Accounts CRUD) — all listed in execution-plan.md as carryover, none blocking daily use.
+
+---
+
 ## 2026-05-08 — Phase 9 finish (faster auto-sync, import-on-bind, manualOnly, month-sync scaffold)
 
 **What was done**

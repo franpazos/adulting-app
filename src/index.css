@@ -23,6 +23,12 @@
   body {
     @apply bg-bg text-text-primary font-sans;
     min-height: 100dvh;
+    /* Smooth theme transitions when the user toggles light/dark. Targets
+       only colour-related properties so positional/layout transitions
+       elsewhere stay snappy. */
+    transition:
+      background-color 220ms cubic-bezier(0.22, 1, 0.36, 1),
+      color 220ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   h1, h2, h3, h4 {
@@ -32,6 +38,15 @@
   /* iOS-feel tap highlight removed for branded controls */
   button, a {
     -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Surfaces follow the same smooth theme cross-fade. Tailwind utility
+     `transition-colors` only covers a few props; this catches the rest. */
+  [data-theme-surface] {
+    transition:
+      background-color 220ms cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 220ms cubic-bezier(0.22, 1, 0.36, 1),
+      color 220ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 }
 
@@ -51,9 +66,47 @@
   animation: route-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Subtle press feedback for tappable cards. Pair with `tap-card` class. */
+.tap-card {
+  transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.tap-card:active {
+  transform: scale(0.985);
+}
+
+/* Pop animation for live amounts that change in response to user input
+   (e.g. the consequence chip in Add Expense). Apply by adding the
+   `pop-in` class with a `key` prop so React remounts the node. */
+@keyframes pop-in {
+  0% {
+    opacity: 0.4;
+    transform: scale(0.94);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.pop-in {
+  animation: pop-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .route-frame {
+  .route-frame,
+  .pop-in {
     animation: none;
+  }
+  .tap-card,
+  body,
+  [data-theme-surface] {
+    transition: none;
+  }
+  .tap-card:active {
+    transform: none;
   }
 }
 

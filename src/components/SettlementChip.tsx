@@ -21,10 +21,19 @@ export function SettlementChip({
 }: SettlementChipProps) {
   const { t } = useTranslation();
 
+  // `key` forces a remount when the chip content meaningfully changes so
+  // the `pop-in` animation runs each time the consequence shifts (e.g.
+  // toggling source from Joint to Personal).
+  const popKey = settlement
+    ? `s:${settlement.from}>${settlement.to}:${settlement.amount}`
+    : "no-impact";
+
   if (!settlement) {
     return (
       <div
+        key={popKey}
         className={cn(
+          "pop-in",
           "inline-flex items-center justify-center gap-2",
           "px-3.5 py-2 rounded-full",
           "bg-positive/10 text-positive",
@@ -40,7 +49,9 @@ export function SettlementChip({
 
   return (
     <div
+      key={popKey}
       className={cn(
+        "pop-in",
         "inline-flex items-center justify-center gap-2",
         "px-3.5 py-2 rounded-full",
         "bg-violet/10 text-violet-ink dark:text-violet-soft",

@@ -164,8 +164,13 @@ This document is the living plan of work. Each phase ends with a checklist updat
 - [ ] Conflict-resolution UI for the rare case the user wants local to win when remote is newer (deferred — last-writer-wins covers the common case)
 - [ ] Wire `ensureMonthSheet` into auto-sync once the user nominates their template tab title (deferred per spec §14.6)
 
-## Phase 10 — Polish
-- [ ] Motion (sheet/card/theme transitions)
-- [ ] Charts (donut + compact bars)
-- [ ] Accessibility audit (AA contrast, ≥44px hit targets, focus states)
-- [ ] README finalize, contributing notes, deployment notes
+## Phase 10 — Polish ✅
+- [x] **Code-split routes** via `React.lazy` + `Suspense`. Main bundle dropped from 896 kB → 802 kB; per-route chunks 3–10 kB each (gzipped 1–4 kB)
+- [x] **Charts** on Home: SVG `DonutChart` for the category breakdown (with merge-tiny-slices into "Other"), `CompareBar` for income vs expenses below the stats grid. Pure SVG, no charting dep.
+- [x] **Motion polish**: smooth theme cross-fade (220 ms on body bg/color via `transition` in base layer), `tap-card` press feedback for tappable cards, `pop-in` keyframe on the SettlementChip so the consequence pulses when source/owner toggles. All gated behind `prefers-reduced-motion: reduce`.
+- [x] **Accessibility audit pass**:
+  - 44 × 44 px hit area on `IconButton` regardless of visual size, via a transparent `::before` pseudo-element so layout doesn't change.
+  - Bottom nav `+` button + nav items get `focus-visible:ring`, `min-h-11`.
+  - `SegmentedControl` buttons gain `focus-visible:ring` + `min-h-9`.
+  - Keyboard skip link (`Skip to content`) at the top of `AppShell`, sr-only until focused, jumps past the bottom nav for screen-reader / keyboard users.
+- [x] **README finalize**: deployment, env vars, persistence strategy (3-tier), Sheets sync workflow, testing layout, contributing rules. Replaces the placeholder Phase-0 README.

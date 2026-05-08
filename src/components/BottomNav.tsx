@@ -38,6 +38,7 @@ export function BottomNav() {
                 "h-14 w-14 rounded-full bg-violet text-white",
                 "shadow-violet-glow flex items-center justify-center",
                 "active:scale-95 transition-transform -translate-y-3",
+                "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet/40",
               )}
             >
               <Plus className="size-7" strokeWidth={2.4} />
@@ -67,7 +68,9 @@ function NavItem({ to, icon: Icon, label, end }: NavItemProps) {
       end={end}
       className={({ isActive }) =>
         cn(
-          "flex flex-col items-center gap-1 py-1 text-[11px] font-medium",
+          "flex flex-col items-center gap-1 py-1.5 text-[11px] font-medium",
+          "min-h-11 rounded-lg",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet/60",
           isActive ? "text-violet" : "text-text-secondary",
         )
       }

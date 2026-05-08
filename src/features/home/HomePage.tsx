@@ -16,6 +16,8 @@ import {
   type CategorySliceRow,
 } from "@/lib/calculations";
 import { debtsRepo, settlementsRepo } from "@/lib/db";
+import { DonutChart } from "@/components/charts/DonutChart";
+import { CompareBar } from "@/components/charts/CompareBar";
 
 export function HomePage() {
   const { t } = useTranslation();
@@ -101,6 +103,19 @@ export function HomePage() {
             tone="violet"
           />
         </div>
+        {(summary.income > 0 || summary.expenses > 0) && (
+          <div className="mt-5 space-y-1">
+            <CompareBar
+              positive={summary.income}
+              negative={summary.expenses}
+              ariaLabel={`Ingresos ${summary.income} vs gastos ${summary.expenses}`}
+            />
+            <div className="flex justify-between text-[11px] text-text-secondary">
+              <span>+{formatEUR(summary.income)}</span>
+              <span>−{formatEUR(summary.expenses)}</span>
+            </div>
+          </div>
+        )}
       </Card>
 
       <Card>
@@ -111,24 +126,45 @@ export function HomePage() {
         {categories.length === 0 ? (
           <p className="t-label">Sin gastos este mes.</p>
         ) : (
-          <ul className="space-y-3">
-            {categories.map((c) => (
-              <li
-                key={c.category_id ?? c.name}
-                className="flex items-center gap-3"
-              >
-                <span
-                  className="size-2.5 rounded-full"
-                  style={{ background: c.color ?? "#9CA3AF" }}
-                />
-                <span className="flex-1 text-sm">{c.name}</span>
-                <span className="t-label tabular-nums">{c.percent}%</span>
-                <span className="font-medium tabular-nums tracking-tight">
-                  {formatEUR(c.amount)}
+          <div className="flex items-center gap-5">
+            <DonutChart
+              size={56}
+              thickness={0.36}
+              ariaLabel="Distribución de gastos por categoría"
+              slices={categories.map((c) => ({
+                id: c.category_id ?? c.name,
+                percent: c.percent,
+                color: c.color ?? "rgb(var(--color-text-muted))",
+              }))}
+              centerLabel={
+                <span className="text-[10px] font-medium text-text-secondary leading-tight">
+                  {categories.length}
+                  <br />
+                  cat.
                 </span>
-              </li>
-            ))}
-          </ul>
+              }
+            />
+            <ul className="flex-1 space-y-2.5 min-w-0">
+              {categories.map((c) => (
+                <li
+                  key={c.category_id ?? c.name}
+                  className="flex items-center gap-2.5 min-w-0"
+                >
+                  <span
+                    className="size-2.5 rounded-full shrink-0"
+                    style={{ background: c.color ?? "#9CA3AF" }}
+                  />
+                  <span className="flex-1 text-sm truncate">{c.name}</span>
+                  <span className="t-label tabular-nums shrink-0">
+                    {c.percent}%
+                  </span>
+                  <span className="font-medium tabular-nums tracking-tight text-sm shrink-0">
+                    {formatEUR(c.amount)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </Card>
 

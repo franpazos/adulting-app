@@ -1,21 +1,98 @@
+import { lazy, Suspense, type ReactNode } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import { AppShell } from "./AppShell";
 import { HomePage } from "@/features/home/HomePage";
-import { TransactionsPage } from "@/features/transactions/TransactionsPage";
-import { EditExpensePage } from "@/features/transactions/EditExpensePage";
-import { AddExpensePage } from "@/features/add-expense/AddExpensePage";
-import { DebtsPage } from "@/features/debts/DebtsPage";
-import { DebtDetailPage } from "@/features/debts/DebtDetailPage";
-import { PayDebtPage } from "@/features/debts/PayDebtPage";
-import { MorePage } from "@/features/more/MorePage";
-import { SettingsPage } from "@/features/settings/SettingsPage";
-import { SettlementsPage } from "@/features/settlements/SettlementsPage";
-import { SettleUpPage } from "@/features/settlements/SettleUpPage";
-import { RecurringPage } from "@/features/recurring/RecurringPage";
-import { RecurringFormPage } from "@/features/recurring/RecurringFormPage";
-import { CategoriesPage } from "@/features/categories/CategoriesPage";
-import { CategoryFormPage } from "@/features/categories/CategoryFormPage";
-import { AccountsPage } from "@/features/accounts/AccountsPage";
+import { LogoMark } from "@/components/Logo";
+
+// Home stays eager — it's the landing page after boot, the bundle savings
+// from lazy-loading it would be cancelled by the extra loading spinner on
+// first paint. Everything else is code-split: each feature becomes its own
+// chunk, fetched on first navigation.
+const TransactionsPage = lazyNamed(
+  () => import("@/features/transactions/TransactionsPage"),
+  "TransactionsPage",
+);
+const EditExpensePage = lazyNamed(
+  () => import("@/features/transactions/EditExpensePage"),
+  "EditExpensePage",
+);
+const AddExpensePage = lazyNamed(
+  () => import("@/features/add-expense/AddExpensePage"),
+  "AddExpensePage",
+);
+const DebtsPage = lazyNamed(
+  () => import("@/features/debts/DebtsPage"),
+  "DebtsPage",
+);
+const DebtDetailPage = lazyNamed(
+  () => import("@/features/debts/DebtDetailPage"),
+  "DebtDetailPage",
+);
+const PayDebtPage = lazyNamed(
+  () => import("@/features/debts/PayDebtPage"),
+  "PayDebtPage",
+);
+const MorePage = lazyNamed(
+  () => import("@/features/more/MorePage"),
+  "MorePage",
+);
+const SettingsPage = lazyNamed(
+  () => import("@/features/settings/SettingsPage"),
+  "SettingsPage",
+);
+const SettlementsPage = lazyNamed(
+  () => import("@/features/settlements/SettlementsPage"),
+  "SettlementsPage",
+);
+const SettleUpPage = lazyNamed(
+  () => import("@/features/settlements/SettleUpPage"),
+  "SettleUpPage",
+);
+const RecurringPage = lazyNamed(
+  () => import("@/features/recurring/RecurringPage"),
+  "RecurringPage",
+);
+const RecurringFormPage = lazyNamed(
+  () => import("@/features/recurring/RecurringFormPage"),
+  "RecurringFormPage",
+);
+const CategoriesPage = lazyNamed(
+  () => import("@/features/categories/CategoriesPage"),
+  "CategoriesPage",
+);
+const CategoryFormPage = lazyNamed(
+  () => import("@/features/categories/CategoryFormPage"),
+  "CategoryFormPage",
+);
+const AccountsPage = lazyNamed(
+  () => import("@/features/accounts/AccountsPage"),
+  "AccountsPage",
+);
+
+/** Wrap a named-export module so it can be passed to `React.lazy`. */
+function lazyNamed<K extends string>(
+  importer: () => Promise<Record<K, React.ComponentType>>,
+  name: K,
+) {
+  return lazy(async () => {
+    const mod = await importer();
+    return { default: mod[name] };
+  });
+}
+
+function PageFallback() {
+  return (
+    <div className="min-h-[60vh] grid place-items-center text-text-secondary">
+      <div className="flex flex-col items-center gap-2 animate-pulse">
+        <LogoMark className="size-8 opacity-60" />
+      </div>
+    </div>
+  );
+}
+
+function Lazy(node: ReactNode): ReactNode {
+  return <Suspense fallback={<PageFallback />}>{node}</Suspense>;
+}
 
 export const router = createBrowserRouter([
   {
@@ -23,23 +100,23 @@ export const router = createBrowserRouter([
     element: <AppShell />,
     children: [
       { index: true, element: <HomePage /> },
-      { path: "transactions", element: <TransactionsPage /> },
-      { path: "transactions/:id", element: <EditExpensePage /> },
-      { path: "add", element: <AddExpensePage /> },
-      { path: "debts", element: <DebtsPage /> },
-      { path: "debts/:id", element: <DebtDetailPage /> },
-      { path: "debts/:id/pay", element: <PayDebtPage /> },
-      { path: "more", element: <MorePage /> },
-      { path: "settings", element: <SettingsPage /> },
-      { path: "settlements", element: <SettlementsPage /> },
-      { path: "settlements/settle", element: <SettleUpPage /> },
-      { path: "recurring", element: <RecurringPage /> },
-      { path: "recurring/new", element: <RecurringFormPage /> },
-      { path: "recurring/:id", element: <RecurringFormPage /> },
-      { path: "categories", element: <CategoriesPage /> },
-      { path: "categories/new", element: <CategoryFormPage /> },
-      { path: "categories/:id", element: <CategoryFormPage /> },
-      { path: "accounts", element: <AccountsPage /> },
+      { path: "transactions", element: Lazy(<TransactionsPage />) },
+      { path: "transactions/:id", element: Lazy(<EditExpensePage />) },
+      { path: "add", element: Lazy(<AddExpensePage />) },
+      { path: "debts", element: Lazy(<DebtsPage />) },
+      { path: "debts/:id", element: Lazy(<DebtDetailPage />) },
+      { path: "debts/:id/pay", element: Lazy(<PayDebtPage />) },
+      { path: "more", element: Lazy(<MorePage />) },
+      { path: "settings", element: Lazy(<SettingsPage />) },
+      { path: "settlements", element: Lazy(<SettlementsPage />) },
+      { path: "settlements/settle", element: Lazy(<SettleUpPage />) },
+      { path: "recurring", element: Lazy(<RecurringPage />) },
+      { path: "recurring/new", element: Lazy(<RecurringFormPage />) },
+      { path: "recurring/:id", element: Lazy(<RecurringFormPage />) },
+      { path: "categories", element: Lazy(<CategoriesPage />) },
+      { path: "categories/new", element: Lazy(<CategoryFormPage />) },
+      { path: "categories/:id", element: Lazy(<CategoryFormPage />) },
+      { path: "accounts", element: Lazy(<AccountsPage />) },
     ],
   },
 ]);

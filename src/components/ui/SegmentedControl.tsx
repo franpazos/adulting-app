@@ -84,8 +84,9 @@ export function SegmentedControl<T extends string>({
             aria-selected={active}
             onClick={() => onChange(opt.value)}
             className={cn(
-              "relative z-10 px-4 py-1.5 rounded-full text-sm font-medium",
+              "relative z-10 px-4 py-1.5 rounded-full text-sm font-medium min-h-9",
               "transition-colors duration-150",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet/60",
               active
                 ? tone === "violet"
                   ? "text-white"
