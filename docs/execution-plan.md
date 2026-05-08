@@ -145,15 +145,17 @@ This document is the living plan of work. Each phase ends with a checklist updat
 - [x] EN + ES i18n for the sync namespace
 - [x] 11 new tests (writers column counts, boolean coercion, snapshot completeness, queue lifecycle, column letter math). Total 85/85 passing.
 
-### 9b — Pull + reconcile (next)
-- [ ] Reader functions (row → entity per tab)
-- [ ] `pullAll`: download all raw_* tabs, reconcile by id + updated_at, soft-delete locally rows missing remotely
-- [ ] "Sync now" runs pull then push
-- [ ] Conflict resolution rules (local wins by default unless user-confirmed otherwise)
-- [ ] Auto-sync on app boot + after writes (debounced)
-- [ ] Sync status badge in AppHeader (idle / syncing / error)
+### 9b — Pull + reconcile ✅ (core)
+- [x] Reader functions (row → entity per tab) — `src/lib/sync/readers.ts`
+- [x] `pullAll`: download all raw_* tabs, reconcile by id + updated_at; remote `is_deleted=1` propagates as soft-delete locally
+- [x] `syncAll` = pull → push, used by both "Sync now" and the auto-sync hook
+- [x] Conflict resolution: last-writer-wins by `updated_at`. Pull bypasses `enqueueChange` so synced rows aren't re-pushed
+- [x] Auto-sync hook (`useAutoSync`): boot sync (≥60s gap), debounced 3s on `dbVersion` bump, retry when back online
+- [x] Sync status badge in AppHeader (`SyncBadge`): syncing spinner / 2s "Synced" confirmation / error pill
+- [x] Tests (10 new): writer→reader round-trip per entity, FX null preservation, applyTab insert/update/skip/soft-delete propagation, malformed-row tolerance
 - [ ] Month-sync service for the formatted monthly tabs (spec §14.6)
-- [ ] Explicit import-from-Sheets flow
+- [ ] Explicit import-from-Sheets flow (one-shot pull without push, for first-device bootstrap)
+- [ ] Conflict-resolution UI for the rare case the user wants local to win when remote is newer
 
 ## Phase 10 — Polish
 - [ ] Motion (sheet/card/theme transitions)

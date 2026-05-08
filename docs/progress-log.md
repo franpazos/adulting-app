@@ -4,6 +4,100 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-08 — Safari iOS persistence via IndexedDB snapshot
+
+**What was done**
+
+iPhone Safari can't initialize OPFS SAH Pool on the main thread (the synchronous access handle API isn't exposed). The DB was silently falling back to `:memory:` and losing all data on reload. Verified on a real iPhone — Settings showed "in-memory", and the console reported "Missing required OPFS APIs".
+
+Implemented Option B from the planning conversation: keep SQLite in-memory but persist a serialized snapshot to IndexedDB. See ADR-013 for the rationale.
+
+- **`src/lib/db/persistence.ts`** — single-key, single-store IDB wrapper: `loadSnapshot()`, `saveSnapshot(bytes)`, `clearSnapshot()`, `isPersistenceAvailable()`. ~80 lines, no new deps. Uses raw IndexedDB.
+- **`src/lib/db/client.ts`** — three-tier persistence strategy:
+  1. OPFS SAH Pool (Chrome) — unchanged, fastest path.
+  2. **In-memory + IDB snapshot** — new fallback. After OPFS fails, opens `:memory:`, attempts `loadSnapshot()`, calls `sqlite3_deserialize` to restore. Backend reported as `"memory-snapshot"`.
+  3. In-memory (no persistence) — last-resort if IDB is also unavailable. Backend reported as `"memory"` with a warning.
+- **Snapshot save lifecycle:**
+  - `markDirty()` runs from every `exec()` / `execScript()`. Schedules a 500ms-debounced async save via `flushSnapshot()`.
+  - In-flight saves coalesce: while one IDB put is running, additional dirty marks just keep `pendingSnapshot = true` and a follow-up save fires.
+  - `pagehide` + `visibilitychange → hidden` both trigger `flushSnapshotBlocking()` — synchronous serialize + fire-and-forget IDB put. Handles Safari putting the page into bfcache.
+  - `flushPendingSnapshot()` exported for explicit flush before destructive ops.
+- **Auto-snapshot disabled in tests** (`import.meta.env.MODE === "test"`) so happy-dom's IDB doesn't carry rows between test files. Tests exercise the primitives directly via `_internal.serializeCurrent` / `_internal.deserializeIntoCurrent`.
+- **Backend enum** gained a third state: `"opfs-sahpool" | "memory-snapshot" | "memory"`. Updated `dbStore.ts`, `SettingsPage.tsx`, and i18n (EN/ES) — both `opfs-sahpool` and `memory-snapshot` show a positive (green) pill since both are durable.
+- **Tests (2 new in `snapshot.test.ts`, total 97/97):**
+  - Serialize a populated DB → reset → fresh init → deserialize bytes → row counts and values match exactly.
+  - Idempotent: deserialize → serialize → deserialize gives the same DB.
+- **Build clean:** typecheck passes, `pnpm build` produces a 2 MB precache bundle as before.
+
+**Decisions**
+- See ADR-013 for the snapshot-vs-worker tradeoff. Short version: 138 query call sites would have to become async to use a worker; the snapshot path is ~150 lines and zero call-site changes.
+- Why `sqlite3_js_db_export` + `sqlite3_deserialize` instead of `VACUUM INTO`: the export API returns a Uint8Array directly (no temp file shuffle), and deserialize replaces the in-memory DB's "main" schema atomically. Faster and simpler for our case.
+- Why a single key (not chunked): typical dataset is well under 1 MB. IDB has no problem with a sub-MB blob in one entry. If we ever cross ~10 MB, we'd switch to chunked or the worker promiser path.
+- Why debounce 500ms: covers the burst of writes in `Add Expense` (insert tx + N allocation rows + recompute settlement_ledger entry, all in the same tick) without making the user wait. Visibility flushes catch anything still pending if they leave the page early.
+
+**How to validate on iPhone**
+1. Hard refresh the deployed PWA (or kill + reopen from home screen).
+2. Settings → "Local database" pill should now read "in-memory + snapshot" (positive/green tone), not "in-memory (no persistence)" (warning/amber).
+3. Add a test transaction.
+4. Force-quit Safari (swipe up the app card) → reopen.
+5. Transaction should still be there.
+
+**Open follow-ups**
+- The snapshot is opaque (raw SQLite file bytes). If a future debugging need arises, we can add a "Download snapshot" button in Settings for offline inspection.
+- Sam's phone, on its first install, will start empty and snapshot from there. The Sheets pull will populate it on first sync. We may still want an explicit "import from Sheets" flow for that bootstrap (already in the 9b carryover list).
+- Consider exposing `flushPendingSnapshot()` before the user explicitly logs out / disconnects sync so the latest writes are durable before a potentially destructive operation.
+
+---
+
+## 2026-05-08 — Phase 9b Google Sheets sync (pull + auto-sync)
+
+**What was done**
+
+Closed the pull half of Sheets sync. Two devices can now alternate pushes safely: the next sync pulls remote changes first, reconciles by `updated_at`, then pushes the merged state.
+
+- **Readers** (`src/lib/sync/readers.ts`): `parseUser`, `parseAccount`, `parseCategory`, `parseTransaction`, `parseAllocation`, `parseRecurring`, `parseDebt`, `parseDebtPayment`, `parseSettlement`. Each is the inverse of the corresponding `writers.ts` mapper. Defensive coercion (`str/num/bool`) handles Sheets' string-vs-number ambiguity and our 0/1 boolean encoding. Required-field readers throw with the field name; the pull worker treats those throws as "skip this row" and logs a warning.
+- **Pull worker** (`src/lib/sync/pull.ts`):
+  - `pullAll(spreadsheetId)` reads `A2:<lastCol>` for each `raw_*` tab in parallel, then runs all upserts in one `transaction()` for atomicity.
+  - Reconciliation = **last-writer-wins by `updated_at`**: insert if id absent locally, update if `remote.updated_at > local.updated_at`, skip otherwise. Counted into `PullReport.{inserted,updated,skipped}` per tab.
+  - Direct `exec` writes (separate `insert*`/`update*` per entity) **bypass `enqueueChange`** so synced rows don't re-enter the queue and bounce back on the next push.
+  - Remote `is_deleted = 1` propagates as a soft-delete locally on the next pull.
+  - Rows existing locally but **not** remotely are left alone — they're brand-new local writes pending push.
+  - `_internal` exports `loadLocalAges`, `applyTab`, `insertUser`, `updateUser`, `insertTransaction`, `updateTransaction` for tests.
+- **`syncAll`** (`src/lib/sync/sync.ts`): pull → push. If pull throws, push still runs (better to upload pending local writes than silently lose them); the report carries both errors so the UI can surface them. `SyncCard` now invokes `syncAll` (not bare `pushAll`) and bumps `dbVersion` when pull pulled in any new/updated row.
+- **Auto-sync hook** (`src/lib/sync/useAutoSync.ts`, mounted in `AppShell`):
+  - Boot sync once per app load when ≥60s have elapsed since `lastPushAt`.
+  - Debounced 3s sync on every `dbVersion` bump (so a burst of edits coalesces into one round trip).
+  - Retry sync when the browser comes back online and `dbVersion > syncedVersion`.
+  - Skips silently when DB isn't ready, offline, no valid token, no sheet bound, `manualOnly` is set, or a sync is already in flight (guarded by `inFlightRef` + `phase` check).
+- **Sync badge in AppHeader** (`SyncBadge`): violet "Syncing…" pill with spinner during pulling/pushing, 2-second positive "Synced" confirmation after success, expense-tone "Sync error" pill on failure. Hidden in steady state and when no sheet is bound.
+- **i18n**: added `sync.badge.{syncing,synced,error}` plus `sync.{syncNow,syncing,pulling,syncError}` in EN + ES.
+- **Type fixes**: `pull.ts` reconcilers now accept `SheetRow[]` (was `unknown[][]`) so they line up with `parseX(row: SheetRow)`. `SyncCard.tsx` now defines `sumValues` locally (was implicitly imported from nowhere).
+- **`syncStore`** gained a `manualOnly` flag (persisted) for users who want to opt out of auto-sync. Not wired to UI yet — surface in Settings later if needed.
+- **Tests (10 new in `pull.test.ts`, total 95/95):**
+  - Writer → reader round-trip preserves every entity, including FX null columns.
+  - Boolean round-trip (`is_active` true → `1` → `true`).
+  - FX columns survive when present (`exchange_rate`, `amount_in_account_currency`, `amount_in_debt_currency`).
+  - Reader rejects rows missing the primary key.
+  - `applyTab`: inserts brand-new remote tx, updates when remote is newer, skips when local is newer (last-writer-wins), propagates remote soft-deletes.
+  - Malformed rows are skipped without aborting the run.
+  - `loadLocalAges` size matches local row count.
+
+**Decisions**
+- **Last-writer-wins by `updated_at`** (no per-field merge, no vector clocks). For a two-user app with distinct edit cadences this is correct >99% of the time; the rare conflict case (two devices editing the same row within 3s + offline + simultaneous push) can be addressed later with an explicit conflict UI when pulled-row `updated_at == local.updated_at` but contents differ.
+- **Pull bypasses the sync queue.** The queue's job is to track *local-origin* changes that need to push. Sync-derived writes shouldn't enter it — otherwise every pull would trigger a redundant push of the rows we just received.
+- **Pull-then-push order** (not push-then-pull). Push first risks overwriting newer remote rows we haven't seen yet; pull first ensures local edits with later `updated_at` survive into the merged state pushed back.
+- **Auto-sync on `dbVersion` bump, not on individual repo events.** `dbVersion` is already bumped after every meaningful write, so debouncing on it gives us "after-write sync" for free without instrumenting every repo.
+- **Boot sync gated to ≥60s gap** so a fast page reload doesn't burn an extra round trip.
+
+**Open follow-ups**
+- **Month-sync service** for the formatted monthly tabs (spec §14.6) — Phase 9b's only remaining must-have.
+- **Explicit "import from Sheets"** flow for first-device bootstrap (pull-only, no push, with a confirm step since it would clobber the freshly-seeded local rows on a clean install).
+- **Conflict UI**: when remote and local both edited within the same `updated_at` second (pathological but possible), surface a chooser. Currently the pull silently wins.
+- **`manualOnly` toggle** in Settings → SyncCard. Stub exists in `syncStore` and is honored by `useAutoSync`; just needs the UI control.
+- The "pending changes" counter in `SyncCard` will go to zero on the first successful auto-sync after boot. If the seed-pollution count on a fresh install is jarring, short-circuit `enqueueChange` during the seed.
+
+---
+
 ## 2026-05-04 — Phase 9a Google Sheets sync (push)
 
 **What was done**

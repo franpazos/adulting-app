@@ -4,6 +4,31 @@ Short, dated records of decisions that shape the codebase. Each entry is an ADR-
 
 ---
 
+## ADR-013 — IndexedDB snapshot for Safari iOS persistence
+**Date:** 2026-05-08
+**Status:** Accepted (Phase 9b follow-up)
+**Context:** Safari on iOS does not expose `createSyncAccessHandle` on the main thread, so `installOpfsSAHPoolVfs` fails with "Missing required OPFS APIs". The DB falls back to `:memory:` and the user loses everything on reload — confirmed on a real iPhone. Two paths considered:
+  1. **Worker promiser** — move sqlite-wasm into a dedicated Web Worker where SAH Pool works on Safari. Correct but async-ifies all 138 query call sites and every page-level `useMemo` reading the DB. Estimated ~1 day of refactor work, non-trivial regression risk.
+  2. **In-memory + IndexedDB snapshot** — keep sqlite in `:memory:` on the main thread; after every write, serialize the entire DB via `sqlite3_js_db_export` and persist the bytes to a single IndexedDB key. On boot, deserialize before migrations run.
+
+**Decision:** Take path 2. The dataset for a two-user household is tiny (KBs to maybe a few hundred KB), serialization is sub-millisecond, and the call-site signature stays synchronous. Wired in `src/lib/db/persistence.ts` + the snapshot machinery in `client.ts`.
+
+**Mechanics:**
+  - `markDirty()` is called from `exec()` and `execScript()`. It schedules a 500ms-debounced async save so a burst of writes (e.g. an Add Expense flow that touches `transactions`, `transaction_allocations`, and `settlement_ledger` in the same tick) coalesces into one IDB put.
+  - `pagehide` and `visibilitychange → hidden` both trigger a synchronous serialize + fire-and-forget IDB put. Safari typically lets an in-progress IDB transaction commit even as the page enters bfcache.
+  - Pull-from-Sheets writes go through `exec`, so they're snapshotted just like local writes.
+  - Backend enum gains a third state, `"memory-snapshot"`, distinct from the `"memory"` (no-persistence) fallback when IDB is also unavailable. Settings shows a green pill for both `"opfs-sahpool"` and `"memory-snapshot"`.
+  - Auto-snapshot is disabled under Vitest (`import.meta.env.MODE === "test"`) so happy-dom's IDB doesn't leak state across test files. The serialize/deserialize primitives are exposed via `_internal` for tests that want to exercise them directly.
+
+**Consequences:**
+  - Safari iOS now durably persists data across reloads + app cold-starts via IDB.
+  - Every write triggers a full DB serialization. At our scale this is invisible (<1ms); if the dataset ever grows past ~5 MB, we'd need to switch to the worker promiser.
+  - The IDB blob is opaque (raw SQLite file format). It's not human-inspectable like the OPFS path was, but the Sheets export remains the human-readable snapshot of record.
+  - The same code path runs on Chrome too, but Chrome takes the OPFS SAH Pool branch first and never falls through to the snapshot path. So there's zero behavioral change there.
+  - If a write happens between the last serialize and a sudden iOS process kill, that write is lost. The 500ms debounce window plus the visibility flush makes this rare; Sheets sync provides a second safety net since pushed writes survive even if the local IDB blob is stale.
+
+---
+
 ## ADR-012 — Sheets sync: snapshot push first, incremental later
 **Date:** 2026-05-04
 **Status:** Accepted (Phase 9a)

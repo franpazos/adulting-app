@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
 type Status = "idle" | "initializing" | "ready" | "error";
-type Backend = "opfs-sahpool" | "memory";
+type Backend = "opfs-sahpool" | "memory-snapshot" | "memory";
 
 interface DbState {
   status: Status;

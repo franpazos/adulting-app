@@ -25,8 +25,12 @@ import { listPending } from "@/lib/sync/queue";
 import { useDbStore } from "@/store/dbStore";
 import { parseSpreadsheetId } from "@/lib/google/drive-api";
 import { getSpreadsheet } from "@/lib/google/sheets-api";
-import { pushAll } from "@/lib/sync/push";
+import { syncAll } from "@/lib/sync/sync";
 import { cn } from "@/lib/utils/cn";
+
+function sumValues(map: Record<string, number>): number {
+  return Object.values(map).reduce((acc, n) => acc + n, 0);
+}
 
 export function SyncCard() {
   const { t, i18n } = useTranslation();
@@ -46,6 +50,7 @@ export function SyncCard() {
   const setLastPushAt = useSyncStore((s) => s.setLastPushAt);
   const lastError = useSyncStore((s) => s.lastError);
   const setError = useSyncStore((s) => s.setError);
+  const bumpDbVersion = useDbStore((s) => s.bumpVersion);
 
   const connected = authStatus === "connected" && hasValidToken(token);
   const configured = isGoogleClientConfigured();
@@ -117,7 +122,28 @@ export function SyncCard() {
               setPhase("pushing");
               setError(null);
               try {
-                await pushAll(sheet.id);
+                const report = await syncAll(sheet.id);
+                // If pull or push had an error, surface the first one but
+                // count the run as a partial success when one half worked.
+                if (report.pullError && report.pushError) {
+                  throw new Error(report.pushError);
+                }
+                if (report.pullError) {
+                  setError(report.pullError);
+                }
+                if (report.pushError) {
+                  setError(report.pushError);
+                  setPhase("error");
+                  return;
+                }
+                // If pull pulled in any new/updated row, dependent pages
+                // (Home, Transactions) need to refresh their useMemos.
+                if (report.pull) {
+                  const totalChanges =
+                    sumValues(report.pull.inserted) +
+                    sumValues(report.pull.updated);
+                  if (totalChanges > 0) bumpDbVersion();
+                }
                 setLastPushAt(new Date().toISOString());
                 setPhase("success");
               } catch (err) {

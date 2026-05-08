@@ -238,7 +238,16 @@
     "pushNow": "Push now",
     "pushing": "Pushing…",
     "pushedJustNow": "Pushed just now",
-    "unlinkSheet": "Unlink sheet"
+    "unlinkSheet": "Unlink sheet",
+    "syncNow": "Sync now",
+    "syncing": "Syncing…",
+    "pulling": "Pulling…",
+    "syncError": "Sync error",
+    "badge": {
+      "syncing": "Syncing…",
+      "synced": "Synced",
+      "error": "Sync error"
+    }
   },
   "install": {
     "title": "Install Adulting",
@@ -266,7 +275,8 @@
     "database": "Local database",
     "backend": "Backend",
     "backendDurable": "OPFS (durable)",
-    "backendMemory": "in-memory",
+    "backendSnapshot": "in-memory + snapshot",
+    "backendMemory": "in-memory (no persistence)",
     "seededFresh": "Seeded fresh dataset on this load."
   }
 }

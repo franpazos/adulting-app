@@ -41,10 +41,18 @@ export function SettingsPage() {
               <Database className="size-4 text-violet" />{" "}
               {t("settings.backend")}
             </span>
-            <Pill tone={backend === "opfs-sahpool" ? "positive" : "warning"}>
+            <Pill
+              tone={
+                backend === "opfs-sahpool" || backend === "memory-snapshot"
+                  ? "positive"
+                  : "warning"
+              }
+            >
               {backend === "opfs-sahpool"
                 ? t("settings.backendDurable")
-                : t("settings.backendMemory")}
+                : backend === "memory-snapshot"
+                  ? t("settings.backendSnapshot")
+                  : t("settings.backendMemory")}
             </Pill>
           </div>
           {seeded && (

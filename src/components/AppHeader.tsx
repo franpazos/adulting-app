@@ -4,6 +4,7 @@ import { LogoMark } from "@/components/Logo";
 import { IconButton, Badge } from "@/components/ui";
 import { MonthSelector } from "@/components/MonthSelector";
 import { NetworkBadge } from "@/components/NetworkBadge";
+import { SyncBadge } from "@/components/SyncBadge";
 import { useUiStore } from "@/store/uiStore";
 import { cn } from "@/lib/utils/cn";
 
@@ -34,6 +35,7 @@ export function AppHeader({
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <SyncBadge />
           <NetworkBadge />
           {right ?? (
             <IconButton aria-label="Notifications">

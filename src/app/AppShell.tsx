@@ -2,9 +2,11 @@ import { Outlet, useLocation } from "react-router-dom";
 import { BottomNav } from "@/components/BottomNav";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { UpdatePrompt } from "@/components/UpdatePrompt";
+import { useAutoSync } from "@/lib/sync/useAutoSync";
 
 export function AppShell() {
   const location = useLocation();
+  useAutoSync();
   return (
     <div className="min-h-dvh bg-bg text-text-primary flex flex-col">
       <UpdatePrompt />

@@ -238,7 +238,16 @@
     "pushNow": "Sincronizar ahora",
     "pushing": "Sincronizando…",
     "pushedJustNow": "Sincronizado",
-    "unlinkSheet": "Desvincular Sheet"
+    "unlinkSheet": "Desvincular Sheet",
+    "syncNow": "Sincronizar ahora",
+    "syncing": "Sincronizando…",
+    "pulling": "Bajando cambios…",
+    "syncError": "Error de sincronización",
+    "badge": {
+      "syncing": "Sincronizando…",
+      "synced": "Al día",
+      "error": "Error de sync"
+    }
   },
   "install": {
     "title": "Instala Adulting",
@@ -266,7 +275,8 @@
     "database": "Base de datos local",
     "backend": "Backend",
     "backendDurable": "OPFS (durable)",
-    "backendMemory": "en memoria",
+    "backendSnapshot": "memoria + snapshot",
+    "backendMemory": "en memoria (sin persistencia)",
     "seededFresh": "Cargados datos de ejemplo en esta carga."
   }
 }
