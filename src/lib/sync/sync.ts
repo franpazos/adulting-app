@@ -7,9 +7,15 @@
  * newer, so reconciliation skips the older remote rows). Then push the
  * merged state.
  *
- * If pull fails we still try to push — better to have local writes uploaded
- * than to silently lose them. If push fails after a successful pull we
- * surface the push error.
+ * **If pull fails, we abort the push.** Push is a snapshot replace —
+ * clearing the raw_* tabs and writing the full local state. With a stale
+ * local view (because pull didn't refresh it) we'd clobber remote rows
+ * the other device may have just pushed. Better to fail loudly and let
+ * the user retry once the pull issue clears (transient network, expired
+ * token, etc.) than to silently corrupt the shared ledger.
+ *
+ * Pull returning zero rows is *not* a failure — that's the empty-sheet
+ * case on a fresh spreadsheet, and push must run to populate it.
  */
 
 import { pullAll, type PullReport } from "./pull";
@@ -31,15 +37,17 @@ export async function syncAll(spreadsheetId: string): Promise<SyncReport> {
     pull = await pullAll(spreadsheetId);
   } catch (err) {
     pullError = err instanceof Error ? err.message : String(err);
-    console.warn("[sync] pull failed, attempting push anyway:", err);
+    console.warn("[sync] pull failed, skipping push:", err);
   }
 
   let push: PushReport | null = null;
   let pushError: string | null = null;
-  try {
-    push = await pushAll(spreadsheetId);
-  } catch (err) {
-    pushError = err instanceof Error ? err.message : String(err);
+  if (!pullError) {
+    try {
+      push = await pushAll(spreadsheetId);
+    } catch (err) {
+      pushError = err instanceof Error ? err.message : String(err);
+    }
   }
 
   return {

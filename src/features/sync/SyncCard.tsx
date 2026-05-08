@@ -12,7 +12,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CheckCircle2, Cloud, CloudOff, RefreshCw, Sparkles } from "lucide-react";
 
-import { Button, Card, Input, Pill } from "@/components/ui";
+import { Button, Card, Input, Pill, Toggle } from "@/components/ui";
 import {
   GoogleAuthError,
   isGoogleClientConfigured,
@@ -26,6 +26,7 @@ import { useDbStore } from "@/store/dbStore";
 import { parseSpreadsheetId } from "@/lib/google/drive-api";
 import { getSpreadsheet } from "@/lib/google/sheets-api";
 import { syncAll } from "@/lib/sync/sync";
+import { pullAll } from "@/lib/sync/pull";
 import { cn } from "@/lib/utils/cn";
 
 function sumValues(map: Record<string, number>): number {
@@ -44,6 +45,8 @@ export function SyncCard() {
 
   const sheet = useSyncStore((s) => s.sheet);
   const setSheet = useSyncStore((s) => s.setSheet);
+  const manualOnly = useSyncStore((s) => s.manualOnly);
+  const setManualOnly = useSyncStore((s) => s.setManualOnly);
   const phase = useSyncStore((s) => s.phase);
   const setPhase = useSyncStore((s) => s.setPhase);
   const lastPushAt = useSyncStore((s) => s.lastPushAt);
@@ -123,21 +126,19 @@ export function SyncCard() {
               setError(null);
               try {
                 const report = await syncAll(sheet.id);
-                // If pull or push had an error, surface the first one but
-                // count the run as a partial success when one half worked.
-                if (report.pullError && report.pushError) {
-                  throw new Error(report.pushError);
-                }
+                // Pull failure aborts push (sync.ts behavior). Surface
+                // whichever error occurred; if both halves succeeded, mark
+                // last push and bump dbVersion when pull found changes.
                 if (report.pullError) {
                   setError(report.pullError);
+                  setPhase("error");
+                  return;
                 }
                 if (report.pushError) {
                   setError(report.pushError);
                   setPhase("error");
                   return;
                 }
-                // If pull pulled in any new/updated row, dependent pages
-                // (Home, Transactions) need to refresh their useMemos.
                 if (report.pull) {
                   const totalChanges =
                     sumValues(report.pull.inserted) +
@@ -157,6 +158,8 @@ export function SyncCard() {
               await logout();
               setSheet(null);
             }}
+            manualOnly={manualOnly}
+            onToggleManualOnly={setManualOnly}
           />
         )}
       </Card>
@@ -200,26 +203,40 @@ function ConnectSheetBlock({
   onDisconnect: () => void;
 }) {
   const { t } = useTranslation();
+  const bumpDbVersion = useDbStore((s) => s.bumpVersion);
   const [url, setUrl] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [stage, setStage] = useState<"idle" | "validating" | "importing">(
+    "idle",
+  );
   const [err, setErr] = useState<string | null>(null);
+  const busy = stage !== "idle";
 
   async function handleSave() {
-    setBusy(true);
     setErr(null);
+    setStage("validating");
     try {
       const id = parseSpreadsheetId(url);
       if (!id) {
         setErr(t("sync.invalidUrl"));
-        setBusy(false);
+        setStage("idle");
         return;
       }
       const meta = await getSpreadsheet(id);
+
+      // Phase 9b: import remote data BEFORE binding so the first auto-push
+      // doesn't overwrite the existing sheet with our local seed-only state.
+      // This is the cross-device bootstrap path — Sam's phone joining a
+      // sheet you've already populated.
+      setStage("importing");
+      const report = await pullAll(meta.spreadsheetId);
+      const totalImported =
+        sumValues(report.inserted) + sumValues(report.updated);
+      if (totalImported > 0) bumpDbVersion();
+
       onSave({ id: meta.spreadsheetId, title: meta.title });
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
+      setStage("idle");
     }
   }
 
@@ -233,9 +250,13 @@ function ConnectSheetBlock({
       />
       <div className="flex gap-2">
         <Button block size="sm" onClick={handleSave} disabled={busy}>
-          {busy ? t("sync.connecting") : t("sync.connectSheet")}
+          {stage === "validating"
+            ? t("sync.connecting")
+            : stage === "importing"
+              ? t("sync.importing")
+              : t("sync.connectSheet")}
         </Button>
-        <Button variant="ghost" size="sm" onClick={onDisconnect}>
+        <Button variant="ghost" size="sm" onClick={onDisconnect} disabled={busy}>
           {t("sync.disconnect")}
         </Button>
       </div>
@@ -256,6 +277,8 @@ function ConnectedBlock({
   onPushNow,
   onUnlinkSheet,
   onDisconnect,
+  manualOnly,
+  onToggleManualOnly,
 }: {
   email: string | null;
   sheetTitle: string;
@@ -268,6 +291,8 @@ function ConnectedBlock({
   onPushNow: () => void;
   onUnlinkSheet: () => void;
   onDisconnect: () => void;
+  manualOnly: boolean;
+  onToggleManualOnly: (v: boolean) => void;
 }) {
   const { t } = useTranslation();
   const busy = phase === "pushing" || phase === "pulling";
@@ -333,6 +358,16 @@ function ConnectedBlock({
           <span>{lastError}</span>
         </p>
       )}
+
+      <div className="flex items-center justify-between pt-1">
+        <div className="text-xs">
+          <p className="font-medium text-text-primary">
+            {t("sync.manualOnly.label")}
+          </p>
+          <p className="t-label">{t("sync.manualOnly.hint")}</p>
+        </div>
+        <Toggle checked={manualOnly} onCheckedChange={onToggleManualOnly} />
+      </div>
 
       <div className="flex gap-2 pt-1">
         <Button variant="ghost" size="sm" onClick={onUnlinkSheet}>

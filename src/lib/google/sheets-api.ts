@@ -116,6 +116,42 @@ export async function addSheet(
   return { sheetId: props.sheetId, title: props.title, index: props.index };
 }
 
+/**
+ * Duplicate an existing tab. Used by the month-sync service to clone a
+ * formatted "template" month tab when starting a new month.
+ */
+export async function duplicateSheet(
+  spreadsheetId: string,
+  sourceSheetId: number,
+  newTitle: string,
+  insertIndex = 0,
+): Promise<SheetMetadata> {
+  const url = `${BASE}/${encodeURIComponent(spreadsheetId)}:batchUpdate`;
+  const r = await authorizedFetch(url, {
+    method: "POST",
+    body: JSON.stringify({
+      requests: [
+        {
+          duplicateSheet: {
+            sourceSheetId,
+            insertSheetIndex: insertIndex,
+            newSheetName: newTitle,
+          },
+        },
+      ],
+    }),
+  });
+  const data = await asJson<{
+    replies: Array<{
+      duplicateSheet: {
+        properties: { sheetId: number; title: string; index: number };
+      };
+    }>;
+  }>(r);
+  const props = data.replies[0]!.duplicateSheet.properties;
+  return { sheetId: props.sheetId, title: props.title, index: props.index };
+}
+
 export type CellValue = string | number | boolean | null;
 export type SheetRow = CellValue[];
 

@@ -242,7 +242,12 @@
     "syncNow": "Sync now",
     "syncing": "Syncing…",
     "pulling": "Pulling…",
+    "importing": "Importing data…",
     "syncError": "Sync error",
+    "manualOnly": {
+      "label": "Manual sync only",
+      "hint": "Disable auto-sync. You'll have to tap Sync now."
+    },
     "badge": {
       "syncing": "Syncing…",
       "synced": "Synced",

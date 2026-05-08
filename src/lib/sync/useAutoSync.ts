@@ -2,13 +2,20 @@
  * Auto-sync coordinator.
  *
  * Runs in the app shell and triggers `syncAll` automatically when:
- *   1. The app boots with a connected Google account + bound sheet, and
- *      we haven't pushed for at least 60s.
- *   2. A local DB write happens (`dbVersion` bumps), debounced by 3s so
- *      bursts of edits coalesce into one push.
- *   3. The browser comes back online after being offline.
+ *   1. **Boot:** the app loads with sync connected. Always sync if there
+ *      are any PENDING items in the sync_queue; otherwise only sync if
+ *      ≥60s elapsed since `lastPushAt`. The pending-queue check is the
+ *      source of truth — it survives reloads, background suspension, and
+ *      iOS timer death, so a write that didn't push earlier always
+ *      catches up on the next app open.
+ *   2. **On focus:** every `visibilitychange → visible` triggers a sync.
+ *      This is the snappy path — open the app, get fresh data
+ *      immediately, no 60s wait.
+ *   3. **Local writes:** `dbVersion` bumps schedule a 3s-debounced sync
+ *      so a flurry of edits coalesces into one push.
+ *   4. **Coming back online:** if there are unsynced writes, sync.
  *
- * Manual "Push now" from `SyncCard` continues to work in parallel — both
+ * Manual "Sync now" from `SyncCard` continues to work in parallel — both
  * paths route through the shared `syncStore.phase` so the UI shows the
  * single source of truth.
  *
@@ -26,6 +33,7 @@ import { useAuthStore, hasValidToken } from "@/store/authStore";
 import { useSyncStore } from "@/store/syncStore";
 import { useDbStore } from "@/store/dbStore";
 import { useNetworkStore } from "@/store/networkStore";
+import { listPending } from "./queue";
 import { syncAll } from "./sync";
 
 const DEBOUNCE_MS = 3000;
@@ -51,32 +59,27 @@ export function useAutoSync(): void {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bootedRef = useRef(false);
   const inFlightRef = useRef(false);
-  /** Snapshot of dbVersion at the last completed sync; -1 means never. */
-  const syncedVersionRef = useRef(-1);
 
   const canSync =
     dbReady && online && hasValidToken(token) && !!sheet && !manualOnly;
 
-  async function runSync(reason: "boot" | "write" | "online"): Promise<void> {
+  async function runSync(_reason: string): Promise<void> {
     if (!sheet) return;
     if (inFlightRef.current) return;
     if (phase === "pulling" || phase === "pushing") return;
     inFlightRef.current = true;
 
-    const startedAtVersion = useDbStore.getState().dbVersion;
-
     setPhase("pushing");
     setError(null);
     try {
       const report = await syncAll(sheet.id);
-      if (report.pushError) {
+      if (report.pullError) {
+        // Pull failed → push was aborted. Surface as error.
+        setError(report.pullError);
+        setPhase("error");
+      } else if (report.pushError) {
         setError(report.pushError);
         setPhase("error");
-      } else if (report.pullError) {
-        // Push succeeded but pull failed — still a partial success.
-        setError(report.pullError);
-        setLastPushAt(new Date().toISOString());
-        setPhase("success");
       } else {
         setLastPushAt(new Date().toISOString());
         setPhase("success");
@@ -85,23 +88,32 @@ export function useAutoSync(): void {
       // If pull pulled in any new/updated row, bump dbVersion so dependent
       // pages re-derive. Don't bump on no-op syncs.
       if (report.pull) {
-        const totalChanges = sumValues(report.pull.inserted) + sumValues(report.pull.updated);
+        const totalChanges =
+          sumValues(report.pull.inserted) + sumValues(report.pull.updated);
         if (totalChanges > 0) {
           bumpDbVersion();
         }
       }
-      syncedVersionRef.current = startedAtVersion;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg);
       setPhase("error");
     } finally {
       inFlightRef.current = false;
-      void reason; // used only for clarity / future telemetry
     }
   }
 
-  // 1. On-boot sync, once per app load.
+  /** True if the sync_queue has any rows that haven't been pushed yet. */
+  function hasPendingWrites(): boolean {
+    try {
+      return listPending().length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  // 1. On-boot sync. Always runs if there are pending writes; otherwise
+  //    gated by the 60s last-push window.
   useEffect(() => {
     if (!canSync) return;
     if (bootedRef.current) return;
@@ -109,21 +121,36 @@ export function useAutoSync(): void {
 
     const lastMs = lastPushAt ? Date.parse(lastPushAt) : 0;
     const stale = !lastMs || Date.now() - lastMs >= BOOT_MIN_GAP_MS;
-    if (!stale) {
-      // Still mark synced version baseline so the write debouncer doesn't
-      // fire spuriously on the first dbVersion bump.
-      syncedVersionRef.current = useDbStore.getState().dbVersion;
-      return;
-    }
+    if (!stale && !hasPendingWrites()) return;
     void runSync("boot");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canSync]);
 
-  // 2. Debounced sync on local writes.
+  // 2. Sync when the page becomes visible. Catches: returning from
+  //    background, unlocking phone, switching back to the tab.
   useEffect(() => {
     if (!canSync) return;
-    if (!bootedRef.current) return; // wait for boot sync to set baseline
-    if (dbVersion === syncedVersionRef.current) return;
+    if (typeof document === "undefined") return;
+
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      // Always pull on focus so the other device's writes show up; only
+      // skip if a sync is in flight or we just synced (debounced by phase).
+      if (inFlightRef.current) return;
+      if (phase === "pulling" || phase === "pushing") return;
+      void runSync("visible");
+    };
+
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canSync, phase]);
+
+  // 3. Debounced sync on local writes.
+  useEffect(() => {
+    if (!canSync) return;
+    if (!bootedRef.current) return;
+    if (!hasPendingWrites()) return;
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
@@ -136,12 +163,11 @@ export function useAutoSync(): void {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dbVersion, canSync]);
 
-  // 3. Re-sync when the browser comes back online (if there are unsynced writes).
+  // 4. Re-sync when the browser comes back online (if there are unsynced writes).
   useEffect(() => {
     if (!online) return;
     if (!canSync) return;
-    if (!bootedRef.current) return;
-    if (dbVersion === syncedVersionRef.current) return;
+    if (!hasPendingWrites()) return;
     void runSync("online");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [online]);

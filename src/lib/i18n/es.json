@@ -242,7 +242,12 @@
     "syncNow": "Sincronizar ahora",
     "syncing": "Sincronizando…",
     "pulling": "Bajando cambios…",
+    "importing": "Importando datos…",
     "syncError": "Error de sincronización",
+    "manualOnly": {
+      "label": "Solo sync manual",
+      "hint": "Desactiva la sincronización automática. Tendrás que pulsar Sincronizar."
+    },
     "badge": {
       "syncing": "Sincronizando…",
       "synced": "Al día",

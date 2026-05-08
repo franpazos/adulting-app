@@ -145,17 +145,24 @@ This document is the living plan of work. Each phase ends with a checklist updat
 - [x] EN + ES i18n for the sync namespace
 - [x] 11 new tests (writers column counts, boolean coercion, snapshot completeness, queue lifecycle, column letter math). Total 85/85 passing.
 
-### 9b — Pull + reconcile ✅ (core)
+### 9b — Pull + reconcile ✅
 - [x] Reader functions (row → entity per tab) — `src/lib/sync/readers.ts`
 - [x] `pullAll`: download all raw_* tabs, reconcile by id + updated_at; remote `is_deleted=1` propagates as soft-delete locally
-- [x] `syncAll` = pull → push, used by both "Sync now" and the auto-sync hook
+- [x] `syncAll` = pull → push; **pull failure aborts push** so a stale local view can't clobber remote rows the other device just pushed
 - [x] Conflict resolution: last-writer-wins by `updated_at`. Pull bypasses `enqueueChange` so synced rows aren't re-pushed
-- [x] Auto-sync hook (`useAutoSync`): boot sync (≥60s gap), debounced 3s on `dbVersion` bump, retry when back online
+- [x] Auto-sync hook (`useAutoSync`):
+  - Boot sync gates on `sync_queue` PENDING count (durable across reloads + iOS timer death) plus a ≥60s last-push window
+  - Visibility-change → visible triggers a sync (snappy "open the app, get fresh data")
+  - 3s-debounced sync on `dbVersion` bump with PENDING-count check
+  - Retry when back online if anything is unsynced
 - [x] Sync status badge in AppHeader (`SyncBadge`): syncing spinner / 2s "Synced" confirmation / error pill
-- [x] Tests (10 new): writer→reader round-trip per entity, FX null preservation, applyTab insert/update/skip/soft-delete propagation, malformed-row tolerance
-- [ ] Month-sync service for the formatted monthly tabs (spec §14.6)
-- [ ] Explicit import-from-Sheets flow (one-shot pull without push, for first-device bootstrap)
-- [ ] Conflict-resolution UI for the rare case the user wants local to win when remote is newer
+- [x] Import-from-Sheets on bind: `ConnectSheetBlock` runs `pullAll` after validating the sheet; new device joins an existing-data sheet without clobbering it
+- [x] `manualOnly` toggle in SyncCard (Toggle in `ConnectedBlock`) — auto-sync defers to manual "Sync now" when on
+- [x] Month-sync service scaffolded (`src/lib/sync/month-sync.ts`): `ensureMonthSheet(spreadsheetId, monthKey, opts)` checks for the month tab and either duplicates a designated template or creates blank. Per spec §14.6, exact template wiring is left as TODO until the user nominates their template title.
+- [x] `duplicateSheet` Sheets API helper added
+- [x] Tests (10 new in pull.test.ts): writer→reader round-trip per entity, FX null preservation, applyTab insert/update/skip/soft-delete propagation, malformed-row tolerance
+- [ ] Conflict-resolution UI for the rare case the user wants local to win when remote is newer (deferred — last-writer-wins covers the common case)
+- [ ] Wire `ensureMonthSheet` into auto-sync once the user nominates their template tab title (deferred per spec §14.6)
 
 ## Phase 10 — Polish
 - [ ] Motion (sheet/card/theme transitions)

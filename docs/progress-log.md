@@ -4,6 +4,46 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-08 — Phase 9 finish (faster auto-sync, import-on-bind, manualOnly, month-sync scaffold)
+
+**What was done**
+
+Closed Phase 9b. Real-world testing surfaced two issues — auto-sync getting stranded after iOS suspended a debounce timer, and the risk that a fresh device would clobber the shared sheet by pushing seed-only state. Both fixed.
+
+- **Auto-sync gates on the durable signal.** `useAutoSync` now reads `sync_queue` PENDING count instead of a transient in-memory ref:
+  - **Boot sync** runs if there are any pending writes *or* if it's been ≥60s since `lastPushAt`. Survives reloads and iOS background suspension — a write that didn't push earlier always catches up on next app open.
+  - **Visibility-change → visible** triggers a sync. Open the app, fresh data arrives — no 60s wait. Catches Sam's phone seeing your new transactions immediately when she unlocks her phone.
+  - **Write debounce** also checks PENDING > 0 so spurious dbVersion bumps (e.g. from a pull bumping the version) don't fire a redundant sync.
+  - **Online retry** uses the same PENDING check.
+- **Pull failure aborts push.** Previously `syncAll` fell through to push even when pull failed, on the theory "better to upload local writes than lose them". With snapshot-replace push semantics, a stale local view would clobber any remote rows the other device pushed since our last successful pull. New policy: pull fails → skip push, surface error, retry next cycle. Pull returning zero rows is *not* a failure (covers the empty-sheet bootstrap case).
+- **Import-from-Sheets on bind** (`src/features/sync/SyncCard.tsx::ConnectSheetBlock`):
+  - After validating the sheet exists, the bind handler runs `pullAll` synchronously *before* calling `setSheet`.
+  - Fresh device hydrates from the shared sheet first, so when auto-sync subsequently kicks in, the push reflects the merged state, not seed-only state.
+  - Two-stage button label: `"Connecting…"` while validating, `"Importing data…"` while pulling.
+  - On pull failure the binding does not persist — user sees the error and can retry.
+- **`manualOnly` toggle** added to `ConnectedBlock` as a Toggle row. Reads/writes `syncStore.manualOnly` (already persisted, already honored by `useAutoSync`'s `canSync` gate). EN/ES copy added under `sync.manualOnly.{label,hint}`.
+- **Month-sync service scaffold** (`src/lib/sync/month-sync.ts`):
+  - `ensureMonthSheet(spreadsheetId, monthKey, opts)`: checks if a tab named per `formatTitle(monthKey)` exists; if not, duplicates a designated `templateTitle` tab via the new `duplicateSheet` Sheets API helper, or falls back to a blank `addSheet`.
+  - Idempotent (returns `{ sheet, created: false, source: "existing" }` when the tab is already there).
+  - Not yet wired into auto-sync — per spec §14.6, "scaffold the service with a clear interface and TODOs". The user's existing template format (Spanish vs English, formula structure, naming convention) is unknown to this codebase, so wiring is deferred until they nominate a template tab title via Settings.
+- **`duplicateSheet`** added to `sheets-api.ts` as the underlying primitive (Google Sheets `duplicateSheet` batchUpdate request, returning the new tab's metadata).
+- **Tests still 97/97 passing.** Build clean (no new test surface — the new code is mostly UI wiring + a Sheets-API-dependent service that's better validated in production than mocked).
+
+**Decisions**
+- **Pull-failure-aborts-push** is the right default for snapshot push. With incremental push (future ADR) the trade-off would flip — incremental upserts can safely run independently. Documented inline in `sync.ts`.
+- **Import-on-bind, not on first auto-sync.** Doing it as part of the bind action makes the UX cause-and-effect clear ("I just connected, it imported existing data"), and prevents a subtle race where auto-sync could fire before the import completes. Cost: the bind call is now multi-second on a populated sheet. Acceptable.
+- **`sync_queue` PENDING count is the durable "is anything unsynced?" signal.** It's already persisted via SQLite (and now via the IDB snapshot on Safari), so it survives reloads and OS-level suspension. The hook's previous `syncedVersionRef` was correctly described as the bug — a transient ref couldn't carry state across reloads.
+- **Month-sync stays read-only of intent until the user nominates a template.** Auto-creating month tabs blindly would risk polluting the user's spreadsheet. The scaffold is callable from a future Settings UI; today nothing invokes it.
+
+**Open follow-ups**
+- Validate the snappier auto-sync in production: add an expense on phone A, lock phone, open phone B → expense should appear without manual "Sync now".
+- Validate `manualOnly` toggle works end-to-end (turn on → no auto-sync; turn off → auto-sync resumes on next trigger).
+- Validate import-on-bind by unlinking + re-binding the sheet on Sam's phone (should show "Importing data…" briefly, then connect).
+- When the template format is nominated, add a Settings row "Monthly tab template: [dropdown of tab names]" + "Format: [YYYY-MM | custom]" and wire `ensureMonthSheet` into auto-sync's pre-push step.
+- Consider a one-time "first sync done" marker so the SyncCard can show different copy on first connect vs subsequent syncs.
+
+---
+
 ## 2026-05-08 — Safari iOS persistence via IndexedDB snapshot
 
 **What was done**
