@@ -4,6 +4,21 @@ Short, dated records of decisions that shape the codebase. Each entry is an ADR-
 
 ---
 
+## ADR-014 — `@import` order in `src/index.css` is load-bearing
+**Date:** 2026-05-09
+**Status:** Accepted (debugging postmortem)
+**Context:** Per the CSS spec, `@import` rules must appear before any other rules in a stylesheet (only `@charset` and `@layer` may precede them). When the rule is violated, build tools silently drop the import — no error, no warning. We had `@import "./styles/tokens.css"` placed *after* the `@tailwind` directives in `src/index.css`. The token file (which defines every `--color-*` variable for both light and dark themes) was therefore never included in the production CSS bundle. Every `bg-violet`, `text-positive-ink`, etc. resolved to invalid `rgb()` (effectively transparent) at runtime. The few elements that "worked" were ones using hardcoded RGB literals (e.g. `shadow-violet-glow` uses `rgb(123 92 246 / 0.35)` directly) instead of the variable. The bug existed since Phase 0 but was masked by the few hardcoded literals; surfaced when iPhone testing revealed pills with no fill, active SegmentedControl text invisible on white pill, etc.
+**Decision:**
+- All `@import` directives in `src/index.css` MUST come before the `@tailwind` directives.
+- Order in the file: font imports → tokens.css → `@tailwind base/components/utilities` → `@layer base` overrides.
+- An explanatory comment lives at the top of `src/index.css` so the next person editing the file doesn't re-introduce the bug.
+**Consequences:**
+- Future agents debugging "color X isn't showing": **first** check the built CSS (`grep ":root" dist/assets/*.css`) to confirm tokens are present. Don't assume the components are wrong before verifying the variables resolve.
+- Adding new `@import` lines later: append them to the top group, not anywhere below `@tailwind`.
+- If we ever switch to Tailwind v4 (which uses `@import "tailwindcss"` syntax), the rule still holds — `@import` order remains spec-bound.
+
+---
+
 ## ADR-013 — IndexedDB snapshot for Safari iOS persistence
 **Date:** 2026-05-08
 **Status:** Accepted (Phase 9b follow-up)
