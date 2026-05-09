@@ -213,9 +213,11 @@ function ConnectSheetBlock({
   onSave: (s: { id: string; title: string }) => void;
   onDisconnect: () => void;
 }) {
+  const defaultSheetUrl =
+    (import.meta.env.VITE_URL_GOOGLE_SHEET as string | undefined) ?? "";
   const { t } = useTranslation();
   const bumpDbVersion = useDbStore((s) => s.bumpVersion);
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState(defaultSheetUrl);
   const [stage, setStage] = useState<"idle" | "validating" | "importing">(
     "idle",
   );
@@ -257,7 +259,7 @@ function ConnectSheetBlock({
       <Input
         value={url}
         onChange={(e) => setUrl(e.target.value)}
-        placeholder="https://docs.google.com/spreadsheets/d/1bJEMXAb6N-pkexS9kFzyO1N9hOYA7uswl837zRuiS_0/edit?gid=1061129695#gid=1061129695"
+        placeholder="This is just a placeholder, Sam"
       />
       <div className="flex gap-2">
         <Button block size="sm" onClick={handleSave} disabled={busy}>

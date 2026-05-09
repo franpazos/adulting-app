@@ -49,13 +49,15 @@ pnpm typecheck  # tsc -b --noEmit
 
 ### Environment variables
 
-Create `.env.local` for dev, mirror in Vercel for prod:
+Copy `.env.example` to `.env.local` for dev, mirror the same vars in Vercel for prod. Vite only exposes vars prefixed with `VITE_` to the client — anything without the prefix is stripped at build time.
 
 ```
 VITE_GOOGLE_CLIENT_ID=<your-oauth-client-id>.apps.googleusercontent.com
+VITE_URL_GOOGLE_SHEET=https://docs.google.com/spreadsheets/d/<your-sheet-id>/edit
 ```
 
-Without it, the Sheets sync card in Settings shows a "not configured" hint and the rest of the app works offline-only.
+- **`VITE_GOOGLE_CLIENT_ID`** (required for sync) — without it, the Sheets sync card in Settings shows a "not configured" hint and the rest of the app works offline-only.
+- **`VITE_URL_GOOGLE_SHEET`** (optional) — pre-fills the "Connect sheet" URL input on a fresh device so you don't paste it every time. Leave empty and the input starts blank. The value is **inlined into the JS bundle at build time**, so changing it requires a redeploy.
 
 ## Architecture in one screen
 
