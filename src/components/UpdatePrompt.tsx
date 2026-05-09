@@ -22,8 +22,8 @@ export function UpdatePrompt() {
       <div
         className={cn(
           "mx-auto max-w-md pointer-events-auto",
-          "rounded-2xl border border-violet/30 bg-violet/10",
-          "px-4 py-3 flex items-center gap-3 shadow-card",
+          "rounded-2xl border-2 border-violet bg-surface text-text-primary",
+          "px-4 py-3 flex items-center gap-3 shadow-violet-glow",
         )}
         role="status"
         aria-live="polite"
