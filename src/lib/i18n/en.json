@@ -27,7 +27,27 @@
       "fran": "Fran",
       "sam": "Sam",
       "all": "All"
-    }
+    },
+    "scopeLabel": "Scope: {{scope}}",
+    "jointBalanceLabel": "Joint balance",
+    "inflowMonth": "In this month",
+    "outflowMonth": "Out this month",
+    "categoryTitle": "Category breakdown",
+    "categoryChartAria": "Expenses by category",
+    "compareAria": "Income {{income}} vs expenses {{expenses}}",
+    "noExpenses": "No expenses this month.",
+    "settlementsTitle": "Settlements",
+    "debtsTitle": "Debts",
+    "monthlyDebt": "{{amount}} / month",
+    "statIncome": "Income",
+    "statExpenses": "Expenses",
+    "statRecurring": "Recurring",
+    "statAvailable": "Available",
+    "openTransactions": "Open transactions",
+    "openSettlements": "Open settlements",
+    "openDebts": "Open debts",
+    "openAccounts": "Open accounts",
+    "openPersonal": "Open {{name}}'s view"
   },
   "transactions": {
     "title": "Transactions",

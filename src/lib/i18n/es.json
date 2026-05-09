@@ -27,7 +27,27 @@
       "fran": "Fran",
       "sam": "Sam",
       "all": "Todo"
-    }
+    },
+    "scopeLabel": "Ámbito: {{scope}}",
+    "jointBalanceLabel": "Saldo conjunto",
+    "inflowMonth": "Entradas del mes",
+    "outflowMonth": "Salidas del mes",
+    "categoryTitle": "Gastos por categoría",
+    "categoryChartAria": "Gastos por categoría",
+    "compareAria": "Ingresos {{income}} frente a gastos {{expenses}}",
+    "noExpenses": "Sin gastos este mes.",
+    "settlementsTitle": "Ajustes",
+    "debtsTitle": "Deudas",
+    "monthlyDebt": "{{amount}} / mes",
+    "statIncome": "Ingresos",
+    "statExpenses": "Gastos",
+    "statRecurring": "Recurrentes",
+    "statAvailable": "Disponible",
+    "openTransactions": "Abrir movimientos",
+    "openSettlements": "Abrir ajustes",
+    "openDebts": "Abrir deudas",
+    "openAccounts": "Abrir cuentas",
+    "openPersonal": "Abrir vista de {{name}}"
   },
   "transactions": {
     "title": "Movimientos",

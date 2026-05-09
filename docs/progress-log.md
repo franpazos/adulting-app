@@ -4,6 +4,56 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-09 — Home dashboard expansion (spec §6.1)
+
+**What was done**
+
+The Home dashboard was a single scope-toggled card. Spec §6.1 calls for **multiple coexisting panels** (Joint, Personal Fran, Personal Sam, Settlements, Debt summary, Category). Restructured to match.
+
+- **Joint snapshot card** (top of page, new):
+  - Pulls the account where `type === 'JOINT'` from `accountsRepo.list()`.
+  - Big balance number using the new `accountBalance(accountId, initialBalance)` helper.
+  - Two stats below: monthly inflow (positive tone) and monthly outflow (expense tone), via the new `accountMonthlyFlow(accountId, monthKey)` helper.
+  - Uses the JOINT avatar (blue gradient) so it visually keys the joint context.
+  - Clickable → navigates to `/accounts`.
+- **Personal summaries** (two-column grid below the Joint snapshot):
+  - One card per person with their avatar, name, and four `MiniStat` rows: Income / Expenses / Recurring / Available.
+  - Available is visually emphasized (separator + larger font).
+  - Each card consumes `monthlySummary(monthKey, "fran")` / `monthlySummary(monthKey, "sam")` so it always shows both perspectives regardless of the scope toggle.
+  - Tap → `/transactions` (a future filter shortcut could deep-link with owner pre-selected).
+- **Category breakdown card** (still scope-aware): same donut + truncated list, plus a "Scope: Household" hint so the user knows the panel is filtered. The CompareBar moved here from the deprecated main stats card so it's adjacent to the breakdown it summarizes.
+- **Settlements card** (now a Link to `/settlements`):
+  - Shows two pairs: Fran ↔ Sam and Sam ↔ Household.
+  - Direction-aware labels via `t("settlements.owes", { from, to })`. Net 0 collapses to "—".
+  - Whole card is now keyboard-focusable + screen-reader labeled.
+- **Debt summary card** (replaces the simple total, now a Link to `/debts`):
+  - Three rows — FRAN / SAM / HOUSEHOLD — each with their per-currency totals (or "—" if none).
+  - Footer Pill shows the EUR-denominated monthly minimum total.
+- **Calculations module** (`lib/calculations/aggregations.ts`):
+  - New `accountBalance(accountId, initialBalance)` — exports the previously-private `computeBalance` from `AccountsPage`. Same SQL, now reusable.
+  - New `accountMonthlyFlow(accountId, monthKey)` — returns `{ inflow, outflow }` for a specific month.
+  - Both exported via `lib/calculations/index.ts`.
+  - `AccountsPage.tsx` refactored to use the shared helper; dropped the now-unused `selectScalar` + `transactionsRepo` imports and inline `round2`.
+- **i18n** (EN + ES): full `home.*` namespace expansion (`scopeLabel`, `jointBalanceLabel`, `inflowMonth`, `outflowMonth`, `categoryTitle`, `noExpenses`, `settlementsTitle`, `debtsTitle`, `monthlyDebt`, `statIncome/Expenses/Recurring/Available`, `openTransactions/Settlements/Debts/Accounts/Personal`, `categoryChartAria`, `compareAria`). Drops the previously hardcoded Spanish strings ("Cuenta conjunta", "Ingresos del mes", etc.) that violated the no-hardcoded-strings rule.
+- **Build clean.** Typecheck passes, 97/97 tests, production build size unchanged.
+
+**Decisions**
+- **Scope toggle now governs the Category panel only.** The Joint snapshot and Personal summaries are always visible regardless of scope, matching the spec's "stacked sections" intent. Scope still affects which slice the donut shows (Household-only spending vs Fran's vs Sam's vs All), which is the spec §6.1.6 explicit "filters by owner/source/month" requirement.
+- **Both Personal cards are always rendered**, not just the active scope's. Spec §6.1.3 calls for *both* visible. The cost is two extra `monthlySummary` calls per render — both already memoized on `[ready, dbVersion, monthKey]`.
+- **Cards become Links rather than gaining onClick handlers.** `<Link>` from React Router gets us proper keyboard accessibility, focus-visible rings, and right-click semantics for free. Each link sets `aria-label` so screen readers announce intent.
+- **Per-currency debt totals** (not converted to EUR). Showing `$120` and `€350` separately is more honest than fudging an FX conversion the user didn't authorize. The monthly minimum *is* summed in EUR, which reads as a rough headline; multi-currency itemized minimums live on `/debts`.
+- **The previous "Resumen del mes" main card is gone** to avoid duplicating data now shown by the Personal cards (when scope is fran/sam) or the Joint snapshot (when scope is household). The remaining structural clarity is worth the lost variant view; users who want a "totals across everything" can pick scope `all` and look at the CompareBar inside the Category card.
+
+**Open follow-ups (still genuinely deferred)**
+- **Smart defaults from last entry** on Add Expense (remember last category/description per source/owner pattern).
+- **Conflict-resolution UI** for the rare same-second sync case.
+- **Wire `ensureMonthSheet`** into auto-sync once the user nominates a template tab title.
+- **Personal cards deep-link with owner filter** — once Transactions filters support URL-bound state, tapping a Personal card could navigate to `/transactions?owner=fran` instead of the unfiltered list.
+
+That closes the spec coverage audit. The remaining items are all explicitly deferred polish with no spec violation.
+
+---
+
 ## 2026-05-09 — Transactions filters + search (spec §6.4)
 
 **What was done**

@@ -112,12 +112,12 @@ This document is the living plan of work. Each phase ends with a checklist updat
 - [x] Bug fix: `recomputeForTransaction` now also processes `DEBT_PAYMENT` (was EXPENSE-only) so settlements stay consistent when debts are paid from a non-owner account
 - [x] EN + ES copy for debts, payDebt, settleUp, categories, accounts namespaces
 - [x] Vitest coverage: USD-debt-from-EUR-account, joint-source-personal-debt settlement, settle-up zeroing balance, partial settle-up, balance rounding (74/74 passing)
-- [ ] Home dashboard polish — partial:
+- [x] Home dashboard polish — landed in Phase 10b:
   - [x] Donut chart for category breakdown (Phase 10)
   - [x] CompareBar for income vs expenses (Phase 10)
-  - [ ] Joint snapshot card (current balance + month deltas)
-  - [ ] Side-by-side personal summaries (Fran + Sam) per spec §6.1
-  - [ ] Per-owner debt summary on Home (Fran / Sam / Household totals)
+  - [x] Joint snapshot card (current balance + monthly inflow/outflow)
+  - [x] Side-by-side personal summaries (Fran + Sam) per spec §6.1
+  - [x] Per-owner debt summary on Home (Fran / Sam / Household totals)
 - [ ] Filters/search on Transactions — deferred
 - [ ] Smart defaults from last entry — deferred
 - [x] Settings expansion (Defaults, Backups & Data, About) — landed in Phase 10b
@@ -175,6 +175,7 @@ This document is the living plan of work. Each phase ends with a checklist updat
 - [x] Settings → **Backups & Data** section (download SQLite snapshot via new public `exportDb()`, "Clear local data" with confirm + reload)
 - [x] Settings → **About** section (version + build date wired via Vite `define` reading `package.json`)
 - [x] Transactions filters + search (spec §6.4): inline search bar, expandable filter panel with Source / Owner / Type segmented controls + Category chips, active-filter badge on the toggle, "Clear filters" affordance, "no matches" empty state. Filters apply client-side over the month's tx list.
+- [x] Home dashboard expansion (spec §6.1): Joint snapshot card (account balance + monthly inflow/outflow), side-by-side Fran + Sam personal summaries, per-owner debt summary with multi-currency totals. Settlements + Debts cards now navigate to their detail pages on tap. New `accountBalance` and `accountMonthlyFlow` helpers in `lib/calculations/aggregations.ts`; `AccountsPage` refactored to use the shared helper.
 
 ## Phase 10 — Polish ✅
 - [x] **Code-split routes** via `React.lazy` + `Suspense`. Main bundle dropped from 896 kB → 802 kB; per-route chunks 3–10 kB each (gzipped 1–4 kB)

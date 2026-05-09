@@ -260,3 +260,55 @@ export function categoryBreakdown(
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
+
+/**
+ * Estimated balance for an account = initial_balance
+ *   + Σ INCOME amounts hitting the account
+ *   − Σ (EXPENSE | DEBT_PAYMENT | SETTLEMENT_PAYMENT | TRANSFER) leaving it.
+ *
+ * Mirrors the AccountsPage formula. Currency-agnostic — the caller knows
+ * which currency the account is denominated in.
+ */
+export function accountBalance(
+  accountId: string,
+  initialBalance: number,
+): number {
+  const inflow = selectScalar(
+    `SELECT COALESCE(SUM(amount), 0) FROM transactions
+     WHERE source_account_id = ? AND type = 'INCOME' AND is_deleted = 0`,
+    [accountId],
+  );
+  const outflow = selectScalar(
+    `SELECT COALESCE(SUM(amount), 0) FROM transactions
+     WHERE source_account_id = ?
+       AND type IN ('EXPENSE', 'DEBT_PAYMENT', 'SETTLEMENT_PAYMENT', 'TRANSFER')
+       AND is_deleted = 0`,
+    [accountId],
+  );
+  return round2(initialBalance + inflow - outflow);
+}
+
+/**
+ * Net flow for an account during a month: incomes hitting it minus
+ * outflows charged against it. Used by the Joint snapshot card to show
+ * "+€X / −€Y this month".
+ */
+export function accountMonthlyFlow(
+  accountId: string,
+  monthKey: MonthKey,
+): { inflow: number; outflow: number } {
+  const inflow = selectScalar(
+    `SELECT COALESCE(SUM(amount), 0) FROM transactions
+     WHERE source_account_id = ? AND month_key = ?
+       AND type = 'INCOME' AND is_deleted = 0`,
+    [accountId, monthKey],
+  );
+  const outflow = selectScalar(
+    `SELECT COALESCE(SUM(amount), 0) FROM transactions
+     WHERE source_account_id = ? AND month_key = ?
+       AND type IN ('EXPENSE', 'DEBT_PAYMENT', 'SETTLEMENT_PAYMENT', 'TRANSFER')
+       AND is_deleted = 0`,
+    [accountId, monthKey],
+  );
+  return { inflow: round2(inflow), outflow: round2(outflow) };
+}

@@ -37,6 +37,8 @@ export {
   monthlySummary,
   availableMoney,
   categoryBreakdown,
+  accountBalance,
+  accountMonthlyFlow,
   type MonthlySummary,
   type CategorySliceRow,
 } from "./aggregations";

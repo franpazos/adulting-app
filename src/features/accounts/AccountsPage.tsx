@@ -5,10 +5,10 @@ import { ChevronLeft } from "lucide-react";
 
 import { Avatar, type AvatarWho } from "@/components/Avatar";
 import { Card, CardEyebrow, IconButton, Pill } from "@/components/ui";
-import { accountsRepo, transactionsRepo } from "@/lib/db";
+import { accountsRepo } from "@/lib/db";
 import type { Account } from "@/lib/db/types";
 import { useDbStore } from "@/store/dbStore";
-import { selectScalar } from "@/lib/db/client";
+import { accountBalance } from "@/lib/calculations";
 
 export function AccountsPage() {
   const { t } = useTranslation();
@@ -23,9 +23,6 @@ export function AccountsPage() {
     for (const a of accounts) balances.set(a.id, computeBalance(a));
     return { accounts, balances };
   }, [dbReady, dbVersion]);
-
-  // Suppress unused warning when transactionsRepo is pruned
-  void transactionsRepo;
 
   const totalsByCurrency = useMemo(() => {
     const out: Record<string, number> = {};
@@ -129,25 +126,8 @@ function whoFromAccount(a: Account): AvatarWho {
   return "JOINT";
 }
 
-/**
- * Estimated balance = initial_balance
- *   + sum(INCOME amounts hitting this account)
- *   − sum(EXPENSE / DEBT_PAYMENT / SETTLEMENT_PAYMENT amounts leaving)
- *   − sum(TRANSFER amounts (out only — transfers in don't currently exist))
- */
 function computeBalance(a: Account): number {
-  const inflow = selectScalar(
-    `SELECT COALESCE(SUM(amount), 0) FROM transactions
-     WHERE source_account_id = ? AND type = 'INCOME' AND is_deleted = 0`,
-    [a.id],
-  );
-  const outflow = selectScalar(
-    `SELECT COALESCE(SUM(amount), 0) FROM transactions
-     WHERE source_account_id = ? AND type IN ('EXPENSE', 'DEBT_PAYMENT', 'SETTLEMENT_PAYMENT', 'TRANSFER')
-       AND is_deleted = 0`,
-    [a.id],
-  );
-  return round2(a.initial_balance + inflow - outflow);
+  return accountBalance(a.id, a.initial_balance);
 }
 
 function formatAmount(n: number, currency: string): string {
@@ -158,6 +138,3 @@ function formatAmount(n: number, currency: string): string {
   }).format(n);
 }
 
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
