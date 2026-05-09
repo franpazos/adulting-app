@@ -17,7 +17,8 @@
     "edit": "Edit",
     "loading": "Loading…",
     "currency": "EUR",
-    "trySample": "Try a sample"
+    "trySample": "Try a sample",
+    "reset": "Reset to defaults"
   },
   "home": {
     "title": "Home",
@@ -92,6 +93,13 @@
     "history": "Payment history",
     "noPayments": "No payments yet.",
     "payCta": "Pay debt",
+    "byOwner": "By owner",
+    "owner": {
+      "fran": "Fran",
+      "sam": "Sam",
+      "household": "Household"
+    },
+    "monthlyTotal": "Monthly minimum",
     "balance": "Balance",
     "notFound": "Debt not found.",
     "backToList": "Back to debts",
@@ -282,6 +290,29 @@
     "backendDurable": "OPFS (durable)",
     "backendSnapshot": "in-memory + snapshot",
     "backendMemory": "in-memory (no persistence)",
-    "seededFresh": "Seeded fresh dataset on this load."
+    "seededFresh": "Seeded fresh dataset on this load.",
+    "defaults": {
+      "section": "Defaults",
+      "title": "Add Expense defaults",
+      "hint": "Pre-fills the source, owner, and split when you open Add Expense. You can change them per expense."
+    },
+    "backups": {
+      "section": "Backups & data",
+      "title": "Backups & data",
+      "hint": "Download a full SQLite snapshot for safekeeping. The Sheets sync is the primary backup; this file is a belt-and-braces copy.",
+      "download": "Download snapshot",
+      "exportError": "Couldn't export the database. Try again or reload.",
+      "reset": "Clear local data",
+      "resetting": "Clearing…",
+      "resetConfirm": "Wipe all local data? Sheets data is unaffected. This cannot be undone.",
+      "resetHint": "Clears the local snapshot and all saved preferences, then reloads. On Chrome, the OPFS database persists — clear it via DevTools → Application → Storage if needed."
+    },
+    "about": {
+      "section": "About",
+      "title": "About Adulting.app",
+      "version": "Version",
+      "build": "Build",
+      "tagline": "Local-first personal & shared finance for Fran and Sam."
+    }
   }
 }

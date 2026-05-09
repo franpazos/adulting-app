@@ -30,6 +30,7 @@ import {
 import { transactionsRepo } from "@/lib/db";
 import { useDbStore } from "@/store/dbStore";
 import { useUiStore } from "@/store/uiStore";
+import { useDefaultsStore } from "@/store/defaultsStore";
 import { SOURCE_TO_ACCOUNT, SOURCE_TO_USER } from "./sources";
 
 export function AddExpensePage() {
@@ -39,7 +40,13 @@ export function AddExpensePage() {
   const bumpVersion = useDbStore((s) => s.bumpVersion);
   const setMonthKey = useUiStore((s) => s.setMonthKey);
 
-  const [values, setValues] = useState<TransactionFormValues>(defaultFormValues);
+  const defaults = useDefaultsStore.getState();
+  const [values, setValues] = useState<TransactionFormValues>(() => ({
+    ...defaultFormValues(),
+    source: defaults.source,
+    owner: defaults.owner,
+    splitFranPercent: defaults.splitFranPercent,
+  }));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 

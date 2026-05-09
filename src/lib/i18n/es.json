@@ -17,7 +17,8 @@
     "edit": "Editar",
     "loading": "Cargando…",
     "currency": "EUR",
-    "trySample": "Probar con datos de ejemplo"
+    "trySample": "Probar con datos de ejemplo",
+    "reset": "Restablecer"
   },
   "home": {
     "title": "Inicio",
@@ -92,6 +93,13 @@
     "history": "Historial de pagos",
     "noPayments": "Aún no hay pagos.",
     "payCta": "Pagar deuda",
+    "byOwner": "Por persona",
+    "owner": {
+      "fran": "Fran",
+      "sam": "Sam",
+      "household": "Hogar"
+    },
+    "monthlyTotal": "Mínimo mensual",
     "balance": "Saldo",
     "notFound": "Deuda no encontrada.",
     "backToList": "Volver a Deudas",
@@ -282,6 +290,29 @@
     "backendDurable": "OPFS (durable)",
     "backendSnapshot": "memoria + snapshot",
     "backendMemory": "en memoria (sin persistencia)",
-    "seededFresh": "Cargados datos de ejemplo en esta carga."
+    "seededFresh": "Cargados datos de ejemplo en esta carga.",
+    "defaults": {
+      "section": "Predeterminados",
+      "title": "Predeterminados de Añadir gasto",
+      "hint": "Rellenan el origen, el responsable y el reparto al abrir Añadir gasto. Puedes cambiarlos en cada gasto."
+    },
+    "backups": {
+      "section": "Copias y datos",
+      "title": "Copias y datos",
+      "hint": "Descarga un snapshot completo de SQLite por seguridad. La sincronización con Sheets es la copia principal; este archivo es un cinturón y tirantes.",
+      "download": "Descargar snapshot",
+      "exportError": "No se pudo exportar la base de datos. Inténtalo o recarga.",
+      "reset": "Borrar datos locales",
+      "resetting": "Borrando…",
+      "resetConfirm": "¿Borrar todos los datos locales? Los datos en Sheets no se ven afectados. Esto no se puede deshacer.",
+      "resetHint": "Borra el snapshot local y las preferencias guardadas, y recarga. En Chrome, la base OPFS persiste — bórrala desde DevTools → Application → Storage si lo necesitas."
+    },
+    "about": {
+      "section": "Acerca de",
+      "title": "Acerca de Adulting.app",
+      "version": "Versión",
+      "build": "Build",
+      "tagline": "Finanzas locales personales y compartidas para Fran y Sam."
+    }
   }
 }

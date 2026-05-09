@@ -380,6 +380,14 @@ export function _resetDbForTests(): void {
   void clearIdbSnapshot();
 }
 
+/**
+ * Serialize the current DB to a Uint8Array. Works regardless of backend
+ * (OPFS or in-memory). Used by the Settings → Backups download action.
+ */
+export function exportDb(): Uint8Array | null {
+  return serializeCurrent();
+}
+
 /** Test-only: expose the serialize/deserialize primitives. */
 export const _internal = {
   serializeCurrent,

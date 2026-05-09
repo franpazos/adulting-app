@@ -19,7 +19,7 @@ This document is the living plan of work. Each phase ends with a checklist updat
 - [x] Placeholder pages for all bottom-nav routes + ComingSoon for `more` rows
 - [x] Placeholder SVG logo (mark + wordmark) and PWA icons (192, 512, favicon)
 - [x] Documentation skeleton (`docs/`, `CLAUDE.md`, `README.md`)
-- [ ] Verify dev server boots cleanly
+- [x] Verify dev server boots cleanly
 
 ## Phase 1 — Design system (Soft Premium) ✅
 - [x] Tokens audit + finalize neutrals against the reference dashboard
@@ -86,7 +86,7 @@ This document is the living plan of work. Each phase ends with a checklist updat
 - [x] EN + ES i18n for the entire flow (titles, segments, labels, live preview text, save button)
 - [x] Vitest smoke test for the save path (3 scenarios: shared from personal, joint personal, no-impact case)
 - [ ] Smart defaults from last entry — deferred to Phase 7 polish
-- [ ] Sync queue enqueue — Phase 9 (Google Sheets sync)
+- [x] Sync queue enqueue — landed in Phase 9a
 
 ## Phase 6 — Transactions, Settlements, Recurring ✅
 - [x] Transactions list at `/transactions` with month-aware data, avatar + category + amount rows, "Shared" pill on multi-allocation rows, "Debt" pill on debt payments
@@ -99,7 +99,7 @@ This document is the living plan of work. Each phase ends with a checklist updat
 - [x] EN + ES copy for transactions list/edit, settlements (open count, recent activity, reason labels), recurring (sections, fields)
 - [x] Vitest coverage (10 new): edit-amount/split/source recompute paths, soft-delete clears settlements, soft-deleted txs hidden from list, recurring deactivate semantics. Total suite 69/69 passing.
 - [ ] Filters/search on transactions — deferred to Phase 7 polish
-- [ ] "Settle up" CTA on balance cards (writes a `SETTLEMENT_PAYMENT` tx) — deferred to Phase 7
+- [x] "Settle up" CTA on balance cards (writes a `SETTLEMENT_PAYMENT` tx) — landed in Phase 7
 
 ## Phase 7 — Home dashboard, Debts, More ✅ (core)
 - [x] Debts list at `/debts` with avatar + currency pill + balance + minimum payment, totals card grouped by currency
@@ -112,10 +112,15 @@ This document is the living plan of work. Each phase ends with a checklist updat
 - [x] Bug fix: `recomputeForTransaction` now also processes `DEBT_PAYMENT` (was EXPENSE-only) so settlements stay consistent when debts are paid from a non-owner account
 - [x] EN + ES copy for debts, payDebt, settleUp, categories, accounts namespaces
 - [x] Vitest coverage: USD-debt-from-EUR-account, joint-source-personal-debt settlement, settle-up zeroing balance, partial settle-up, balance rounding (74/74 passing)
-- [ ] Home dashboard polish (Joint snapshot card, donut chart, debts/category/people summary cards) — deferred to a future polish pass
+- [ ] Home dashboard polish — partial:
+  - [x] Donut chart for category breakdown (Phase 10)
+  - [x] CompareBar for income vs expenses (Phase 10)
+  - [ ] Joint snapshot card (current balance + month deltas)
+  - [ ] Side-by-side personal summaries (Fran + Sam) per spec §6.1
+  - [ ] Per-owner debt summary on Home (Fran / Sam / Household totals)
 - [ ] Filters/search on Transactions — deferred
 - [ ] Smart defaults from last entry — deferred
-- [ ] Settings expansion (Defaults, Backups & Data, About) — deferred
+- [x] Settings expansion (Defaults, Backups & Data, About) — landed in Phase 10b
 
 ## Phase 8 — PWA + offline ✅
 - [x] Service worker registered via `virtual:pwa-register` (Workbox under `vite-plugin-pwa`); `dist/sw.js` precaches 15 app-shell entries (~2 MB incl. sqlite-wasm)
@@ -163,6 +168,12 @@ This document is the living plan of work. Each phase ends with a checklist updat
 - [x] Tests (10 new in pull.test.ts): writer→reader round-trip per entity, FX null preservation, applyTab insert/update/skip/soft-delete propagation, malformed-row tolerance
 - [ ] Conflict-resolution UI for the rare case the user wants local to win when remote is newer (deferred — last-writer-wins covers the common case)
 - [ ] Wire `ensureMonthSheet` into auto-sync once the user nominates their template tab title (deferred per spec §14.6)
+
+## Phase 10b — Spec coverage cleanup ✅
+- [x] Per-owner debt totals on Debts page (spec §6.6): Fran / Sam / Household totals card + monthly minimum total per currency
+- [x] Settings → **Defaults** section (`useDefaultsStore` persisted, prefills Add Expense source/owner/split)
+- [x] Settings → **Backups & Data** section (download SQLite snapshot via new public `exportDb()`, "Clear local data" with confirm + reload)
+- [x] Settings → **About** section (version + build date wired via Vite `define` reading `package.json`)
 
 ## Phase 10 — Polish ✅
 - [x] **Code-split routes** via `React.lazy` + `Suspense`. Main bundle dropped from 896 kB → 802 kB; per-route chunks 3–10 kB each (gzipped 1–4 kB)

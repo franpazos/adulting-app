@@ -7,9 +7,11 @@ import { Button, Card, EmptyState, IconButton, Pill } from "@/components/ui";
 import { Avatar, type AvatarWho } from "@/components/Avatar";
 import { EmptyArt } from "@/components/EmptyArt";
 import { debtsRepo } from "@/lib/db";
-import type { Debt } from "@/lib/db/types";
+import type { Debt, OwnerType } from "@/lib/db/types";
 import { useDbStore } from "@/store/dbStore";
 import { cn } from "@/lib/utils/cn";
+
+type OwnerTotals = Record<OwnerType, Record<string, number>>;
 
 export function DebtsPage() {
   const { t } = useTranslation();
@@ -27,6 +29,31 @@ export function DebtsPage() {
     const out: Record<string, number> = {};
     for (const d of debts) {
       out[d.currency_code] = (out[d.currency_code] ?? 0) + d.current_balance;
+    }
+    return out;
+  }, [debts]);
+
+  // Per-owner totals (spec §6.6) — separate currency rollups per owner so
+  // a USD debt for Sam doesn't get summed with a EUR debt.
+  const totalsByOwner = useMemo<OwnerTotals>(() => {
+    const out: OwnerTotals = { FRAN: {}, SAM: {}, HOUSEHOLD: {} };
+    for (const d of debts) {
+      const bucket = out[d.owner_type as OwnerType];
+      bucket[d.currency_code] =
+        (bucket[d.currency_code] ?? 0) + d.current_balance;
+    }
+    return out;
+  }, [debts]);
+
+  // Sum the minimum_payment (in the debt's own currency) per currency.
+  // Spec §6.6: "monthly debt payment total".
+  const monthlyByCurrency = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const d of debts) {
+      if (d.minimum_payment != null) {
+        out[d.currency_code] =
+          (out[d.currency_code] ?? 0) + d.minimum_payment;
+      }
     }
     return out;
   }, [debts]);
@@ -69,6 +96,37 @@ export function DebtsPage() {
         </p>
       </Card>
 
+      <Card className="space-y-3">
+        <p className="t-eyebrow">{t("debts.byOwner")}</p>
+        <ul className="divide-y divide-border/60">
+          <OwnerRow
+            who="FRAN"
+            label={t("debts.owner.fran")}
+            totals={totalsByOwner.FRAN}
+          />
+          <OwnerRow
+            who="SAM"
+            label={t("debts.owner.sam")}
+            totals={totalsByOwner.SAM}
+          />
+          <OwnerRow
+            who="HOUSEHOLD"
+            label={t("debts.owner.household")}
+            totals={totalsByOwner.HOUSEHOLD}
+          />
+        </ul>
+        {Object.keys(monthlyByCurrency).length > 0 && (
+          <div className="pt-2 mt-1 border-t border-border/60 flex items-baseline justify-between gap-3">
+            <span className="t-label">{t("debts.monthlyTotal")}</span>
+            <span className="font-medium tabular-nums tracking-tight text-sm flex flex-wrap gap-2 justify-end">
+              {Object.entries(monthlyByCurrency).map(([code, total]) => (
+                <span key={code}>{formatAmount(total, code)}</span>
+              ))}
+            </span>
+          </div>
+        )}
+      </Card>
+
       <ul className="space-y-2">
         {debts.map((d) => (
           <li key={d.id}>
@@ -77,6 +135,33 @@ export function DebtsPage() {
         ))}
       </ul>
     </div>
+  );
+}
+
+function OwnerRow({
+  who,
+  label,
+  totals,
+}: {
+  who: AvatarWho;
+  label: string;
+  totals: Record<string, number>;
+}) {
+  const entries = Object.entries(totals);
+  return (
+    <li className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
+      <Avatar who={who} size={28} />
+      <span className="flex-1 text-sm">{label}</span>
+      {entries.length === 0 ? (
+        <span className="t-label tabular-nums">—</span>
+      ) : (
+        <span className="font-medium tabular-nums tracking-tight text-sm flex flex-wrap gap-2 justify-end">
+          {entries.map(([code, total]) => (
+            <span key={code}>{formatAmount(total, code)}</span>
+          ))}
+        </span>
+      )}
+    </li>
   );
 }
 

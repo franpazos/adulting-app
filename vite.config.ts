@@ -2,9 +2,18 @@ import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "node:path";
+import { readFileSync } from "node:fs";
+
+const pkg = JSON.parse(
+  readFileSync(path.resolve(__dirname, "./package.json"), "utf-8"),
+) as { version: string };
 
 // https://vite.dev/config/
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+    __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

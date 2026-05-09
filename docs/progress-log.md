@@ -4,6 +4,57 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-09 — Phase 10b spec coverage cleanup
+
+**What was done**
+
+Audit pass over the execution plan and the original spec found two genuine gaps and several stale checkboxes. Closed both kinds.
+
+- **Stale checkboxes corrected** in `execution-plan.md`:
+  - "Verify dev server boots cleanly" → done long ago.
+  - "Sync queue enqueue (Phase 9)" → landed in 9a.
+  - "Settle up CTA on balance cards" → landed in 7.
+  - Donut chart sub-bullet under Phase 7 polish → landed in 10.
+  - Settings expansion → landed in 10b (this entry).
+- **Per-owner debt totals** on `/debts` (spec §6.6):
+  - New "By owner" card on `DebtsPage` showing Fran / Sam / Household with their respective totals, separated per currency so a USD personal debt doesn't get summed with a EUR shared debt.
+  - "Monthly minimum" footer summing `minimum_payment` per currency, addresses spec's "monthly debt payment total" requirement.
+  - New `OwnerRow` component, avatar + label + per-currency totals or "—" when none.
+- **Settings → Defaults section** (spec §11.10):
+  - New `defaultsStore` (Zustand+persist, key `adulting.defaults`): `source`, `owner`, `splitFranPercent`.
+  - `DefaultsCard` in `SettingsPage` with two segmented controls (source, owner) and a slider that only appears when the combination implies a split (personal source + HOUSEHOLD owner). "Reset to defaults" button.
+  - `AddExpensePage` reads from `defaultsStore` on mount, so the form pre-fills with the user's chosen defaults instead of the hardcoded JOINT/HOUSEHOLD/50.
+- **Settings → Backups & Data section**:
+  - Promoted `serializeCurrent` to a public `exportDb()` in `client.ts`.
+  - `BackupsCard` with a "Download snapshot" button that turns the bytes into a `Blob` and triggers a browser download named `adulting-YYYY-MM-DD.sqlite3`.
+  - "Clear local data" button (destructive variant) with `confirm()` dialog → `clearSnapshot()` + `localStorage.clear()` + `location.reload()`. Surfaces a warning that on Chrome OPFS data persists separately and must be cleared via DevTools.
+- **Settings → About section**:
+  - `vite.config.ts` reads `package.json` once and sets `__APP_VERSION__` and `__BUILD_DATE__` (today's ISO date) via `define`.
+  - `vite-env.d.ts` declares the global constants for TypeScript.
+  - `AboutCard` shows version, build, and the app tagline. Plain `<dl>` with version + build rows.
+- **i18n** (EN + ES) extended with `common.reset`, `debts.byOwner`, `debts.owner.{fran,sam,household}`, `debts.monthlyTotal`, `settings.defaults.*`, `settings.backups.*`, `settings.about.*`.
+- **97/97 tests still passing.** Build clean.
+
+**Decisions**
+- **Settings expansion is a card-per-section pattern, not subroutes.** The spec mentions Settings rows but for our scale a single scrollable page with `CardEyebrow` headings is more useful than a navigation tree. If Defaults grows beyond a handful of options, it can graduate to its own route.
+- **Backup format is the raw SQLite file**, not JSON. Less transformation, no schema versioning issue, and "import" later becomes `_internal.deserializeIntoCurrent(bytes)`. Tradeoff: not human-readable. The Sheets export covers the human-readable case.
+- **"Clear local data" doesn't try to wipe OPFS** because that requires re-initing the SAH Pool with `clearOnInit: true`, which is racy mid-session. The reload triggers a fresh init; if the user wants to truly wipe Chrome OPFS, the inline hint points them at DevTools.
+- **`__APP_VERSION__` via Vite `define`** rather than importing `package.json`. Keeps the JSON out of the runtime bundle, surfaces the value as a compile-time constant.
+- **No "import snapshot" button yet.** Adding one means handling schema mismatches and confirmation flow; deferred until there's a real reason (i.e. the user actually needs to restore from a download). Today the Sheets sync is the recovery path.
+
+**Open follow-ups (still genuinely deferred)**
+- Filters/search on Transactions (spec §6.4).
+- Smart defaults from *last entry* on Add Expense (spec §6.2 polish — the current Defaults are static; the spec also implies "remember the last used category/description per pattern").
+- Side-by-side personal summaries (Fran + Sam panels) on Home (spec §6.1).
+- Joint snapshot card on Home (current balance + month deltas).
+- Per-owner debt summary on Home (currently only on `/debts`).
+- Conflict-resolution UI for Sheets sync (rare same-second case).
+- Wire `ensureMonthSheet` into auto-sync once the user nominates a template tab title.
+
+These are now the only items left from the original spec coverage audit. None are blocking daily use.
+
+---
+
 ## 2026-05-08 — Phase 10 polish (charts, motion, a11y, code-splitting, README)
 
 **What was done**
