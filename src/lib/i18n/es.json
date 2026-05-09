@@ -41,6 +41,24 @@
     "empty": {
       "title": "Todo en calma",
       "description": "Tus movimientos aparecerán aquí en cuanto registres uno. Toca el botón + para empezar."
+    },
+    "searchPlaceholder": "Busca por descripción, comercio, notas…",
+    "filteredCount": "{{shown}} de {{total}}",
+    "filters": {
+      "toggle": "Filtros",
+      "clear": "Limpiar",
+      "all": "Todos",
+      "source": "Pagado desde",
+      "owner": "Pertenece a",
+      "category": "Categoría",
+      "flag": {
+        "label": "Tipo",
+        "shared": "Compartido",
+        "recurring": "Recurrente",
+        "debt": "Deuda"
+      },
+      "emptyTitle": "Sin coincidencias",
+      "emptyDescription": "Prueba a quitar un filtro o ampliar la búsqueda."
     }
   },
   "expense": {

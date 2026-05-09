@@ -4,6 +4,41 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-09 — Transactions filters + search (spec §6.4)
+
+**What was done**
+
+Closed the largest remaining spec gap: `/transactions` had a flat month-aware list with no way to find a specific row. Now it has an inline search input plus an expandable filter panel.
+
+- **Search** — `Input` with leading magnifier icon, full-width. Matches case-insensitively against `description`, `merchant`, and `notes`. Trims whitespace before applying.
+- **Filter panel** — `IconButton` toggle in the search row opens/closes a card with four sections:
+  - **Source** segmented (`All / Fran / Sam / Joint`) — uses `accountIdToCashSource` to map the row's `source_account_id`.
+  - **Owner** segmented (`All / Fran / Sam / Household`) — checks if any allocation row carries that owner.
+  - **Type** segmented (`All / Shared / Recurring / Debt`) — `Shared` = >1 allocation, `Recurring` = `origin === "RECURRING_GENERATED"`, `Debt` = `type === "DEBT_PAYMENT"`.
+  - **Category** — horizontal chip scroller including an "All" chip and one per category, with the category color dot. Tap a chip to toggle (re-tapping the active one clears).
+- **Active-filter affordance** — the filter button shows a violet "active" variant with a badge counter when any filter is applied. A "Clear" link sits next to the count of shown vs total transactions.
+- **Empty state for filtered-to-zero** — distinct from the "no transactions yet" empty state. Title "No matches", description suggests broadening the search.
+- **i18n** (EN + ES): full `transactions.filters.*` namespace plus `transactions.searchPlaceholder` and `transactions.filteredCount`.
+- **Performance**: filters apply client-side via `useMemo` over the month's already-loaded tx list. Allocation owners are computed once per month (single pass over the transactions) and reused for both the filter logic and the existing "Shared" pill on `TransactionRow`. No new repo methods needed.
+- **97/97 tests** still passing. Build clean.
+
+**Decisions**
+- **Filters are client-side, not SQL-side.** A month rarely has more than ~100 transactions; pushing filters into SQL would require either a flexible query builder or per-filter repo methods. Both are heavier than `Array.filter` over an already-cached list.
+- **Allocation map computed once per month, not per filter change.** The `useMemo` deps are `[dbReady, dbVersion, allTxs]`, not `[filters]`, so changing a filter re-derives the result list cheaply without re-querying allocations.
+- **Single category, not multi-select.** Multi-select category would need a chip-row UX with toggleable state and a more complex state shape. For two users with ~10 categories this gives ~95% of the value at half the complexity. Easy to upgrade later if needed.
+- **No "recurring" instance back-reference.** `origin === "RECURRING_GENERATED"` is the only signal a tx came from recurring. There's no FK back to the `recurring_items` row that produced it. Spec §6.4 just says "filter by recurring", which this satisfies.
+- **Filter state lives in component state**, not a store. Filters are session-scoped and shouldn't survive a page reload (they'd surprise the user). If demand for "save my last filter" emerges, a small `transactionsFiltersStore` is a one-screen change.
+
+**Open follow-ups (still genuinely deferred)**
+- **Smart defaults from last entry** on Add Expense (remember last category/description per source/owner pattern).
+- **Side-by-side personal summaries** (Fran + Sam panels) on Home (spec §6.1).
+- **Joint snapshot card** on Home (current balance + month deltas).
+- **Per-owner debt summary on Home** (currently only on `/debts`).
+- **Conflict-resolution UI** for the rare same-second sync case.
+- **Wire `ensureMonthSheet`** into auto-sync once the user nominates a template tab title.
+
+---
+
 ## 2026-05-09 — Phase 10b spec coverage cleanup
 
 **What was done**

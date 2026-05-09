@@ -98,7 +98,7 @@ This document is the living plan of work. Each phase ends with a checklist updat
 - [x] `transactionsRepo.update` and `softDelete`; `recurringRepo.update` and `deactivate`
 - [x] EN + ES copy for transactions list/edit, settlements (open count, recent activity, reason labels), recurring (sections, fields)
 - [x] Vitest coverage (10 new): edit-amount/split/source recompute paths, soft-delete clears settlements, soft-deleted txs hidden from list, recurring deactivate semantics. Total suite 69/69 passing.
-- [ ] Filters/search on transactions — deferred to Phase 7 polish
+- [x] Filters/search on transactions — landed in Phase 10b
 - [x] "Settle up" CTA on balance cards (writes a `SETTLEMENT_PAYMENT` tx) — landed in Phase 7
 
 ## Phase 7 — Home dashboard, Debts, More ✅ (core)
@@ -174,6 +174,7 @@ This document is the living plan of work. Each phase ends with a checklist updat
 - [x] Settings → **Defaults** section (`useDefaultsStore` persisted, prefills Add Expense source/owner/split)
 - [x] Settings → **Backups & Data** section (download SQLite snapshot via new public `exportDb()`, "Clear local data" with confirm + reload)
 - [x] Settings → **About** section (version + build date wired via Vite `define` reading `package.json`)
+- [x] Transactions filters + search (spec §6.4): inline search bar, expandable filter panel with Source / Owner / Type segmented controls + Category chips, active-filter badge on the toggle, "Clear filters" affordance, "no matches" empty state. Filters apply client-side over the month's tx list.
 
 ## Phase 10 — Polish ✅
 - [x] **Code-split routes** via `React.lazy` + `Suspense`. Main bundle dropped from 896 kB → 802 kB; per-route chunks 3–10 kB each (gzipped 1–4 kB)

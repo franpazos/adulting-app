@@ -41,6 +41,24 @@
     "empty": {
       "title": "Quiet so far",
       "description": "Your transactions will appear here as soon as you record one. Tap the + button below to start."
+    },
+    "searchPlaceholder": "Search description, merchant, notes…",
+    "filteredCount": "{{shown}} of {{total}}",
+    "filters": {
+      "toggle": "Filters",
+      "clear": "Clear",
+      "all": "All",
+      "source": "Paid from",
+      "owner": "Belongs to",
+      "category": "Category",
+      "flag": {
+        "label": "Type",
+        "shared": "Shared",
+        "recurring": "Recurring",
+        "debt": "Debt"
+      },
+      "emptyTitle": "No matches",
+      "emptyDescription": "Try clearing a filter or broadening your search."
     }
   },
   "expense": {
