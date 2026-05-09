@@ -294,10 +294,48 @@
       "label": "Solo sync manual",
       "hint": "Desactiva la sincronización automática. Tendrás que pulsar Sincronizar."
     },
+    "monthTemplate": {
+      "label": "Plantilla de mes",
+      "hint": "Nombre de la pestaña a duplicar al cambiar de mes (p. ej. \"Mes — plantilla\"). Vacío = no crear pestañas automáticamente.",
+      "placeholder": "Mes — plantilla"
+    },
+    "conflicts": {
+      "banner_one": "{{count}} conflicto de sync",
+      "banner_other": "{{count}} conflictos de sync",
+      "bannerHint": "Ambos móviles editaron la misma fila. Toca para revisar."
+    },
     "badge": {
       "syncing": "Sincronizando…",
       "synced": "Al día",
       "error": "Error de sync"
+    }
+  },
+  "conflicts": {
+    "title": "Conflictos de sync",
+    "back": "Atrás",
+    "intro": "Estas filas se editaron en ambos móviles. Elige qué versión conservar — la otra se sobrescribirá en la próxima sincronización.",
+    "diffCount_one": "{{count}} campo",
+    "diffCount_other": "{{count}} campos",
+    "moreDiffs_one": "+{{count}} campo más",
+    "moreDiffs_other": "+{{count}} campos más",
+    "local": "La mía",
+    "remote": "Remota",
+    "keepLocal": "Conservar la mía",
+    "useRemote": "Usar remota",
+    "empty": {
+      "title": "Todo al día",
+      "description": "No hay conflictos pendientes. La próxima sincronización irá limpia."
+    },
+    "entity": {
+      "user": "Usuario",
+      "account": "Cuenta",
+      "category": "Categoría",
+      "transaction": "Movimiento",
+      "transaction_allocation": "Asignación",
+      "recurring_item": "Recurrente",
+      "debt": "Deuda",
+      "debt_payment": "Pago de deuda",
+      "settlement_ledger": "Ajuste"
     }
   },
   "install": {

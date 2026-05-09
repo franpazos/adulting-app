@@ -38,6 +38,10 @@ import {
 import { getValues, type SheetRow } from "@/lib/google/sheets-api";
 import { fromBool, nowIso } from "@/lib/db/repositories/_helpers";
 import { columnLetter, RAW_TABS } from "./tabs";
+import {
+  hasPendingForEntity,
+  recordConflict,
+} from "./conflicts";
 import type {
   Account,
   Category,
@@ -55,6 +59,8 @@ export interface PullReport {
   inserted: Record<string, number>;
   updated: Record<string, number>;
   skipped: Record<string, number>;
+  /** Per-tab count of remote updates that hit a local PENDING write. */
+  conflicts: Record<string, number>;
   durationMs: number;
 }
 
@@ -62,6 +68,41 @@ interface ReconcileStats {
   inserted: number;
   updated: number;
   skipped: number;
+  conflicts: number;
+}
+
+/**
+ * Decide whether a remote UPDATE should land or be deferred to the user
+ * via a conflict record. Returns true if the caller should proceed with
+ * the update; false if a conflict was recorded and the update was skipped.
+ */
+function checkConflict(
+  entityType: string,
+  table: string,
+  id: string,
+  remote: Record<string, unknown>,
+  localUpdatedAt: string,
+  remoteUpdatedAt: string,
+): boolean {
+  if (!hasPendingForEntity(entityType, id)) return true;
+  const local = selectOne<Record<string, unknown>>(
+    `SELECT * FROM ${table} WHERE id = ?`,
+    [id],
+  );
+  if (!local) return true; // local somehow gone — fall through to insert path
+  recordConflict({
+    entity_type: entityType,
+    entity_id: id,
+    local,
+    remote,
+    local_updated_at: localUpdatedAt,
+    remote_updated_at: remoteUpdatedAt,
+  });
+  return false;
+}
+
+function freshStats(): ReconcileStats {
+  return { inserted: 0, updated: 0, skipped: 0, conflicts: 0 };
 }
 
 interface LocalAge {
@@ -96,6 +137,7 @@ export async function pullAll(spreadsheetId: string): Promise<PullReport> {
   const inserted: Record<string, number> = {};
   const updated: Record<string, number> = {};
   const skipped: Record<string, number> = {};
+  const conflicts: Record<string, number> = {};
 
   // Fetch all tabs in parallel — they're independent reads.
   const fetches = await Promise.all(
@@ -113,6 +155,7 @@ export async function pullAll(spreadsheetId: string): Promise<PullReport> {
       inserted[spec.title] = stats.inserted;
       updated[spec.title] = stats.updated;
       skipped[spec.title] = stats.skipped;
+      conflicts[spec.title] = stats.conflicts;
     }
   });
 
@@ -121,6 +164,7 @@ export async function pullAll(spreadsheetId: string): Promise<PullReport> {
     inserted,
     updated,
     skipped,
+    conflicts,
     durationMs: Date.now() - start,
   };
 }
@@ -146,7 +190,7 @@ function applyTab(tabTitle: string, rows: SheetRow[]): ReconcileStats {
     case "raw_settlement_ledger":
       return reconcileSettlements(rows);
     default:
-      return { inserted: 0, updated: 0, skipped: 0 };
+      return freshStats();
   }
 }
 
@@ -157,19 +201,42 @@ function applyTab(tabTitle: string, rows: SheetRow[]): ReconcileStats {
 // matter — we go in the natural RAW_TABS order anyway.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function reconcileUsers(rows: SheetRow[]): ReconcileStats {
-  const ages = loadLocalAges("users");
-  const stats: ReconcileStats = { inserted: 0, updated: 0, skipped: 0 };
+interface ReconcileConfig<T extends { id: string; updated_at: string }> {
+  table: string;
+  entityType: string;
+  parse: (r: SheetRow) => T;
+  insert: (e: T) => void;
+  update: (e: T) => void;
+}
+
+function reconcile<T extends { id: string; updated_at: string }>(
+  rows: SheetRow[],
+  cfg: ReconcileConfig<T>,
+): ReconcileStats {
+  const ages = loadLocalAges(cfg.table);
+  const stats = freshStats();
   for (const raw of rows) {
-    const u = safeParse(parseUser, raw);
-    if (!u) continue;
-    const local = ages.get(u.id);
+    const e = safeParse(cfg.parse, raw);
+    if (!e) continue;
+    const local = ages.get(e.id);
     if (!local) {
-      insertUser(u);
+      cfg.insert(e);
       stats.inserted++;
-    } else if (u.updated_at > local) {
-      updateUser(u);
-      stats.updated++;
+    } else if (e.updated_at > local) {
+      const proceed = checkConflict(
+        cfg.entityType,
+        cfg.table,
+        e.id,
+        e as unknown as Record<string, unknown>,
+        local,
+        e.updated_at,
+      );
+      if (proceed) {
+        cfg.update(e);
+        stats.updated++;
+      } else {
+        stats.conflicts++;
+      }
     } else {
       stats.skipped++;
     }
@@ -177,164 +244,86 @@ function reconcileUsers(rows: SheetRow[]): ReconcileStats {
   return stats;
 }
 
-function reconcileAccounts(rows: SheetRow[]): ReconcileStats {
-  const ages = loadLocalAges("accounts");
-  const stats: ReconcileStats = { inserted: 0, updated: 0, skipped: 0 };
-  for (const raw of rows) {
-    const a = safeParse(parseAccount, raw);
-    if (!a) continue;
-    const local = ages.get(a.id);
-    if (!local) {
-      insertAccount(a);
-      stats.inserted++;
-    } else if (a.updated_at > local) {
-      updateAccount(a);
-      stats.updated++;
-    } else {
-      stats.skipped++;
-    }
-  }
-  return stats;
+function reconcileUsers(rows: SheetRow[]) {
+  return reconcile(rows, {
+    table: "users",
+    entityType: "user",
+    parse: parseUser,
+    insert: insertUser,
+    update: updateUser,
+  });
 }
-
-function reconcileCategories(rows: SheetRow[]): ReconcileStats {
-  const ages = loadLocalAges("categories");
-  const stats: ReconcileStats = { inserted: 0, updated: 0, skipped: 0 };
-  for (const raw of rows) {
-    const c = safeParse(parseCategory, raw);
-    if (!c) continue;
-    const local = ages.get(c.id);
-    if (!local) {
-      insertCategory(c);
-      stats.inserted++;
-    } else if (c.updated_at > local) {
-      updateCategory(c);
-      stats.updated++;
-    } else {
-      stats.skipped++;
-    }
-  }
-  return stats;
+function reconcileAccounts(rows: SheetRow[]) {
+  return reconcile(rows, {
+    table: "accounts",
+    entityType: "account",
+    parse: parseAccount,
+    insert: insertAccount,
+    update: updateAccount,
+  });
 }
-
-function reconcileTransactions(rows: SheetRow[]): ReconcileStats {
-  const ages = loadLocalAges("transactions");
-  const stats: ReconcileStats = { inserted: 0, updated: 0, skipped: 0 };
-  for (const raw of rows) {
-    const t = safeParse(parseTransaction, raw);
-    if (!t) continue;
-    const local = ages.get(t.id);
-    if (!local) {
-      insertTransaction(t);
-      stats.inserted++;
-    } else if (t.updated_at > local) {
-      updateTransaction(t);
-      stats.updated++;
-    } else {
-      stats.skipped++;
-    }
-  }
-  return stats;
+function reconcileCategories(rows: SheetRow[]) {
+  return reconcile(rows, {
+    table: "categories",
+    entityType: "category",
+    parse: parseCategory,
+    insert: insertCategory,
+    update: updateCategory,
+  });
 }
-
-function reconcileAllocations(rows: SheetRow[]): ReconcileStats {
-  const ages = loadLocalAges("transaction_allocations");
-  const stats: ReconcileStats = { inserted: 0, updated: 0, skipped: 0 };
-  for (const raw of rows) {
-    const a = safeParse(parseAllocation, raw);
-    if (!a) continue;
-    const local = ages.get(a.id);
-    if (!local) {
-      insertAllocation(a);
-      stats.inserted++;
-    } else if (a.updated_at > local) {
-      updateAllocation(a);
-      stats.updated++;
-    } else {
-      stats.skipped++;
-    }
-  }
-  return stats;
+function reconcileTransactions(rows: SheetRow[]) {
+  return reconcile(rows, {
+    table: "transactions",
+    entityType: "transaction",
+    parse: parseTransaction,
+    insert: insertTransaction,
+    update: updateTransaction,
+  });
 }
-
-function reconcileRecurring(rows: SheetRow[]): ReconcileStats {
-  const ages = loadLocalAges("recurring_items");
-  const stats: ReconcileStats = { inserted: 0, updated: 0, skipped: 0 };
-  for (const raw of rows) {
-    const r = safeParse(parseRecurring, raw);
-    if (!r) continue;
-    const local = ages.get(r.id);
-    if (!local) {
-      insertRecurring(r);
-      stats.inserted++;
-    } else if (r.updated_at > local) {
-      updateRecurring(r);
-      stats.updated++;
-    } else {
-      stats.skipped++;
-    }
-  }
-  return stats;
+function reconcileAllocations(rows: SheetRow[]) {
+  return reconcile(rows, {
+    table: "transaction_allocations",
+    entityType: "transaction_allocation",
+    parse: parseAllocation,
+    insert: insertAllocation,
+    update: updateAllocation,
+  });
 }
-
-function reconcileDebts(rows: SheetRow[]): ReconcileStats {
-  const ages = loadLocalAges("debts");
-  const stats: ReconcileStats = { inserted: 0, updated: 0, skipped: 0 };
-  for (const raw of rows) {
-    const d = safeParse(parseDebt, raw);
-    if (!d) continue;
-    const local = ages.get(d.id);
-    if (!local) {
-      insertDebt(d);
-      stats.inserted++;
-    } else if (d.updated_at > local) {
-      updateDebt(d);
-      stats.updated++;
-    } else {
-      stats.skipped++;
-    }
-  }
-  return stats;
+function reconcileRecurring(rows: SheetRow[]) {
+  return reconcile(rows, {
+    table: "recurring_items",
+    entityType: "recurring_item",
+    parse: parseRecurring,
+    insert: insertRecurring,
+    update: updateRecurring,
+  });
 }
-
-function reconcileDebtPayments(rows: SheetRow[]): ReconcileStats {
-  const ages = loadLocalAges("debt_payments");
-  const stats: ReconcileStats = { inserted: 0, updated: 0, skipped: 0 };
-  for (const raw of rows) {
-    const p = safeParse(parseDebtPayment, raw);
-    if (!p) continue;
-    const local = ages.get(p.id);
-    if (!local) {
-      insertDebtPayment(p);
-      stats.inserted++;
-    } else if (p.updated_at > local) {
-      updateDebtPayment(p);
-      stats.updated++;
-    } else {
-      stats.skipped++;
-    }
-  }
-  return stats;
+function reconcileDebts(rows: SheetRow[]) {
+  return reconcile(rows, {
+    table: "debts",
+    entityType: "debt",
+    parse: parseDebt,
+    insert: insertDebt,
+    update: updateDebt,
+  });
 }
-
-function reconcileSettlements(rows: SheetRow[]): ReconcileStats {
-  const ages = loadLocalAges("settlement_ledger");
-  const stats: ReconcileStats = { inserted: 0, updated: 0, skipped: 0 };
-  for (const raw of rows) {
-    const s = safeParse(parseSettlement, raw);
-    if (!s) continue;
-    const local = ages.get(s.id);
-    if (!local) {
-      insertSettlement(s);
-      stats.inserted++;
-    } else if (s.updated_at > local) {
-      updateSettlement(s);
-      stats.updated++;
-    } else {
-      stats.skipped++;
-    }
-  }
-  return stats;
+function reconcileDebtPayments(rows: SheetRow[]) {
+  return reconcile(rows, {
+    table: "debt_payments",
+    entityType: "debt_payment",
+    parse: parseDebtPayment,
+    insert: insertDebtPayment,
+    update: updateDebtPayment,
+  });
+}
+function reconcileSettlements(rows: SheetRow[]) {
+  return reconcile(rows, {
+    table: "settlement_ledger",
+    entityType: "settlement_ledger",
+    parse: parseSettlement,
+    insert: insertSettlement,
+    update: updateSettlement,
+  });
 }
 
 function safeParse<T>(
@@ -733,6 +722,49 @@ function updateSettlement(s: SettlementLedgerEntry): void {
       s.id,
     ],
   );
+}
+
+/**
+ * Apply a remote-shaped record to the local DB, dispatched by entity
+ * type. Used by the conflict-resolution UI when the user picks "Use
+ * remote". The caller is responsible for stripping any pending queue
+ * entries — see `conflicts.ts::resolveUseRemote`.
+ */
+export function applyRemoteToLocal(
+  entityType: string,
+  data: Record<string, unknown>,
+): void {
+  switch (entityType) {
+    case "user":
+      updateUser(data as unknown as User);
+      break;
+    case "account":
+      updateAccount(data as unknown as Account);
+      break;
+    case "category":
+      updateCategory(data as unknown as Category);
+      break;
+    case "transaction":
+      updateTransaction(data as unknown as Transaction);
+      break;
+    case "transaction_allocation":
+      updateAllocation(data as unknown as TransactionAllocation);
+      break;
+    case "recurring_item":
+      updateRecurring(data as unknown as RecurringItem);
+      break;
+    case "debt":
+      updateDebt(data as unknown as Debt);
+      break;
+    case "debt_payment":
+      updateDebtPayment(data as unknown as DebtPayment);
+      break;
+    case "settlement_ledger":
+      updateSettlement(data as unknown as SettlementLedgerEntry);
+      break;
+    default:
+      throw new Error(`applyRemoteToLocal: unknown entityType "${entityType}"`);
+  }
 }
 
 // Re-export the few helpers tests want without exposing the rest.

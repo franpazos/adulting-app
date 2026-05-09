@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { CheckCircle2, Cloud, CloudOff, RefreshCw, Sparkles } from "lucide-react";
 
@@ -22,6 +23,7 @@ import {
 import { hasValidToken, useAuthStore } from "@/store/authStore";
 import { useSyncStore } from "@/store/syncStore";
 import { listPending } from "@/lib/sync/queue";
+import { unresolvedConflictCount } from "@/lib/sync/conflicts";
 import { useDbStore } from "@/store/dbStore";
 import { parseSpreadsheetId } from "@/lib/google/drive-api";
 import { getSpreadsheet } from "@/lib/google/sheets-api";
@@ -47,6 +49,8 @@ export function SyncCard() {
   const setSheet = useSyncStore((s) => s.setSheet);
   const manualOnly = useSyncStore((s) => s.manualOnly);
   const setManualOnly = useSyncStore((s) => s.setManualOnly);
+  const monthTemplateTitle = useSyncStore((s) => s.monthTemplateTitle);
+  const setMonthTemplateTitle = useSyncStore((s) => s.setMonthTemplateTitle);
   const phase = useSyncStore((s) => s.phase);
   const setPhase = useSyncStore((s) => s.setPhase);
   const lastPushAt = useSyncStore((s) => s.lastPushAt);
@@ -60,9 +64,11 @@ export function SyncCard() {
 
   // Update pending count whenever the DB version moves.
   const [pendingCount, setPendingCount] = useState(0);
+  const [conflictCount, setConflictCount] = useState(0);
   useEffect(() => {
     if (!dbReady) return;
     setPendingCount(listPending().length);
+    setConflictCount(unresolvedConflictCount());
   }, [dbReady, dbVersion, phase]);
 
   if (!configured) {
@@ -120,12 +126,15 @@ export function SyncCard() {
             lastPushAt={lastPushAt}
             lastError={lastError}
             pendingCount={pendingCount}
+            conflictCount={conflictCount}
             lang={i18n.language}
             onPushNow={async () => {
               setPhase("pushing");
               setError(null);
               try {
-                const report = await syncAll(sheet.id);
+                const report = await syncAll(sheet.id, {
+                  monthTemplateTitle,
+                });
                 // Pull failure aborts push (sync.ts behavior). Surface
                 // whichever error occurred; if both halves succeeded, mark
                 // last push and bump dbVersion when pull found changes.
@@ -160,6 +169,8 @@ export function SyncCard() {
             }}
             manualOnly={manualOnly}
             onToggleManualOnly={setManualOnly}
+            monthTemplateTitle={monthTemplateTitle}
+            onChangeMonthTemplate={setMonthTemplateTitle}
           />
         )}
       </Card>
@@ -273,12 +284,15 @@ function ConnectedBlock({
   lastPushAt,
   lastError,
   pendingCount,
+  conflictCount,
   lang,
   onPushNow,
   onUnlinkSheet,
   onDisconnect,
   manualOnly,
   onToggleManualOnly,
+  monthTemplateTitle,
+  onChangeMonthTemplate,
 }: {
   email: string | null;
   sheetTitle: string;
@@ -287,12 +301,15 @@ function ConnectedBlock({
   lastPushAt: string | null;
   lastError: string | null;
   pendingCount: number;
+  conflictCount: number;
   lang: string;
   onPushNow: () => void;
   onUnlinkSheet: () => void;
   onDisconnect: () => void;
   manualOnly: boolean;
   onToggleManualOnly: (v: boolean) => void;
+  monthTemplateTitle: string | null;
+  onChangeMonthTemplate: (v: string | null) => void;
 }) {
   const { t } = useTranslation();
   const busy = phase === "pushing" || phase === "pulling";
@@ -359,6 +376,20 @@ function ConnectedBlock({
         </p>
       )}
 
+      {conflictCount > 0 && (
+        <Link
+          to="/sync/conflicts"
+          className="block rounded-xl border border-warning/40 bg-warning/10 px-3 py-2.5 text-xs hover:bg-warning/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning/60"
+        >
+          <p className="font-medium text-warning">
+            {t("sync.conflicts.banner", { count: conflictCount })}
+          </p>
+          <p className="t-label text-[11px]">
+            {t("sync.conflicts.bannerHint")}
+          </p>
+        </Link>
+      )}
+
       <div className="flex items-center justify-between pt-1">
         <div className="text-xs">
           <p className="font-medium text-text-primary">
@@ -367,6 +398,22 @@ function ConnectedBlock({
           <p className="t-label">{t("sync.manualOnly.hint")}</p>
         </div>
         <Toggle checked={manualOnly} onCheckedChange={onToggleManualOnly} />
+      </div>
+
+      <div className="space-y-1.5 pt-1">
+        <p className="text-xs font-medium text-text-primary">
+          {t("sync.monthTemplate.label")}
+        </p>
+        <p className="t-label text-xs">{t("sync.monthTemplate.hint")}</p>
+        <Input
+          value={monthTemplateTitle ?? ""}
+          onChange={(e) => {
+            const trimmed = e.target.value.trim();
+            onChangeMonthTemplate(trimmed.length > 0 ? trimmed : null);
+          }}
+          placeholder={t("sync.monthTemplate.placeholder")}
+          aria-label={t("sync.monthTemplate.label")}
+        />
       </div>
 
       <div className="flex gap-2 pt-1">

@@ -29,6 +29,7 @@ import {
   parseUser,
 } from "@/lib/sync/readers";
 import { _internal as _pull } from "@/lib/sync/pull";
+import { listPending, markAllSynced } from "@/lib/sync/queue";
 import type { SheetRow } from "@/lib/google/sheets-api";
 import type { Transaction } from "@/lib/db/types";
 
@@ -37,6 +38,10 @@ beforeEach(async () => {
   await initDb();
   runMigrations();
   seedIfEmpty();
+  // Seeded rows enqueue PENDING items; flatten to SYNCED so reconcile
+  // tests exercise the normal update path. Per-test conflict scenarios
+  // can re-enqueue specific entities as needed.
+  markAllSynced(listPending().map((p) => p.id));
 });
 
 afterEach(() => {
@@ -265,5 +270,58 @@ describe("applyTab reconciler", () => {
       "SELECT COUNT(*) AS c FROM transactions",
     )[0].c;
     expect(ages.size).toBe(dbCount);
+  });
+});
+
+describe("conflict detection", () => {
+  it("records a conflict instead of updating when local has PENDING", async () => {
+    const { enqueueChange } = await import("@/lib/sync/queue");
+    const { listUnresolvedConflicts } = await import("@/lib/sync/conflicts");
+
+    const local = selectAll<Transaction>(
+      "SELECT * FROM transactions ORDER BY created_at LIMIT 1",
+    )[0];
+    // Simulate the user just edited this tx locally — pending push.
+    enqueueChange("transaction", local.id, "UPDATE");
+
+    const remote: Transaction = {
+      ...local,
+      amount: 999,
+      description: "edited remotely",
+      updated_at: "2099-01-01T00:00:00Z",
+    };
+    const row = _mappers.transactionToRow(remote) as SheetRow;
+    const stats = _pull.applyTab("raw_transactions", [row]);
+
+    expect(stats.updated).toBe(0);
+    expect(stats.conflicts).toBe(1);
+
+    // Local row preserved.
+    const after = selectAll<Transaction>(
+      "SELECT * FROM transactions WHERE id = ?",
+      [local.id],
+    )[0];
+    expect(after.amount).toBe(local.amount);
+
+    // Conflict surfaced for the user.
+    const conflicts = listUnresolvedConflicts();
+    expect(conflicts.length).toBe(1);
+    expect(conflicts[0].entity_type).toBe("transaction");
+    expect(conflicts[0].entity_id).toBe(local.id);
+  });
+
+  it("proceeds with update when no PENDING entry exists", () => {
+    const local = selectAll<Transaction>(
+      "SELECT * FROM transactions ORDER BY created_at LIMIT 1",
+    )[0];
+    const remote: Transaction = {
+      ...local,
+      amount: local.amount + 50,
+      updated_at: "2099-01-01T00:00:00Z",
+    };
+    const row = _mappers.transactionToRow(remote) as SheetRow;
+    const stats = _pull.applyTab("raw_transactions", [row]);
+    expect(stats.updated).toBe(1);
+    expect(stats.conflicts).toBe(0);
   });
 });

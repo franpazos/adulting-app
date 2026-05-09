@@ -68,6 +68,10 @@ const AccountsPage = lazyNamed(
   () => import("@/features/accounts/AccountsPage"),
   "AccountsPage",
 );
+const ConflictsPage = lazyNamed(
+  () => import("@/features/sync/ConflictsPage"),
+  "ConflictsPage",
+);
 
 /** Wrap a named-export module so it can be passed to `React.lazy`. */
 function lazyNamed<K extends string>(
@@ -117,6 +121,7 @@ export const router = createBrowserRouter([
       { path: "categories/new", element: Lazy(<CategoryFormPage />) },
       { path: "categories/:id", element: Lazy(<CategoryFormPage />) },
       { path: "accounts", element: Lazy(<AccountsPage />) },
+      { path: "sync/conflicts", element: Lazy(<ConflictsPage />) },
     ],
   },
 ]);

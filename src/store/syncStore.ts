@@ -15,12 +15,19 @@ interface SyncState {
   sheet: SheetBinding | null;
   /** True after the user explicitly disables auto-push. */
   manualOnly: boolean;
+  /**
+   * Title of the tab to duplicate when the active month's tab doesn't
+   * exist yet. `null` disables auto-creation entirely (the default).
+   * Filled by the user via Settings → Sync card → "Monthly tabs".
+   */
+  monthTemplateTitle: string | null;
   phase: SyncPhase;
   lastPushAt: string | null;
   lastError: string | null;
   pendingChanges: number;
   setSheet: (s: SheetBinding | null) => void;
   setManualOnly: (v: boolean) => void;
+  setMonthTemplateTitle: (t: string | null) => void;
   setPhase: (phase: SyncPhase) => void;
   setLastPushAt: (iso: string) => void;
   setError: (msg: string | null) => void;
@@ -32,12 +39,15 @@ export const useSyncStore = create<SyncState>()(
     (set) => ({
       sheet: null,
       manualOnly: false,
+      monthTemplateTitle: null,
       phase: "idle",
       lastPushAt: null,
       lastError: null,
       pendingChanges: 0,
       setSheet: (s) => set({ sheet: s }),
       setManualOnly: (manualOnly) => set({ manualOnly }),
+      setMonthTemplateTitle: (monthTemplateTitle) =>
+        set({ monthTemplateTitle }),
       setPhase: (phase) => set({ phase }),
       setLastPushAt: (lastPushAt) => set({ lastPushAt }),
       setError: (lastError) => set({ lastError }),
@@ -49,6 +59,7 @@ export const useSyncStore = create<SyncState>()(
       partialize: (s) => ({
         sheet: s.sheet,
         manualOnly: s.manualOnly,
+        monthTemplateTitle: s.monthTemplateTitle,
         lastPushAt: s.lastPushAt,
       }),
     },

@@ -166,8 +166,8 @@ This document is the living plan of work. Each phase ends with a checklist updat
 - [x] Month-sync service scaffolded (`src/lib/sync/month-sync.ts`): `ensureMonthSheet(spreadsheetId, monthKey, opts)` checks for the month tab and either duplicates a designated template or creates blank. Per spec §14.6, exact template wiring is left as TODO until the user nominates their template title.
 - [x] `duplicateSheet` Sheets API helper added
 - [x] Tests (10 new in pull.test.ts): writer→reader round-trip per entity, FX null preservation, applyTab insert/update/skip/soft-delete propagation, malformed-row tolerance
-- [ ] Conflict-resolution UI for the rare case the user wants local to win when remote is newer (deferred — last-writer-wins covers the common case)
-- [ ] Wire `ensureMonthSheet` into auto-sync once the user nominates their template tab title (deferred per spec §14.6)
+- [x] Conflict-resolution UI — landed in Phase 10b (sync_conflicts table, detection during pull, /sync/conflicts page with Keep mine / Use remote per row)
+- [x] Wire `ensureMonthSheet` into auto-sync — landed in Phase 10b (template title field in SyncCard, called pre-push from `syncAll` when set)
 
 ## Phase 10b — Spec coverage cleanup ✅
 - [x] Per-owner debt totals on Debts page (spec §6.6): Fran / Sam / Household totals card + monthly minimum total per currency
@@ -176,6 +176,9 @@ This document is the living plan of work. Each phase ends with a checklist updat
 - [x] Settings → **About** section (version + build date wired via Vite `define` reading `package.json`)
 - [x] Transactions filters + search (spec §6.4): inline search bar, expandable filter panel with Source / Owner / Type segmented controls + Category chips, active-filter badge on the toggle, "Clear filters" affordance, "no matches" empty state. Filters apply client-side over the month's tx list.
 - [x] Home dashboard expansion (spec §6.1): Joint snapshot card (account balance + monthly inflow/outflow), side-by-side Fran + Sam personal summaries, per-owner debt summary with multi-currency totals. Settlements + Debts cards now navigate to their detail pages on tap. New `accountBalance` and `accountMonthlyFlow` helpers in `lib/calculations/aggregations.ts`; `AccountsPage` refactored to use the shared helper.
+- [x] Smart defaults from last entry on Add Expense: per-pattern (`source|owner|split`) memory of the last category used, persisted to localStorage. On form mount and on pattern change (without manual category touch), the suggested category updates automatically.
+- [x] Sheets month-sync wired: `monthTemplateTitle` field in syncStore + `ConnectedBlock` Settings input, `syncAll` calls `ensureMonthSheet(currentMonthKey, { templateTitle })` before push when set. Best-effort — failure surfaces as `monthTabError` but doesn't block the push.
+- [x] Conflict-resolution UI: new `sync_conflicts` table (migration v2), pull detects "remote update vs local PENDING" and stashes the conflict instead of overwriting. SyncCard shows a warning banner with the count linking to `/sync/conflicts`, where each conflict shows side-by-side field diffs and "Keep mine" / "Use remote" buttons. Resolution drops the matching PENDING queue entry (when using remote) or leaves it (when keeping local, so next push wins).
 
 ## Phase 10 — Polish ✅
 - [x] **Code-split routes** via `React.lazy` + `Suspense`. Main bundle dropped from 896 kB → 802 kB; per-route chunks 3–10 kB each (gzipped 1–4 kB)

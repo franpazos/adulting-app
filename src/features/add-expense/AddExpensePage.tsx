@@ -9,7 +9,7 @@
  * Visual reference: docs/design-handoff/scripts/add-expense.jsx (`AddExpenseB`).
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
@@ -32,6 +32,11 @@ import { useDbStore } from "@/store/dbStore";
 import { useUiStore } from "@/store/uiStore";
 import { useDefaultsStore } from "@/store/defaultsStore";
 import { SOURCE_TO_ACCOUNT, SOURCE_TO_USER } from "./sources";
+import {
+  buildPatternKey,
+  lookupLastUsed,
+  recordLastUsed,
+} from "./lastUsed";
 
 export function AddExpensePage() {
   const { t } = useTranslation();
@@ -41,14 +46,49 @@ export function AddExpensePage() {
   const setMonthKey = useUiStore((s) => s.setMonthKey);
 
   const defaults = useDefaultsStore.getState();
-  const [values, setValues] = useState<TransactionFormValues>(() => ({
-    ...defaultFormValues(),
-    source: defaults.source,
-    owner: defaults.owner,
-    splitFranPercent: defaults.splitFranPercent,
-  }));
+  const [values, setValues] = useState<TransactionFormValues>(() => {
+    const base = {
+      ...defaultFormValues(),
+      source: defaults.source,
+      owner: defaults.owner,
+      splitFranPercent: defaults.splitFranPercent,
+    };
+    // Smart-default the category from the last save matching this pattern.
+    const memo = lookupLastUsed(
+      buildPatternKey(base.source, base.owner, base.splitFranPercent),
+    );
+    return memo
+      ? { ...base, categoryId: memo.categoryId ?? base.categoryId }
+      : base;
+  });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Track whether the user has manually picked a category. While untouched,
+  // the smart suggestion follows source/owner/split changes; once they
+  // explicitly pick one, we stop overriding their choice.
+  const userTouchedCategoryRef = useRef(false);
+  const handleChange = (next: TransactionFormValues) => {
+    if (next.categoryId !== values.categoryId) {
+      userTouchedCategoryRef.current = true;
+    }
+    setValues(next);
+  };
+
+  // When the pattern (source/owner/split) changes and the user hasn't
+  // touched the category, refresh the suggestion from memory.
+  useEffect(() => {
+    if (userTouchedCategoryRef.current) return;
+    const memo = lookupLastUsed(
+      buildPatternKey(values.source, values.owner, values.splitFranPercent),
+    );
+    const suggested = memo?.categoryId ?? null;
+    if (suggested !== values.categoryId) {
+      setValues((prev) => ({ ...prev, categoryId: suggested }));
+    }
+    // Only react to pattern changes — categoryId in deps would loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [values.source, values.owner, values.splitFranPercent]);
 
   const amount = parseAmount(values.amountText);
 
@@ -79,6 +119,12 @@ export function AddExpensePage() {
       recomputeForTransaction(tx.id);
       bumpVersion();
       setMonthKey(tx.month_key);
+      // Remember this pattern's category so the next save with the same
+      // source/owner/split combo pre-fills it.
+      recordLastUsed(
+        buildPatternKey(values.source, values.owner, values.splitFranPercent),
+        { categoryId: values.categoryId },
+      );
       navigate("/");
     } catch (err) {
       console.error("[add-expense] save failed", err);
@@ -102,7 +148,7 @@ export function AddExpensePage() {
         <span className="size-10" aria-hidden />
       </div>
 
-      <TransactionForm values={values} onChange={setValues} />
+      <TransactionForm values={values} onChange={handleChange} />
 
       {saveError && (
         <p className="mt-3 text-sm text-expense" role="alert">

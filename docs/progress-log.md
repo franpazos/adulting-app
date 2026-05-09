@@ -4,6 +4,62 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-09 — Final spec coverage: smart defaults, month-sync, conflict UI
+
+**What was done**
+
+Closed the last three deferred items. With this commit, every spec section that was open is now either implemented or explicitly marked as out-of-scope.
+
+### 1. Smart defaults from last entry (Add Expense)
+
+- New `src/features/add-expense/lastUsed.ts`: per-pattern category memory keyed by `${source}|${owner}|${splitFranPercent}`, persisted to a single localStorage entry (`adulting.lastUsed.v1`). The `defaultsStore` (static defaults) still wins for source/owner/split — this only fills `categoryId`.
+- `AddExpensePage` reads on mount and applies the suggestion on top of the static defaults.
+- A `userTouchedCategoryRef` tracks whether the user has manually changed the category. Until they do, switching source/owner/split refreshes the suggested category from memory; once they pick one, we stop overriding.
+- After successful save, `recordLastUsed(pattern, { categoryId })` writes back. Empty patterns (`categoryId === null`) don't pollute the store.
+
+### 2. Sheets month-sync wired into auto-sync
+
+- `syncStore` gained `monthTemplateTitle: string | null` (persisted), with a setter, partialized into the saved snapshot.
+- `syncAll(spreadsheetId, opts)` now accepts a `monthTemplateTitle` option. When set, before push it calls `ensureMonthSheet(spreadsheetId, currentMonthKey(), { templateTitle })`. Failure is best-effort — `monthTabError` is reported in the SyncReport but the push proceeds.
+- `useAutoSync` and the manual "Sync now" button both forward the persisted `monthTemplateTitle` into `syncAll`.
+- `ConnectedBlock` in `SyncCard` now shows a "Monthly tab template" Input with placeholder `Mes — plantilla` and a hint explaining the auto-create behavior. Empty input = `null` = no auto-creation.
+
+### 3. Conflict-resolution UI
+
+- **Schema**: migration v2 adds `sync_conflicts` (id, entity_type, entity_id, local_data JSON, remote_data JSON, local/remote_updated_at, detected_at, resolved_at, resolution). Index on unresolved + on (entity_type, entity_id) so de-duplication is cheap.
+- **Detection** (`src/lib/sync/conflicts.ts` + `pull.ts`): a new `checkConflict()` runs before every UPDATE in the reconcile path. It checks the sync_queue for PENDING entries on the same `(entity_type, entity_id)`. If found, the local row stays untouched and the conflict is recorded with snapshots of both sides; if not, the update proceeds normally. Re-detected conflicts on the same entity refresh the existing record's `remote_data` and `detected_at` instead of stacking duplicates.
+- **Pull refactor**: the 9 reconcile functions collapsed into a single generic `reconcile<T>(rows, cfg)` helper, eliminating ~150 lines of duplication. Each per-entity function is now a 3-line wrapper specifying `{table, entityType, parse, insert, update}`.
+- **PullReport** gains `conflicts: Record<string, number>` so the per-tab count is visible to the UI.
+- **`applyRemoteToLocal(entityType, data)`** exported from `pull.ts` — dispatches to the right `updateX` writer. Used by `resolveUseRemote` to apply the stashed remote payload when the user picks "Use remote", inside a transaction that also drops matching PENDING queue entries.
+- **`resolveKeepLocal(id)`** simply marks the conflict resolved; the existing PENDING entry is left so the next push wins.
+- **`/sync/conflicts` route** + `ConflictsPage`:
+  - Lists unresolved conflicts with entity type, identifying field (description / name / merchant), diff count pill.
+  - Per conflict, side-by-side field comparison cards (skipping `created_at`, `updated_at`, `sheet_sync_status`, `sheet_row_ref` — those are noisy meta).
+  - SQLite returns 0/1 for booleans while the reader returns true/false, so `sameValue` coerces them — otherwise every row would show every boolean as a "diff".
+  - Two action buttons: "Keep mine" (primary) and "Use remote" (secondary). Resolution bumps `dbVersion` so dependent pages re-derive.
+- **SyncCard banner**: when `unresolvedConflictCount() > 0`, an amber-tinted Link card appears in `ConnectedBlock` ("X sync conflicts — Tap to review") that navigates to `/sync/conflicts`.
+- **i18n**: full `conflicts.*` namespace (EN + ES) for the page; `sync.conflicts.banner` plural for the card-level banner; `sync.monthTemplate.*` for the template input.
+- **Tests**: 2 new in `pull.test.ts` exercise the conflict path (records conflict + skips update when PENDING; proceeds with update when no PENDING). Total 99/99 passing. Existing seed-driven tests now `markAllSynced(listPending().map(p => p.id))` in `beforeEach` so the seed's PENDING entries don't break the existing update-path tests.
+
+**Decisions**
+- **Conflict detection signal: PENDING-on-entity, not timestamp tolerance.** A "same-second updated_at + content differs" rule was tempting but brittle (clock skew, ms truncation). The PENDING-queue signal is exact: it means the user has unpushed local edits, and the remote has *also* changed since. That's the only meaningful conflict.
+- **Pull preserves local during conflict, doesn't try to merge.** Merging fields means picking semantics per field; that's product judgement we don't want to bake in. Make the user choose.
+- **"Keep mine" doesn't push immediately.** It just marks resolved; the existing PENDING queue entry will fire on the next normal sync trigger. This avoids surprise network calls from the resolution UI.
+- **"Use remote" deletes the PENDING entry.** Otherwise the next push would re-overwrite the remote with the local payload that the user just chose to discard.
+- **Generic `reconcile<T>` instead of 9 near-identical copies.** Adds ~30 lines of helper, removes ~150 lines of duplication, and ensures the conflict check is uniform across entities.
+- **Field skip-list in the conflict UI** keeps the diff focused on user-meaningful fields. Showing `updated_at` differing is just noise — by definition timestamps differ when contents differ.
+- **Localstorage for last-used patterns**, not the SQL DB. The patterns are device-local UX prefs, not data to sync to Sheets. Keeping it out of SQLite avoids polluting the snapshot bytes and the sync_queue.
+
+**Open follow-ups**
+- The "smart suggestion" doesn't yet pre-fill `description`. Memorizing description per pattern would be sticky in a bad way ("Coffee" wins forever). The right move is probably an autocomplete dropdown showing the last few descriptions for that pattern, deferred until needed.
+- `ensureMonthSheet` only runs on auto-sync runs that pass through `useAutoSync`. The first push after binding (which goes through `pullAll` only in `ConnectSheetBlock`) doesn't call it; that's fine since it runs on every subsequent push including the auto-trigger.
+- Conflict resolution doesn't currently let you preview the UPDATE before applying it. The side-by-side field view is enough for the v1, but if conflicts get nuanced (e.g. allocations), we may want a finer-grained "merge" UI.
+- The seed-pollution side effect on the conflict banner (every freshly seeded row has a PENDING entry, but no remote has been pulled yet, so no conflicts) is fine in practice — pull would only conflict against remote rows that *also* exist locally with PENDING, which only happens after a push has propagated them once.
+
+**With this commit, the original spec is fully covered.** Every section from the build prompt is either implemented, scaffolded, or explicitly noted as Phase 7 NMP material.
+
+---
+
 ## 2026-05-09 — Home dashboard expansion (spec §6.1)
 
 **What was done**

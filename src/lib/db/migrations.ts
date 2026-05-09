@@ -188,6 +188,28 @@ const MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_sync_queue_status ON sync_queue(status);
     `,
   },
+  {
+    version: 2,
+    name: "sync_conflicts",
+    sql: `
+      CREATE TABLE IF NOT EXISTS sync_conflicts (
+        id TEXT PRIMARY KEY,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        local_data TEXT NOT NULL,
+        remote_data TEXT NOT NULL,
+        local_updated_at TEXT NOT NULL,
+        remote_updated_at TEXT NOT NULL,
+        detected_at TEXT NOT NULL,
+        resolved_at TEXT NULL,
+        resolution TEXT NULL CHECK (resolution IN ('local', 'remote'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_sync_conflicts_unresolved
+        ON sync_conflicts(resolved_at) WHERE resolved_at IS NULL;
+      CREATE INDEX IF NOT EXISTS idx_sync_conflicts_entity
+        ON sync_conflicts(entity_type, entity_id);
+    `,
+  },
 ];
 
 function ensureMigrationsTable(): void {

@@ -50,6 +50,7 @@ export function useAutoSync(): void {
 
   const sheet = useSyncStore((s) => s.sheet);
   const manualOnly = useSyncStore((s) => s.manualOnly);
+  const monthTemplateTitle = useSyncStore((s) => s.monthTemplateTitle);
   const phase = useSyncStore((s) => s.phase);
   const setPhase = useSyncStore((s) => s.setPhase);
   const setLastPushAt = useSyncStore((s) => s.setLastPushAt);
@@ -72,7 +73,7 @@ export function useAutoSync(): void {
     setPhase("pushing");
     setError(null);
     try {
-      const report = await syncAll(sheet.id);
+      const report = await syncAll(sheet.id, { monthTemplateTitle });
       if (report.pullError) {
         // Pull failed → push was aborted. Surface as error.
         setError(report.pullError);

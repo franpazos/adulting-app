@@ -294,10 +294,48 @@
       "label": "Manual sync only",
       "hint": "Disable auto-sync. You'll have to tap Sync now."
     },
+    "monthTemplate": {
+      "label": "Monthly tab template",
+      "hint": "Tab name to duplicate when a new month starts (e.g. \"Mes — plantilla\"). Leave empty to skip auto-creation.",
+      "placeholder": "Mes — plantilla"
+    },
+    "conflicts": {
+      "banner_one": "{{count}} sync conflict",
+      "banner_other": "{{count}} sync conflicts",
+      "bannerHint": "Both devices edited the same row. Tap to review."
+    },
     "badge": {
       "syncing": "Syncing…",
       "synced": "Synced",
       "error": "Sync error"
+    }
+  },
+  "conflicts": {
+    "title": "Sync conflicts",
+    "back": "Back",
+    "intro": "These rows were edited on both devices. Pick which version to keep — the discarded one will be overwritten on the next sync.",
+    "diffCount_one": "{{count}} field",
+    "diffCount_other": "{{count}} fields",
+    "moreDiffs_one": "+{{count}} more field",
+    "moreDiffs_other": "+{{count}} more fields",
+    "local": "Mine",
+    "remote": "Remote",
+    "keepLocal": "Keep mine",
+    "useRemote": "Use remote",
+    "empty": {
+      "title": "All synced",
+      "description": "No conflicts to resolve. The next sync will run cleanly."
+    },
+    "entity": {
+      "user": "User",
+      "account": "Account",
+      "category": "Category",
+      "transaction": "Transaction",
+      "transaction_allocation": "Allocation",
+      "recurring_item": "Recurring",
+      "debt": "Debt",
+      "debt_payment": "Debt payment",
+      "settlement_ledger": "Settlement"
     }
   },
   "install": {
