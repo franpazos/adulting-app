@@ -41,11 +41,14 @@ export function SegmentedControl<T extends string>({
     options.findIndex((o) => o.value === value),
   );
   const count = options.length;
-  // Track has 4px (p-1) padding on each side. The pill sits inside the
-  // padded area, so its width is (100% - 8px) / N and its left offset
-  // is 4px + activeIndex × ((100% - 8px) / N).
-  const slotWidth = `calc((100% - 8px) / ${count})`;
-  const pillLeft = `calc(4px + ${activeIndex} * ${slotWidth})`;
+  // The pill is anchored at left: 4px (matching p-1) with width = 1/N of the
+  // useful track. Activation slides it via `translateX(I × 100%)` — `100%`
+  // here is the pill's own width, i.e. one slot. Avoids nested calc() which
+  // iOS Safari silently drops, leaving the pill unstyled.
+  const slotWidthPct = 100 / count;
+  // Width: each slot's share of the (track - 8px padding). Done as a single
+  // calc with no nesting.
+  const pillWidth = `calc(${slotWidthPct}% - ${8 / count}px)`;
 
   return (
     <div
@@ -63,14 +66,14 @@ export function SegmentedControl<T extends string>({
       <span
         aria-hidden
         className={cn(
-          "pointer-events-none absolute top-1 bottom-1 rounded-full",
-          "transition-[left] duration-200 ease-out",
+          "pointer-events-none absolute top-1 bottom-1 left-1 rounded-full",
+          "transition-transform duration-200 ease-out",
           tone === "violet" ? "bg-violet" : "bg-surface",
           tone === "violet" ? "shadow-violet-glow" : "shadow-card",
         )}
         style={{
-          left: pillLeft,
-          width: slotWidth,
+          width: pillWidth,
+          transform: `translateX(${activeIndex * 100}%)`,
         }}
       />
       {options.map((opt) => {
