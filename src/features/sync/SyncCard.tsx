@@ -257,7 +257,7 @@ function ConnectSheetBlock({
       <Input
         value={url}
         onChange={(e) => setUrl(e.target.value)}
-        placeholder="https://docs.google.com/spreadsheets/d/…"
+        placeholder="https://docs.google.com/spreadsheets/d/1bJEMXAb6N-pkexS9kFzyO1N9hOYA7uswl837zRuiS_0/edit?gid=1061129695#gid=1061129695"
       />
       <div className="flex gap-2">
         <Button block size="sm" onClick={handleSave} disabled={busy}>

@@ -1,7 +1,8 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
+/* CSS @import directives must precede all other rules (the @tailwind
+ * directives below). When tokens.css was imported after @tailwind, Vite
+ * silently dropped the import, leaving every --color-* variable
+ * undefined at runtime — pills, badges, and the active SegmentedControl
+ * text all rendered as transparent. */
 @import "@fontsource/sora/400.css";
 @import "@fontsource/sora/500.css";
 @import "@fontsource/sora/600.css";
@@ -9,8 +10,11 @@
 @import "@fontsource/inter/400.css";
 @import "@fontsource/inter/500.css";
 @import "@fontsource/inter/600.css";
-
 @import "./styles/tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 @layer base {
   html {
