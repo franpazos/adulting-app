@@ -190,3 +190,14 @@ This document is the living plan of work. Each phase ends with a checklist updat
   - `SegmentedControl` buttons gain `focus-visible:ring` + `min-h-9`.
   - Keyboard skip link (`Skip to content`) at the top of `AppShell`, sr-only until focused, jumps past the bottom nav for screen-reader / keyboard users.
 - [x] **README finalize**: deployment, env vars, persistence strategy (3-tier), Sheets sync workflow, testing layout, contributing rules. Replaces the placeholder Phase-0 README.
+
+
+## Future ideas (deferred, not committed)
+
+Notification rules considered for the bell-icon sheet (`AppHeader.tsx::NotificationsBell`) but not built:
+
+- **Open settlements** — surface when any of `netBalance(FRAN, SAM)`, `netBalance(FRAN, HOUSEHOLD)`, `netBalance(SAM, HOUSEHOLD)` is non-zero. Tap → `/settlements`. Not built (user opted out).
+- **Debt payment due soon** — for any active `Debt` with `payment_day` set, fire when today is within ~3 days of that day AND no `debt_payment` row was logged for that debt in the current month. Tap → `/debts/<id>` (which has the Pay CTA). Saves real money in late fees / interest. Useful when users actually populate `payment_day`.
+- **Recurring item missed** — for any active `recurring_item`, fire when its scheduled day this month was ≥5 days ago AND no transaction has been categorized to it yet. Tap → `/recurring/<id>` or `/add` prefilled. Catches forgotten transactions; the 5-day grace tries to avoid false positives.
+
+Both deferred items use existing schema (no migrations). Implementation cost is one helper function per rule plus a card in `NotificationsBell`. Worth picking up after a few months of real use to see whether the absence is felt.

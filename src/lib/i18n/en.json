@@ -263,6 +263,29 @@
   "network": {
     "offline": "Offline"
   },
+  "notifications": {
+    "aria_zero": "Notifications",
+    "aria_one": "Notifications, {{count}} item",
+    "aria_other": "Notifications, {{count}} items",
+    "title": "Notifications",
+    "conflicts": {
+      "title_one": "{{count}} sync conflict",
+      "title_other": "{{count}} sync conflicts",
+      "cta": "Both devices edited the same row. Tap to review."
+    },
+    "syncError": {
+      "title": "Sync error",
+      "fallback": "Last sync attempt failed. Tap to open Settings."
+    },
+    "authExpired": {
+      "title": "Reconnect Google",
+      "cta": "Your access token expired. Tap to reconnect and resume sync."
+    },
+    "empty": {
+      "title": "All clear",
+      "description": "Nothing needs your attention right now."
+    }
+  },
   "sync": {
     "section": "Cloud sync",
     "title": "Google Sheets",

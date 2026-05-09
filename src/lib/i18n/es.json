@@ -263,6 +263,29 @@
   "network": {
     "offline": "Sin conexión"
   },
+  "notifications": {
+    "aria_zero": "Notificaciones",
+    "aria_one": "Notificaciones, {{count}} pendiente",
+    "aria_other": "Notificaciones, {{count}} pendientes",
+    "title": "Notificaciones",
+    "conflicts": {
+      "title_one": "{{count}} conflicto de sync",
+      "title_other": "{{count}} conflictos de sync",
+      "cta": "Ambos móviles editaron la misma fila. Toca para revisar."
+    },
+    "syncError": {
+      "title": "Error de sincronización",
+      "fallback": "El último intento falló. Toca para abrir Ajustes."
+    },
+    "authExpired": {
+      "title": "Reconectar Google",
+      "cta": "Tu token de acceso expiró. Toca para reconectar y seguir sincronizando."
+    },
+    "empty": {
+      "title": "Todo al día",
+      "description": "No hay nada que requiera tu atención."
+    }
+  },
   "sync": {
     "section": "Sincronización en la nube",
     "title": "Google Sheets",
