@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
+  ChevronRight,
   Database,
   Download,
   Info,
+  Lightbulb,
   RotateCcw,
   Sliders,
   Trash2,
@@ -25,6 +28,7 @@ import { useDbStore } from "@/store/dbStore";
 import { useDefaultsStore } from "@/store/defaultsStore";
 import { exportDb } from "@/lib/db/client";
 import { clearSnapshot } from "@/lib/db/persistence";
+import { feedbackRepo } from "@/lib/db";
 import type { CashSource, OwnerType } from "@/lib/db/types";
 
 export function SettingsPage() {
@@ -89,6 +93,11 @@ export function SettingsPage() {
       <section className="space-y-2">
         <CardEyebrow>{t("settings.backups.section")}</CardEyebrow>
         <BackupsCard />
+      </section>
+
+      <section className="space-y-2">
+        <CardEyebrow>{t("feedback.section")}</CardEyebrow>
+        <FeedbackLinkCard />
       </section>
 
       <section className="space-y-2">
@@ -277,6 +286,46 @@ function BackupsCard() {
         </Button>
       </div>
     </Card>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Feedback — link to /feedback list page (temporary beta feature).
+// ─────────────────────────────────────────────────────────────────────────────
+
+function FeedbackLinkCard() {
+  const { t } = useTranslation();
+  const dbReady = useDbStore((s) => s.status === "ready");
+  const dbVersion = useDbStore((s) => s.dbVersion);
+  const count = useMemo(
+    () => (dbReady ? feedbackRepo.list().length : 0),
+    [dbReady, dbVersion],
+  );
+  return (
+    <Link
+      to="/feedback"
+      className={
+        "block rounded-2xl bg-surface border border-border shadow-card " +
+        "tap-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet/60"
+      }
+    >
+      <Card variant="flat" className="flex items-center gap-3">
+        <span className="grid place-items-center size-9 rounded-xl bg-violet/10 text-violet shrink-0">
+          <Lightbulb className="size-4.5" />
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-text-primary">
+            {t("feedback.title")}
+          </p>
+          <p className="t-label text-xs">
+            {count > 0
+              ? t("feedback.count", { count })
+              : t("feedback.empty.title")}
+          </p>
+        </div>
+        <ChevronRight className="size-4 text-text-muted shrink-0" />
+      </Card>
+    </Link>
   );
 }
 

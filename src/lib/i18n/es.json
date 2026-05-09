@@ -248,6 +248,49 @@
       "autoIncludeHint": "Cuenta para el dinero disponible estimado."
     }
   },
+  "feedback": {
+    "section": "Feedback",
+    "title": "Buzón de sugerencias",
+    "intro": "Bugs, ideas, notas de diseño — déjalas aquí mientras usas la app. Se sincroniza para que Fran y Sam vean la misma lista.",
+    "newCta": "+ Nuevo",
+    "count_one": "{{count}} elemento",
+    "count_other": "{{count}} elementos",
+    "confirmDelete": "¿Eliminar este feedback? No se puede deshacer.",
+    "button": {
+      "aria": "Enviar feedback"
+    },
+    "empty": {
+      "title": "Aún no hay nada",
+      "description": "Toca + para registrar un bug, idea o nota de diseño."
+    },
+    "sheet": {
+      "newTitle": "Nuevo feedback",
+      "editTitle": "Editar feedback",
+      "description": "Captura rápida — título, mensaje, tipo y cuánto lo quieres.",
+      "saveNew": "Guardar",
+      "saveEdit": "Guardar cambios"
+    },
+    "fields": {
+      "title": "Título",
+      "titlePlaceholder": "Resumen en una línea",
+      "message": "Mensaje",
+      "messagePlaceholder": "Qué pasó, qué quieres, la queja…",
+      "tag": "Tipo",
+      "severity": "Cuánto lo quieres"
+    },
+    "tag": {
+      "bug": "Bug",
+      "idea": "Idea",
+      "design": "Diseño",
+      "other": "Otro"
+    },
+    "severity": {
+      "meh": "meh",
+      "nice": "estaría bien",
+      "want": "lo quiero",
+      "sos": "S.O.S."
+    }
+  },
   "more": {
     "title": "Más",
     "household": "Hogar",

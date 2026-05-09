@@ -248,6 +248,49 @@
       "autoIncludeHint": "Counts toward available money projections."
     }
   },
+  "feedback": {
+    "section": "Feedback",
+    "title": "Buzón de sugerencias",
+    "intro": "Bugs, ideas, design notes — drop them here while you use the app. Synced so Fran and Sam see the same list.",
+    "newCta": "+ New",
+    "count_one": "{{count}} item",
+    "count_other": "{{count}} items",
+    "confirmDelete": "Delete this feedback? This cannot be undone.",
+    "button": {
+      "aria": "Send feedback"
+    },
+    "empty": {
+      "title": "Nothing yet",
+      "description": "Tap + to record a bug, idea, or design note."
+    },
+    "sheet": {
+      "newTitle": "New feedback",
+      "editTitle": "Edit feedback",
+      "description": "Quick capture — title, message, type, and how badly you want it.",
+      "saveNew": "Save",
+      "saveEdit": "Save changes"
+    },
+    "fields": {
+      "title": "Title",
+      "titlePlaceholder": "One-line summary",
+      "message": "Message",
+      "messagePlaceholder": "What happened, what you'd like, the rant…",
+      "tag": "Type",
+      "severity": "How bad you want this"
+    },
+    "tag": {
+      "bug": "Bug",
+      "idea": "Idea",
+      "design": "Design",
+      "other": "Other"
+    },
+    "severity": {
+      "meh": "meh",
+      "nice": "would be nice",
+      "want": "want it",
+      "sos": "S.O.S."
+    }
+  },
   "more": {
     "title": "More",
     "household": "Household",

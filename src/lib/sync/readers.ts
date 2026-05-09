@@ -23,6 +23,9 @@ import type {
   Category,
   Debt,
   DebtPayment,
+  Feedback,
+  FeedbackSeverity,
+  FeedbackTag,
   Frequency,
   OwnerType,
   RecurringItem,
@@ -216,5 +219,19 @@ export function parseSettlement(row: SheetRow): SettlementLedgerEntry {
     notes: str(row[7]),
     created_at: reqStr(row[8], "settlement.created_at"),
     updated_at: reqStr(row[9], "settlement.updated_at"),
+  };
+}
+
+export function parseFeedback(row: SheetRow): Feedback {
+  return {
+    id: reqStr(row[0], "feedback.id"),
+    title: reqStr(row[1], "feedback.title"),
+    message: reqStr(row[2], "feedback.message"),
+    severity: reqStr(row[3], "feedback.severity") as FeedbackSeverity,
+    tag: reqStr(row[4], "feedback.tag") as FeedbackTag,
+    created_by_user_id: str(row[5]),
+    is_deleted: bool(row[6]),
+    created_at: reqStr(row[7], "feedback.created_at"),
+    updated_at: reqStr(row[8], "feedback.updated_at"),
   };
 }

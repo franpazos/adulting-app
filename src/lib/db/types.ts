@@ -179,3 +179,23 @@ export interface SyncQueueItem {
   created_at: string;
   updated_at: string;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Feedback — temporary "buzón de sugerencias" feature for the beta period.
+// Remove when the feature retires.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type FeedbackSeverity = "meh" | "nice" | "want" | "sos";
+export type FeedbackTag = "bug" | "idea" | "design" | "other";
+
+export interface Feedback {
+  id: string;
+  title: string;
+  message: string;
+  severity: FeedbackSeverity;
+  tag: FeedbackTag;
+  created_by_user_id: string | null;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}

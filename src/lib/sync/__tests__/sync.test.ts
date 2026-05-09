@@ -46,8 +46,8 @@ afterEach(() => {
 });
 
 describe("RAW_TABS", () => {
-  it("declares 9 tabs with non-empty headers and a raw_ prefix", () => {
-    expect(RAW_TABS).toHaveLength(9);
+  it("declares 10 tabs with non-empty headers and a raw_ prefix", () => {
+    expect(RAW_TABS).toHaveLength(10);
     for (const t of RAW_TABS) {
       expect(t.title.startsWith("raw_")).toBe(true);
       expect(t.headers.length).toBeGreaterThan(0);

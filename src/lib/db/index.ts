@@ -18,5 +18,10 @@ export {
 export { recurringRepo } from "./repositories/recurring";
 export { debtsRepo, debtPaymentsRepo } from "./repositories/debts";
 export { settlementsRepo } from "./repositories/settlements";
+export {
+  feedbackRepo,
+  type CreateFeedbackInput,
+  type UpdateFeedbackInput,
+} from "./repositories/feedback";
 
 export type * from "./types";

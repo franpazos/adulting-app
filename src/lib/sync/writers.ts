@@ -17,6 +17,7 @@ import type {
   Category,
   Debt,
   DebtPayment,
+  Feedback,
   RecurringItem,
   SettlementLedgerEntry,
   Transaction,
@@ -157,6 +158,18 @@ const settlementToRow = (e: SettlementLedgerEntry): SheetRow => [
   e.updated_at,
 ];
 
+const feedbackToRow = (f: Feedback): SheetRow => [
+  f.id,
+  f.title,
+  f.message,
+  f.severity,
+  f.tag,
+  f.created_by_user_id,
+  b(f.is_deleted),
+  f.created_at,
+  f.updated_at,
+];
+
 export interface SnapshotData {
   users: SheetRow[];
   accounts: SheetRow[];
@@ -167,6 +180,7 @@ export interface SnapshotData {
   debts: SheetRow[];
   debt_payments: SheetRow[];
   settlements: SheetRow[];
+  feedback: SheetRow[];
 }
 
 /**
@@ -200,6 +214,7 @@ export function buildSnapshot(): SnapshotData {
     settlements: selectAll<SettlementLedgerEntry>(
       "SELECT * FROM settlement_ledger",
     ).map(settlementToRow),
+    feedback: selectAll<Feedback>("SELECT * FROM feedback").map(feedbackToRow),
   };
 }
 
@@ -214,4 +229,5 @@ export const _mappers = {
   debtToRow,
   debtPaymentToRow,
   settlementToRow,
+  feedbackToRow,
 };

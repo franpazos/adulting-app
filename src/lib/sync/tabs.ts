@@ -159,6 +159,22 @@ export const RAW_TABS: ReadonlyArray<RawTabSpec> = [
       "updated_at",
     ],
   },
+  {
+    // Temporary "buzón de sugerencias" tab for the beta period. Drop when
+    // the feedback feature retires.
+    title: "raw_feedback",
+    headers: [
+      "id",
+      "title",
+      "message",
+      "severity",
+      "tag",
+      "created_by_user_id",
+      "is_deleted",
+      "created_at",
+      "updated_at",
+    ],
+  },
 ];
 
 /**

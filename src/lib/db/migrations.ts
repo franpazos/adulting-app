@@ -210,6 +210,28 @@ const MIGRATIONS: Migration[] = [
         ON sync_conflicts(entity_type, entity_id);
     `,
   },
+  {
+    // Temporary "buzón de sugerencias" feature for live testing. To remove
+    // when beta wraps: drop this migration's table, the raw_feedback tab,
+    // the FeedbackButton/Sheet/Page components, and the i18n keys.
+    version: 3,
+    name: "feedback",
+    sql: `
+      CREATE TABLE IF NOT EXISTS feedback (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        severity TEXT NOT NULL CHECK (severity IN ('meh', 'nice', 'want', 'sos')),
+        tag TEXT NOT NULL CHECK (tag IN ('bug', 'idea', 'design', 'other')),
+        created_by_user_id TEXT NULL REFERENCES users(id),
+        is_deleted INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_feedback_active
+        ON feedback(is_deleted);
+    `,
+  },
 ];
 
 function ensureMigrationsTable(): void {

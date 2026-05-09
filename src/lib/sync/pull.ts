@@ -30,6 +30,7 @@ import {
   parseCategory,
   parseDebt,
   parseDebtPayment,
+  parseFeedback,
   parseRecurring,
   parseSettlement,
   parseTransaction,
@@ -47,6 +48,7 @@ import type {
   Category,
   Debt,
   DebtPayment,
+  Feedback,
   RecurringItem,
   SettlementLedgerEntry,
   Transaction,
@@ -189,6 +191,8 @@ function applyTab(tabTitle: string, rows: SheetRow[]): ReconcileStats {
       return reconcileDebtPayments(rows);
     case "raw_settlement_ledger":
       return reconcileSettlements(rows);
+    case "raw_feedback":
+      return reconcileFeedback(rows);
     default:
       return freshStats();
   }
@@ -323,6 +327,15 @@ function reconcileSettlements(rows: SheetRow[]) {
     parse: parseSettlement,
     insert: insertSettlement,
     update: updateSettlement,
+  });
+}
+function reconcileFeedback(rows: SheetRow[]) {
+  return reconcile(rows, {
+    table: "feedback",
+    entityType: "feedback",
+    parse: parseFeedback,
+    insert: insertFeedback,
+    update: updateFeedback,
   });
 }
 
@@ -704,6 +717,42 @@ function insertSettlement(s: SettlementLedgerEntry): void {
     ],
   );
 }
+function insertFeedback(f: Feedback): void {
+  exec(
+    `INSERT INTO feedback (id, title, message, severity, tag,
+       created_by_user_id, is_deleted, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      f.id,
+      f.title,
+      f.message,
+      f.severity,
+      f.tag,
+      f.created_by_user_id,
+      fromBool(f.is_deleted),
+      f.created_at,
+      f.updated_at,
+    ],
+  );
+}
+function updateFeedback(f: Feedback): void {
+  exec(
+    `UPDATE feedback SET title = ?, message = ?, severity = ?, tag = ?,
+       created_by_user_id = ?, is_deleted = ?, updated_at = ?
+     WHERE id = ?`,
+    [
+      f.title,
+      f.message,
+      f.severity,
+      f.tag,
+      f.created_by_user_id,
+      fromBool(f.is_deleted),
+      f.updated_at,
+      f.id,
+    ],
+  );
+}
+
 function updateSettlement(s: SettlementLedgerEntry): void {
   exec(
     `UPDATE settlement_ledger SET date = ?, source_transaction_id = ?,
@@ -761,6 +810,9 @@ export function applyRemoteToLocal(
       break;
     case "settlement_ledger":
       updateSettlement(data as unknown as SettlementLedgerEntry);
+      break;
+    case "feedback":
+      updateFeedback(data as unknown as Feedback);
       break;
     default:
       throw new Error(`applyRemoteToLocal: unknown entityType "${entityType}"`);

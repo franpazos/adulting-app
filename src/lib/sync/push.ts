@@ -36,6 +36,7 @@ const TAB_KEY_BY_TITLE: Record<string, keyof SnapshotData> = {
   raw_debts: "debts",
   raw_debt_payments: "debt_payments",
   raw_settlement_ledger: "settlements",
+  raw_feedback: "feedback",
 };
 
 export async function pushAll(spreadsheetId: string): Promise<PushReport> {

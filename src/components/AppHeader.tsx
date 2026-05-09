@@ -6,6 +6,7 @@ import {
   ChevronRight,
   CloudOff,
   KeyRound,
+  Lightbulb,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { LogoMark } from "@/components/Logo";
@@ -18,6 +19,7 @@ import { useDbStore } from "@/store/dbStore";
 import { useSyncStore } from "@/store/syncStore";
 import { useAuthStore, hasValidToken } from "@/store/authStore";
 import { unresolvedConflictCount } from "@/lib/sync/conflicts";
+import { FeedbackSheet } from "@/features/feedback/FeedbackSheet";
 import { cn } from "@/lib/utils/cn";
 
 interface AppHeaderProps {
@@ -49,13 +51,39 @@ export function AppHeader({
         <div className="flex items-center gap-2">
           <SyncBadge />
           <NetworkBadge />
-          {right ?? <NotificationsBell />}
+          {right ?? (
+            <>
+              <FeedbackButton />
+              <NotificationsBell />
+            </>
+          )}
         </div>
       </div>
       {showMonth && (
         <MonthSelector value={monthKey} onChange={setMonthKey} />
       )}
     </header>
+  );
+}
+
+/**
+ * Lightbulb icon that opens the FeedbackSheet for quick capture of
+ * bugs / ideas / design notes during the beta. Temporary feature —
+ * remove with the rest of the feedback module when retiring.
+ */
+function FeedbackButton() {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <IconButton
+        aria-label={t("feedback.button.aria")}
+        onClick={() => setOpen(true)}
+      >
+        <Lightbulb className="size-5" />
+      </IconButton>
+      <FeedbackSheet open={open} onOpenChange={setOpen} />
+    </>
   );
 }
 
