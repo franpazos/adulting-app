@@ -201,7 +201,7 @@ function ConnectGoogleBlock({
           ? t("sync.connecting")
           : t("sync.connectGoogle")}
       </Button>
-      {authError && <p className="text-xs text-expense">{authError}</p>}
+      {authError && <p className="text-xs text-expense-ink">{authError}</p>}
     </div>
   );
 }
@@ -271,7 +271,7 @@ function ConnectSheetBlock({
           {t("sync.disconnect")}
         </Button>
       </div>
-      {err && <p className="text-xs text-expense">{err}</p>}
+      {err && <p className="text-xs text-expense-ink">{err}</p>}
     </div>
   );
 }
@@ -370,7 +370,7 @@ function ConnectedBlock({
       </Button>
 
       {lastError && phase !== "pushing" && (
-        <p className="text-xs text-expense flex items-start gap-1.5">
+        <p className="text-xs text-expense-ink flex items-start gap-1.5">
           <CloudOff className="size-3.5 mt-0.5" />
           <span>{lastError}</span>
         </p>
@@ -381,7 +381,7 @@ function ConnectedBlock({
           to="/sync/conflicts"
           className="block rounded-xl border border-warning/40 bg-warning/10 px-3 py-2.5 text-xs hover:bg-warning/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning/60"
         >
-          <p className="font-medium text-warning">
+          <p className="font-medium text-warning-ink">
             {t("sync.conflicts.banner", { count: conflictCount })}
           </p>
           <p className="t-label text-[11px]">

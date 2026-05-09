@@ -4,6 +4,50 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-09 — Color contrast pass: SegmentedControl race + functional-color ink variants
+
+**What was done**
+
+Real-world iPhone testing surfaced two color bugs, one severe and one systemic.
+
+### 1. SegmentedControl: invisible active text
+
+The active text on every segmented control (scope toggle, source/owner selectors, theme toggle, language toggle, etc.) was unreadable. Root cause: the violet pill behind the active button was JS-positioned via `getBoundingClientRect` inside a `useLayoutEffect`. That measurement raced with the parent `route-frame` 220ms fade-slide animation — measuring while the parent transform was mid-interpolation gave coordinates that didn't line up with where the button finally rendered. Result: white-text active button with no violet pill behind it = white-on-near-white = invisible.
+
+- Rewrote `SegmentedControl` to position the pill via **pure CSS**: `grid grid-cols-N`, pill `width: calc((100% - 8px) / N)` and `left: calc(4px + activeIndex * width)`. No `useLayoutEffect`, no rect measurement, no animation race. Slide animation kept via `transition-[left] 200ms ease-out`.
+- API unchanged — every existing call site works without modification. The `[&>button]:flex-1` modifier some pages added is now redundant (CSS grid distributes naturally) but harmless.
+
+### 2. Functional-color text was systemically unreadable
+
+`text-positive` (#22C55E green) on the warm-white background (#FAF8F4) was about **2.2:1 contrast** — fails WCAG AA for any text. Same problem for `text-expense`, `text-info`, `text-warning`. The vivid hue was tuned for fills/icons, not for text.
+
+- **Added `-ink` variants** to `tokens.css` for each functional color:
+  - Light mode: darker, AA-compliant text on light bg (e.g. `--color-positive-ink: 21 128 61` = #15803D, ~5.7:1).
+  - Dark mode: lighter, readable on dark bg (e.g. `--color-positive-ink: 134 239 172`).
+  - Same pattern as the existing `--color-violet-ink`.
+- **Tailwind config** changed each functional color to a `{ DEFAULT, ink }` object so `text-positive-ink` resolves through the same alpha-value pipeline.
+- **Pill component** now uses `text-X-ink` with a slightly stronger tint (`bg-X/15` instead of `/10`) so all 5 tinted pill variants pass AA in both themes.
+- **Bulk-replaced** every `text-positive`, `text-expense`, `text-info`, `text-warning` in components with the `-ink` equivalent. Caught a few stragglers in `RecurringPage` totals and `ConsequenceSentence` that the regex missed; fixed manually.
+
+### 3. Bumped neutral text contrast
+
+- `--color-text-secondary` from `92 96 112` → `78 82 96` (~7.4:1 → ~9:1 on warm bg).
+- `--color-text-muted` from `142 146 160` → `107 111 124` (~3.4:1 → ~5.5:1, now AA for body).
+- Dark-mode neutrals untouched — they were already adequate.
+
+**Decisions**
+- **CSS-only sliding pill, not JS-measured.** The animation race wasn't theoretical — every screen with a SegmentedControl is inside `route-frame`, so every selector exhibited the bug. Eliminating the measurement is more robust and removes the only `useLayoutEffect` in the component.
+- **`-ink` variants instead of redefining the vivid tokens.** Keeping the vivid hue available for fills (avatars, big stat numbers on plain bg, icons inside tinted pills) preserved the brand-energy of the design. The ink variant is a discipline: text uses ink, fills use vivid.
+- **`bg-X/15` not `/10` for pills.** `/10` looked anemic against the warm bg; `/15` reads clearly as a colored chip without becoming saturated. Combined with the ink text, AA contrast is now structural, not accidental.
+- **Bulk regex replace, not per-file review.** 17 files used `text-positive` etc.; reviewing each was busywork. Two sed passes (mid-class with trailing space, end-of-string with closing quote/EOL) caught all but 4 stragglers, fixed individually. Tests still 99/99 confirms no logic regressions.
+
+**Open follow-ups**
+- The donut chart slices use category-defined hex colors directly (not the token system). If a category color ever lands too pale, the slice can blend with the surface; deferred until it actually happens.
+- Avatar gradients are still hardcoded hex in `tokens.css`. If we ever want to theme avatars, they'd need to move to CSS variables. Not urgent.
+- The `text-text-muted` adjustment is mostly safe but a few `t-label` uses that were fine before might now look slightly heavier. Watch for visual regressions in cards with lots of muted text (Settings, Recurring form).
+
+---
+
 ## 2026-05-09 — Final spec coverage: smart defaults, month-sync, conflict UI
 
 **What was done**

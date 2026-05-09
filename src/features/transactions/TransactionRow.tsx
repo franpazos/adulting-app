@@ -29,7 +29,7 @@ export function TransactionRow({
   const cat = tx.category_id ? categoriesRepo.getById(tx.category_id) : null;
   const isExpense = tx.type === "EXPENSE";
   const sign = isExpense ? -1 : 1;
-  const tone = isExpense ? "text-text-primary" : "text-positive";
+  const tone = isExpense ? "text-text-primary" : "text-positive-ink";
 
   return (
     <button

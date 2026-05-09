@@ -41,7 +41,7 @@ export function ConsequenceSentence({
         values={{ paidBy, belongsTo }}
         components={{
           b: <b className="text-text-primary" />,
-          ok: <span className="text-positive font-medium" />,
+          ok: <span className="text-positive-ink font-medium" />,
         }}
       />
     );

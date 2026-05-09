@@ -82,7 +82,7 @@ export function SettingsPage() {
             </Pill>
           </div>
           {seeded && <p className="t-label">{t("settings.seededFresh")}</p>}
-          {warning && <p className="t-label text-warning">{warning}</p>}
+          {warning && <p className="t-label text-warning-ink">{warning}</p>}
         </Card>
       </section>
 
@@ -258,7 +258,7 @@ function BackupsCard() {
       </Button>
 
       <div className="pt-2 border-t border-border/60 space-y-2">
-        <p className="t-label text-xs flex items-start gap-1.5 text-warning">
+        <p className="t-label text-xs flex items-start gap-1.5 text-warning-ink">
           <AlertTriangle className="size-3.5 mt-0.5 shrink-0" />
           <span>{t("settings.backups.resetHint")}</span>
         </p>

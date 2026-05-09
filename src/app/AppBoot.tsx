@@ -46,7 +46,7 @@ export function AppBoot({ children }: { children: ReactNode }) {
     return (
       <div className="min-h-dvh grid place-items-center bg-bg text-text-primary p-6">
         <div className="max-w-sm rounded-2xl border border-border bg-surface shadow-card p-5 space-y-2">
-          <h1 className="h-section text-expense">Database error</h1>
+          <h1 className="h-section text-expense-ink">Database error</h1>
           <p className="t-label">{error}</p>
           <p className="t-label">Try reloading. If it persists, check that the dev server is running with COOP/COEP headers.</p>
         </div>

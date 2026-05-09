@@ -180,7 +180,7 @@ export function RecurringFormPage() {
           <IconButton
             aria-label={t("common.delete")}
             onClick={handleDeactivate}
-            className="text-expense"
+            className="text-expense-ink"
           >
             <Trash2 className="size-5" />
           </IconButton>
@@ -289,7 +289,7 @@ export function RecurringFormPage() {
       </Section>
 
       {saveError && (
-        <p className="mt-3 text-sm text-expense" role="alert">
+        <p className="mt-3 text-sm text-expense-ink" role="alert">
           {saveError}
         </p>
       )}

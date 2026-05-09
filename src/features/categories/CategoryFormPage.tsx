@@ -153,7 +153,7 @@ export function CategoryFormPage() {
       </section>
 
       {saveError && (
-        <p className="mt-3 text-sm text-expense" role="alert">
+        <p className="mt-3 text-sm text-expense-ink" role="alert">
           {saveError}
         </p>
       )}

@@ -60,14 +60,14 @@ export function RecurringPage() {
 
       <Card className="grid grid-cols-2 gap-3">
         <div>
-          <p className="t-eyebrow text-positive">{t("recurring.monthlyIn")}</p>
-          <p className="t-amount text-positive mt-1">
+          <p className="t-eyebrow text-positive-ink">{t("recurring.monthlyIn")}</p>
+          <p className="t-amount text-positive-ink mt-1">
             +{formatEUR(totalIn)}
           </p>
         </div>
         <div>
-          <p className="t-eyebrow text-expense">{t("recurring.monthlyOut")}</p>
-          <p className="t-amount text-expense mt-1">
+          <p className="t-eyebrow text-expense-ink">{t("recurring.monthlyOut")}</p>
+          <p className="t-amount text-expense-ink mt-1">
             −{formatEUR(totalOut)}
           </p>
         </div>
@@ -156,7 +156,7 @@ function Row({ item }: { item: RecurringItem }) {
           <p
             className={cn(
               "font-display text-base font-semibold tabular-nums",
-              item.type === "INCOME" ? "text-positive" : "text-text-primary",
+              item.type === "INCOME" ? "text-positive-ink" : "text-text-primary",
             )}
           >
             {item.type === "INCOME" ? "+" : ""}
@@ -181,20 +181,20 @@ function toneFor(type: RecurringType): {
   if (type === "INCOME") {
     return {
       bg: "bg-positive/10",
-      fg: "text-positive",
+      fg: "text-positive-ink",
       icon: <ArrowDown className="size-4" />,
     };
   }
   if (type === "DEBT_PAYMENT") {
     return {
       bg: "bg-info/10",
-      fg: "text-info",
+      fg: "text-info-ink",
       icon: <Percent className="size-4" />,
     };
   }
   return {
     bg: "bg-expense/10",
-    fg: "text-expense",
+    fg: "text-expense-ink",
     icon: <ArrowUp className="size-4" />,
   };
 }

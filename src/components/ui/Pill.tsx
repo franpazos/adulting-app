@@ -12,11 +12,14 @@ const pill = cva(
     variants: {
       tone: {
         neutral: "bg-surface-2 text-text-secondary",
-        violet: "bg-violet/10 text-violet dark:bg-violet/20",
-        positive: "bg-positive/10 text-positive dark:bg-positive/20",
-        expense: "bg-expense/10 text-expense dark:bg-expense/20",
-        info: "bg-info/10 text-info dark:bg-info/20",
-        warning: "bg-warning/10 text-warning dark:bg-warning/20",
+        // Ink variants for text — vivid hue on its own 10% tint fails AA;
+        // the -ink token is calibrated to ≥ 4.5:1 in both themes.
+        violet:
+          "bg-violet/15 text-violet-ink dark:bg-violet/25 dark:text-violet-soft",
+        positive: "bg-positive/15 text-positive-ink dark:bg-positive/25",
+        expense: "bg-expense/15 text-expense-ink dark:bg-expense/25",
+        info: "bg-info/15 text-info-ink dark:bg-info/25",
+        warning: "bg-warning/15 text-warning-ink dark:bg-warning/25",
       },
     },
     defaultVariants: { tone: "neutral" },

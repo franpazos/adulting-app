@@ -16,11 +16,20 @@
   --color-violet-ink: 88 60 200;    /* pressed / on-violet text */
   --color-violet-tint: 239 234 254; /* subtle bg behind icons / illustrations */
 
-  /* Functional accents */
+  /* Functional accents (vivid hue used for solid fills, badges, icons) */
   --color-positive: 34 197 94;  /* #22C55E green */
   --color-expense: 255 125 107; /* #FF7D6B coral */
   --color-info: 59 130 246;     /* #3B82F6 blue */
   --color-warning: 245 158 11;  /* #F59E0B amber */
+
+  /* "Ink" variants — darker, used for TEXT on the matching tinted bg
+     (e.g. text-positive-ink on bg-positive/10). The vivid hue above
+     fails AA contrast against its own 10–15% tint; the ink variant is
+     calibrated to ≥ 4.5:1. */
+  --color-positive-ink: 21 128 61;  /* #15803D */
+  --color-expense-ink: 192 60 50;   /* #C03C32 */
+  --color-info-ink: 30 81 207;      /* #1E51CF */
+  --color-warning-ink: 161 98 7;    /* #A16207 */
 
   /* Light neutrals — warm */
   --color-bg: 250 248 244;            /* warm off-white */
@@ -28,8 +37,8 @@
   --color-surface-2: 245 243 239;     /* slightly elevated alt */
   --color-border: 226 222 215;        /* low-contrast warm border */
   --color-text-primary: 28 32 48;     /* deep navy-charcoal */
-  --color-text-secondary: 92 96 112;  /* muted gray-blue */
-  --color-text-muted: 142 146 160;    /* tertiary gray */
+  --color-text-secondary: 78 82 96;   /* muted gray-blue, AA on bg */
+  --color-text-muted: 107 111 124;    /* tertiary, AA-ish for incidental */
 }
 
 .dark {
@@ -43,6 +52,13 @@
   --color-expense: 255 138 122;
   --color-info: 96 165 250;
   --color-warning: 251 175 56;
+
+  /* In dark mode the tinted bg is darker, so ink stays bright — same hue
+     as the vivid token, which is already AA on the darker tint. */
+  --color-positive-ink: 134 239 172;
+  --color-expense-ink: 252 165 165;
+  --color-info-ink: 147 197 253;
+  --color-warning-ink: 253 186 116;
 
   /* Dark neutrals — deep charcoal with violet whisper */
   --color-bg: 14 15 22;            /* near-black with subtle blue */

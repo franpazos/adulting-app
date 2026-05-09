@@ -36,7 +36,7 @@ export function SettlementChip({
           "pop-in",
           "inline-flex items-center justify-center gap-2",
           "px-3.5 py-2 rounded-full",
-          "bg-positive/10 text-positive",
+          "bg-positive/10 text-positive-ink",
           "text-sm font-medium",
           className,
         )}

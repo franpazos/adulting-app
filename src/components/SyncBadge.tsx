@@ -48,7 +48,7 @@ export function SyncBadge({ className }: { className?: string }) {
       <span
         className={cn(
           "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full",
-          "bg-expense/10 text-expense text-[11px] font-medium",
+          "bg-expense/10 text-expense-ink text-[11px] font-medium",
           className,
         )}
         role="status"
@@ -65,7 +65,7 @@ export function SyncBadge({ className }: { className?: string }) {
       <span
         className={cn(
           "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full",
-          "bg-positive/10 text-positive text-[11px] font-medium",
+          "bg-positive/10 text-positive-ink text-[11px] font-medium",
           className,
         )}
         role="status"

@@ -291,7 +291,7 @@ export function HomePage() {
         >
           <Card className="space-y-3 tap-card h-full">
             <div className="flex items-center gap-2">
-              <span className="grid place-items-center size-7 rounded-lg bg-positive/10 text-positive">
+              <span className="grid place-items-center size-7 rounded-lg bg-positive/10 text-positive-ink">
                 <Wallet className="size-4" />
               </span>
               <h3 className="text-sm font-semibold">
@@ -374,13 +374,13 @@ function JointSnapshotCard({
         <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
           <div>
             <p className="t-label">{t("home.inflowMonth")}</p>
-            <p className="font-display text-base font-semibold tabular-nums text-positive">
+            <p className="font-display text-base font-semibold tabular-nums text-positive-ink">
               +{fmt(inflow)}
             </p>
           </div>
           <div>
             <p className="t-label">{t("home.outflowMonth")}</p>
-            <p className="font-display text-base font-semibold tabular-nums text-expense">
+            <p className="font-display text-base font-semibold tabular-nums text-expense-ink">
               −{fmt(outflow)}
             </p>
           </div>
@@ -452,9 +452,9 @@ function MiniStat({
 }) {
   const toneClass =
     tone === "positive"
-      ? "text-positive"
+      ? "text-positive-ink"
       : tone === "expense"
-        ? "text-expense"
+        ? "text-expense-ink"
         : tone === "violet"
           ? "text-violet"
           : "text-text-primary";
@@ -488,8 +488,8 @@ function SettlementRow({
     net === 0
       ? "text-text-secondary"
       : net > 0
-        ? "text-expense"
-        : "text-positive";
+        ? "text-expense-ink"
+        : "text-positive-ink";
   const name = net === 0 ? "—" : net > 0 ? label : labelInverse;
   return (
     <div>

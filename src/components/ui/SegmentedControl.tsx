@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, useState } from "react";
+import { useId } from "react";
 import { cn } from "@/lib/utils/cn";
 
 export interface SegmentedOption<T extends string> {
@@ -18,7 +18,14 @@ interface SegmentedControlProps<T extends string> {
 
 /**
  * iOS-style segmented control with a sliding background pill.
- * The pill is positioned absolutely and animates between the active button.
+ *
+ * The pill is positioned via pure CSS — width = 1/N of the track, left
+ * offset = activeIndex × (1/N). No `getBoundingClientRect` measurement,
+ * which was racing with the parent route-frame animation and leaving
+ * the active button's white text on a near-white background.
+ *
+ * All buttons share the same width (CSS grid), which is fine for the
+ * short labels we use (Household / Fran / Sam / All, etc).
  */
 export function SegmentedControl<T extends string>({
   options,
@@ -29,62 +36,55 @@ export function SegmentedControl<T extends string>({
   ariaLabel,
 }: SegmentedControlProps<T>) {
   const groupId = useId();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const buttonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-  const [pill, setPill] = useState<{ left: number; width: number } | null>(
-    null,
+  const activeIndex = Math.max(
+    0,
+    options.findIndex((o) => o.value === value),
   );
-
-  useLayoutEffect(() => {
-    const container = containerRef.current;
-    const btn = buttonRefs.current[value];
-    if (!container || !btn) return;
-    const cRect = container.getBoundingClientRect();
-    const bRect = btn.getBoundingClientRect();
-    setPill({ left: bRect.left - cRect.left, width: bRect.width });
-  }, [value, options.length]);
+  const count = options.length;
+  // Track has 4px (p-1) padding on each side. The pill sits inside the
+  // padded area, so its width is (100% - 8px) / N and its left offset
+  // is 4px + activeIndex × ((100% - 8px) / N).
+  const slotWidth = `calc((100% - 8px) / ${count})`;
+  const pillLeft = `calc(4px + ${activeIndex} * ${slotWidth})`;
 
   return (
     <div
-      ref={containerRef}
       role="tablist"
       aria-label={ariaLabel}
       className={cn(
-        "relative inline-flex items-center rounded-full p-1",
+        "relative grid items-center rounded-full p-1",
         "bg-surface-2 border border-border",
         className,
       )}
+      style={{
+        gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))`,
+      }}
     >
-      {pill && (
-        <span
-          aria-hidden
-          className={cn(
-            "absolute top-1 bottom-1 rounded-full transition-[transform,width] duration-200 ease-out",
-            tone === "violet" ? "bg-violet" : "bg-surface",
-            tone === "violet" ? "shadow-violet-glow" : "shadow-card",
-          )}
-          style={{
-            transform: `translateX(${pill.left - 4}px)`,
-            width: pill.width,
-            left: 4,
-          }}
-        />
-      )}
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute top-1 bottom-1 rounded-full",
+          "transition-[left] duration-200 ease-out",
+          tone === "violet" ? "bg-violet" : "bg-surface",
+          tone === "violet" ? "shadow-violet-glow" : "shadow-card",
+        )}
+        style={{
+          left: pillLeft,
+          width: slotWidth,
+        }}
+      />
       {options.map((opt) => {
         const active = opt.value === value;
         return (
           <button
             key={opt.value}
-            ref={(el) => {
-              buttonRefs.current[opt.value] = el;
-            }}
             id={`${groupId}-${opt.value}`}
             role="tab"
             type="button"
             aria-selected={active}
             onClick={() => onChange(opt.value)}
             className={cn(
-              "relative z-10 px-4 py-1.5 rounded-full text-sm font-medium min-h-9",
+              "relative z-10 px-4 py-1.5 rounded-full text-sm font-medium min-h-9 text-center",
               "transition-colors duration-150",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet/60",
               active

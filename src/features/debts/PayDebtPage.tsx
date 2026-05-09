@@ -345,7 +345,7 @@ export function PayDebtPage() {
           <div
             className={cn(
               "flex items-start gap-2 px-3 py-2 rounded-xl",
-              "bg-warning/10 text-warning text-[11px] leading-relaxed",
+              "bg-warning/10 text-warning-ink text-[11px] leading-relaxed",
             )}
           >
             <Zap className="size-3.5 mt-0.5 flex-shrink-0" />
@@ -378,7 +378,7 @@ export function PayDebtPage() {
       </section>
 
       {saveError && (
-        <p className="mt-3 text-sm text-expense" role="alert">
+        <p className="mt-3 text-sm text-expense-ink" role="alert">
           {saveError}
         </p>
       )}

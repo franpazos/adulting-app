@@ -21,10 +21,22 @@ export default {
           ink: "rgb(var(--color-violet-ink) / <alpha-value>)",
           tint: "rgb(var(--color-violet-tint) / <alpha-value>)",
         },
-        positive: "rgb(var(--color-positive) / <alpha-value>)",
-        expense: "rgb(var(--color-expense) / <alpha-value>)",
-        info: "rgb(var(--color-info) / <alpha-value>)",
-        warning: "rgb(var(--color-warning) / <alpha-value>)",
+        positive: {
+          DEFAULT: "rgb(var(--color-positive) / <alpha-value>)",
+          ink: "rgb(var(--color-positive-ink) / <alpha-value>)",
+        },
+        expense: {
+          DEFAULT: "rgb(var(--color-expense) / <alpha-value>)",
+          ink: "rgb(var(--color-expense-ink) / <alpha-value>)",
+        },
+        info: {
+          DEFAULT: "rgb(var(--color-info) / <alpha-value>)",
+          ink: "rgb(var(--color-info-ink) / <alpha-value>)",
+        },
+        warning: {
+          DEFAULT: "rgb(var(--color-warning) / <alpha-value>)",
+          ink: "rgb(var(--color-warning-ink) / <alpha-value>)",
+        },
       },
       fontFamily: {
         display: ['"Sora"', "system-ui", "sans-serif"],

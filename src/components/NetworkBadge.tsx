@@ -15,7 +15,7 @@ export function NetworkBadge({ className }: { className?: string }) {
     <span
       className={cn(
         "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full",
-        "bg-warning/10 text-warning text-[11px] font-medium",
+        "bg-warning/10 text-warning-ink text-[11px] font-medium",
         className,
       )}
       role="status"
