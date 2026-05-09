@@ -85,7 +85,7 @@ This document is the living plan of work. Each phase ends with a checklist updat
 - [x] `dbVersion` counter on `dbStore`, with HomePage memo deps wired to it
 - [x] EN + ES i18n for the entire flow (titles, segments, labels, live preview text, save button)
 - [x] Vitest smoke test for the save path (3 scenarios: shared from personal, joint personal, no-impact case)
-- [ ] Smart defaults from last entry — deferred to Phase 7 polish
+- [x] Smart defaults from last entry — landed in Phase 10b
 - [x] Sync queue enqueue — landed in Phase 9a
 
 ## Phase 6 — Transactions, Settlements, Recurring ✅
@@ -118,8 +118,8 @@ This document is the living plan of work. Each phase ends with a checklist updat
   - [x] Joint snapshot card (current balance + monthly inflow/outflow)
   - [x] Side-by-side personal summaries (Fran + Sam) per spec §6.1
   - [x] Per-owner debt summary on Home (Fran / Sam / Household totals)
-- [ ] Filters/search on Transactions — deferred
-- [ ] Smart defaults from last entry — deferred
+- [x] Filters/search on Transactions — landed in Phase 10b
+- [x] Smart defaults from last entry — landed in Phase 10b
 - [x] Settings expansion (Defaults, Backups & Data, About) — landed in Phase 10b
 
 ## Phase 8 — PWA + offline ✅
