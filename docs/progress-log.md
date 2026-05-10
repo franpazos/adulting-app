@@ -4,6 +4,26 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-10 — Disable pinch-zoom app-wide (PWA-native feel)
+
+**What was done**
+
+Discussing the FeedbackSheet auto-zoom fix surfaced the broader question: do we want pinch-zoom at all? The PWA is installed on both phones, launches from the home screen, behaves like a native app in every other way — and native iOS apps don't pinch-zoom by default. Decision was to own it and disable globally.
+
+- `index.html` viewport meta: added `maximum-scale=1, user-scalable=no` to the existing `width=device-width, initial-scale=1.0, viewport-fit=cover`. `viewport-fit=cover` stays (it powers the safe-area-inset usage for the notch).
+- Kept the prior `text-base` fix on the FeedbackSheet textarea. The viewport tweak makes it technically redundant (no auto-zoom can happen), but it's defense-in-depth and the right default for any future input we add.
+- Documented as ADR-015 in `docs/decisions.md`, including the accessibility tradeoff and the escape hatch (per-view `touch-action: pinch-zoom`) if we ever need pinch back.
+
+**Decisions**
+- **Option chosen: `maximum-scale=1, user-scalable=no` (both).** The popular Stack Overflow advice of "use `maximum-scale=1` alone, it only blocks auto-zoom" is no longer accurate on iOS ≥ 13 — Safari treats it as a user-zoom cap too. Being explicit with both attributes makes intent unambiguous to anyone reading the file.
+- **A11y tradeoff accepted.** WCAG 1.4.4 (Resize Text) is technically not met by page zoom, but: 2-user private app, iOS system Accessibility Zoom still works at the OS level, and tap targets / input font-sizes already meet a11y baselines.
+- **Keep the 16px input discipline anyway.** Cheap to maintain (every primitive already does it), and protects us if the viewport rule ever needs to change.
+
+**Open follow-ups**
+- None. If we ever build a feature that legitimately needs pinch (receipt zoom, chart zoom), use a scoped `touch-action: pinch-zoom` wrapper rather than reverting the viewport.
+
+---
+
 ## 2026-05-10 — FeedbackSheet textarea: iOS Safari auto-zoom fix
 
 **What was done**

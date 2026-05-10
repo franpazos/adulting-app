@@ -4,6 +4,22 @@ Short, dated records of decisions that shape the codebase. Each entry is an ADR-
 
 ---
 
+## ADR-015 — Disable pinch-zoom app-wide (PWA-native feel)
+**Date:** 2026-05-10
+**Status:** Accepted
+**Context:** Adulting.app is installed as a PWA on both phones — no browser chrome, launches from the home screen, behaves like a native app in every way except for two web-isms that broke the illusion: (a) iOS Safari's auto-zoom-on-focus when an input has `font-size < 16px`, and (b) pinch-zoom on any tap-and-hold-then-pinch gesture, which felt jarring against a layout that was never designed for it. Native iOS apps don't pinch-zoom unless they explicitly opt in (Photos, Maps). The Stack Overflow "use `maximum-scale=1` alone" pattern is partially incorrect on modern iOS — Safari now respects it as a limit on user zoom, not just auto-zoom. Three options weighed:
+1. Leave viewport alone, keep enforcing `font-size ≥ 16px` on every input (a11y-friendly but only fixes auto-zoom, not pinch).
+2. Add `maximum-scale=1` only (claims accessibility but actually limits pinch on iOS ≥ 13).
+3. Add `maximum-scale=1, user-scalable=no` explicitly and own the choice.
+**Decision:** Option 3. Meta viewport in `index.html` now reads `width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover`. Keep the `text-base` (16px) discipline on inputs anyway — it's defense-in-depth and good hygiene if the viewport ever needs to change.
+**Consequences:**
+- Pinch-zoom is disabled across the entire PWA, on every page, in both the installed PWA and any browser tab.
+- WCAG 1.4.4 (Resize Text) is technically not met by page zoom, but: (a) this is a private 2-user app, not a public product; (b) iOS system-level accessibility zoom (Settings → Accessibility → Zoom) still works and is OS-mediated, so users who need it aren't blocked; (c) every interactive target already uses ≥44px tap targets and ≥16px input font-size.
+- `viewport-fit=cover` stays — it's what enables `env(safe-area-inset-*)` for the notch / home indicator, used by the route-frame padding.
+- If we ever add a feature that *needs* pinch-zoom (e.g. zoom into a receipt image, drill into a chart), we'd need a per-view escape — likely a scoped wrapper using CSS `touch-action: pinch-zoom` rather than reverting the viewport rule.
+
+---
+
 ## ADR-014 — `@import` order in `src/index.css` is load-bearing
 **Date:** 2026-05-09
 **Status:** Accepted (debugging postmortem)
