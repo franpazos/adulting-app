@@ -4,6 +4,23 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-10 — Connect-Sheet 400 fix: ensureRawTabs before first pull
+
+**What was done**
+
+Real-world bug: connecting an already-populated Sheet (one that pre-dates the `raw_feedback` tab) failed with `Sheets API 400` from `pullAll`. Root cause: `ConnectSheetBlock.handleSave` went `getSpreadsheet → pullAll` directly. `pullAll` reads each `raw_*` tab via `getValues(id, "raw_X!A2:Y")`. If any tab is missing, Sheets returns 400 *"Unable to parse range"*. `ensureRawTabs` already existed and was wired into `push.ts`, but the connect path skipped it — so a Sheet bound before `raw_feedback` was added would never auto-create the missing tab on connect.
+
+- `ConnectSheetBlock.handleSave` now calls `ensureRawTabs(meta.spreadsheetId)` between `getSpreadsheet` and `pullAll`. Idempotent: creates any missing tabs and rewrites the canonical header row on every existing one.
+
+**Decisions**
+- **Run ensureRawTabs unconditionally on connect, not only "if missing".** It's a handful of API calls and runs once per connect; checking-then-creating would duplicate the logic that already lives inside `ensureRawTabs`. Header rewrite is also a useful safety net if columns ever drift.
+- **Connect path, not pullAll itself.** Adding `ensureRawTabs` inside `pullAll` would couple a read operation to write side-effects, and pullAll runs on every auto-sync. Keep ensureRawTabs at the boundaries that legitimately mutate the Sheet (connect + push).
+
+**Open follow-ups**
+- None. If we add another raw_* tab in the future, existing connected Sheets will still be patched on the next push (which already calls ensureRawTabs), so this class of bug shouldn't recur unless someone adds a new pull-only entry point.
+
+---
+
 ## 2026-05-09 — Color contrast pass: SegmentedControl race + functional-color ink variants
 
 **What was done**

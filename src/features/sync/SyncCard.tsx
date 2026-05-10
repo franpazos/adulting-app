@@ -29,6 +29,7 @@ import { parseSpreadsheetId } from "@/lib/google/drive-api";
 import { getSpreadsheet } from "@/lib/google/sheets-api";
 import { syncAll } from "@/lib/sync/sync";
 import { pullAll } from "@/lib/sync/pull";
+import { ensureRawTabs } from "@/lib/sync/tabs";
 import { cn } from "@/lib/utils/cn";
 
 function sumValues(map: Record<string, number>): number {
@@ -235,6 +236,12 @@ function ConnectSheetBlock({
         return;
       }
       const meta = await getSpreadsheet(id);
+
+      // Ensure every raw_* tab exists with up-to-date headers before pulling.
+      // Without this, pullAll's getValues hits a 400 "Unable to parse range"
+      // for any tab that doesn't yet exist in the spreadsheet (e.g. a Sheet
+      // that pre-dates raw_feedback, or a brand-new Sheet on first connect).
+      await ensureRawTabs(meta.spreadsheetId);
 
       // Phase 9b: import remote data BEFORE binding so the first auto-push
       // doesn't overwrite the existing sheet with our local seed-only state.
