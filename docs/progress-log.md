@@ -4,6 +4,23 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-10 — FeedbackSheet textarea: iOS Safari auto-zoom fix
+
+**What was done**
+
+First real feedback from the beta buzón flagged a "weird zoom" when tapping the message textarea on iPhone. Classic iOS Safari behavior: any editable field with computed `font-size < 16px` triggers an auto-zoom-on-focus that the user then has to pinch back out from. The FeedbackSheet textarea was the only form control in the app still using `text-sm` (14px) — every `Input` primitive already uses `text-base` (16px), so nothing else in the app hit this.
+
+- `FeedbackSheet.tsx` textarea: `text-sm` → `text-base`. Added a comment marking the 16px threshold as load-bearing so nobody "tightens" it later.
+
+**Decisions**
+- **Fix at the call site, not the primitive.** There's no shared `Textarea` primitive yet — every textarea in the codebase is raw. The audit only found one offender, so promoting it to a primitive purely to enforce a font-size floor would be over-engineering. If we ever add a second textarea, that's the moment to extract.
+- **Comment, not a lint rule.** A regex against `text-(xs|sm)` near `<textarea` / `<input` would be possible but noisy (would false-positive on labels and helper text). The single inline comment is enough for now — future audits can grep for the comment.
+
+**Open follow-ups**
+- None for this bug. If we ever grow to multiple textareas, extract a `Textarea` primitive in `src/components/ui/` mirroring `Input` (which already uses `text-base`).
+
+---
+
 ## 2026-05-10 — Connect-Sheet 400 fix: ensureRawTabs before first pull
 
 **What was done**

@@ -173,7 +173,9 @@ export function FeedbackSheet({
             maxLength={2000}
             className={cn(
               "w-full rounded-xl border border-border bg-surface text-text-primary",
-              "px-3 py-2 text-sm leading-relaxed resize-none",
+              // text-base (16px) is load-bearing: iOS Safari auto-zooms any
+              // editable field with font-size < 16px on focus. Keep ≥16px.
+              "px-3 py-2 text-base leading-relaxed resize-none",
               "focus:outline-none focus:border-violet focus:ring-2 focus:ring-violet/30",
             )}
           />
