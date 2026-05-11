@@ -401,6 +401,14 @@ function PersonalCard({
 }) {
   const { t } = useTranslation();
   const route = who === "FRAN" ? "/transactions" : "/transactions";
+  const specialName = samLikesGreen(name)
+
+  function samLikesGreen(name: string) {
+    const firstLetter = name.charAt(0)
+    const rest = name.slice(1)
+    return { firstLetter, rest }
+  }
+  
   return (
     <Link
       to={route}
@@ -410,7 +418,10 @@ function PersonalCard({
       <Card className="space-y-2.5 tap-card h-full">
         <div className="flex items-center gap-2">
           <Avatar who={who} size={28} />
-          <h3 className="text-sm font-semibold">{name}</h3>
+          <h3 className="text-sm font-semibold">
+            <span className={who === "SAM" ? "text-positive-ink" : ""}>{specialName.firstLetter}</span>
+            {specialName.rest}
+          </h3>
         </div>
         <MiniStat
           label={t("home.statIncome")}
