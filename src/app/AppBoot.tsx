@@ -1,6 +1,8 @@
 import { useEffect, type ReactNode } from "react";
 import { initDb, runMigrations, seedIfEmpty } from "@/lib/db";
 import { useDbStore } from "@/store/dbStore";
+import { hasValidToken, useAuthStore } from "@/store/authStore";
+import { silentLogin } from "@/lib/google/auth";
 import { LogoMark } from "@/components/Logo";
 
 /**
@@ -17,6 +19,25 @@ export function AppBoot({ children }: { children: ReactNode }) {
   const setInitializing = useDbStore((s) => s.setInitializing);
   const setReady = useDbStore((s) => s.setReady);
   const setError = useDbStore((s) => s.setError);
+
+  // Best-effort silent re-auth on boot. Google's implicit flow doesn't issue
+  // refresh tokens (browser-only OAuth), so the cached access token expires
+  // ~1h after issue. If the user is still signed into Google in this
+  // browser, `silentLogin()` returns a fresh token with no UI. Runs once on
+  // mount, independent of DB init.
+  useEffect(() => {
+    const { token, email } = useAuthStore.getState();
+    // No previous connection → nothing to refresh. First-time users still
+    // see the normal "Connect with Google" button.
+    if (!email) return;
+    // Cached token is still valid → no need to refresh.
+    if (hasValidToken(token)) return;
+    // Mark expired immediately so any UI relying on auth status sees the
+    // right state during the silent attempt. silentLogin() overrides this
+    // back to "connected" on success.
+    useAuthStore.getState().setExpired();
+    void silentLogin();
+  }, []);
 
   useEffect(() => {
     if (status !== "idle") return;

@@ -104,10 +104,75 @@ export async function login(): Promise<string> {
   });
 }
 
-/** Returns a valid access token, prompting if needed. */
+/**
+ * Try to refresh the access token without showing UI. Succeeds when the user
+ * is still signed into Google in this browser and previously granted the
+ * scopes — the common case. Never opens a popup; resolves `{ ok: false }` on
+ * any silent failure (interaction required, popup blocked by ITP, GIS not
+ * loaded, etc.) so the caller can decide whether to fall back to `login()`.
+ *
+ * Calls `setExpired()` on the auth store when silent renewal fails, so the
+ * UI banner ("Reconnect to Google") is correct without further plumbing.
+ */
+export async function silentLogin(): Promise<
+  { ok: true; token: string } | { ok: false; reason: string }
+> {
+  if (!isGoogleClientConfigured()) {
+    return { ok: false, reason: "not-configured" };
+  }
+  try {
+    await waitForGis();
+  } catch {
+    return { ok: false, reason: "gis-load-failed" };
+  }
+
+  return new Promise((resolve) => {
+    try {
+      const client = gis().oauth2.initTokenClient({
+        client_id: CLIENT_ID!,
+        scope: GOOGLE_SCOPES,
+        callback: (resp) => {
+          if (resp.error) {
+            useAuthStore.getState().setExpired();
+            resolve({ ok: false, reason: resp.error });
+            return;
+          }
+          const expiresAt = Date.now() + resp.expires_in * 1000;
+          const s = useAuthStore.getState();
+          s.setConnected(
+            { accessToken: resp.access_token, expiresAt },
+            s.email,
+          );
+          resolve({ ok: true, token: resp.access_token });
+        },
+        error_callback: (err) => {
+          useAuthStore.getState().setExpired();
+          resolve({ ok: false, reason: err?.type ?? "unknown" });
+        },
+      });
+      // prompt: "" = silent token request. Google returns interaction_required
+      // (or similar) if the user needs to re-consent.
+      client.requestAccessToken({ prompt: "" });
+    } catch (e) {
+      useAuthStore.getState().setExpired();
+      resolve({
+        ok: false,
+        reason: e instanceof Error ? e.message : "exception",
+      });
+    }
+  });
+}
+
+/**
+ * Returns a valid access token, preferring silent refresh when the cached
+ * token has expired. Only falls back to the interactive popup if silent
+ * fails — that path is reserved for revoked grants / cleared cookies.
+ */
 export async function getValidToken(): Promise<string> {
   const { token } = useAuthStore.getState();
   if (hasValidToken(token)) return token!.accessToken;
+  const silent = await silentLogin();
+  if (silent.ok) return silent.token;
   return login();
 }
 

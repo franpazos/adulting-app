@@ -4,6 +4,23 @@ Short, dated records of decisions that shape the codebase. Each entry is an ADR-
 
 ---
 
+## ADR-016 — Silent Google token refresh on boot
+**Date:** 2026-05-11
+**Status:** Accepted
+**Context:** Google's browser-only OAuth (implicit flow via Google Identity Services `initTokenClient`) issues access tokens that expire ~1h after issue and provides **no refresh token** — refresh tokens are only available via the authorization-code flow with a backend that holds a client secret, which we don't have. Real-world consequence on Fran's iPhone: opening the installed PWA the next day always required a visible Google consent popup before any sync could happen. Sam reported the same: "I have to reconnect every time." The cached token persists fine to `localStorage`, but a stale one is useless and the prior code went straight to a full `prompt: "consent"` popup on every `getValidToken()` call that found an expired token. Google Identity Services *does* support `prompt: ""` (silent token request) which succeeds without UI when the user is still signed into Google in the same browser AND has previously granted the requested scopes — the common case for an installed PWA where the user is logged into Google on their phone.
+**Decision:**
+- New `silentLogin()` in `lib/google/auth.ts` wraps `requestAccessToken({ prompt: "" })`. Returns `{ ok: true, token }` on success or `{ ok: false, reason }` on any silent failure. Calls `setExpired()` on the auth store when it fails so the UI banner reflects reality.
+- `getValidToken()` now tries silent first when the cached token has expired, only falling back to the interactive `login()` popup if silent fails (revoked grant, cleared cookies, etc.).
+- `AppBoot.tsx` runs `silentLogin()` once on mount when a remembered email is present but the cached token is expired, so the refresh happens proactively at startup rather than lazily on the first sync attempt.
+**Consequences:**
+- Day-to-day flow: open PWA → silent refresh in background → sync just works. Zero UI for the user as long as they remain signed into Google in Safari (effectively always).
+- The interactive popup is still reachable — it's the fallback when silent fails, and the only path for first-time connect.
+- If Google ever tightens silent token requests (third-party cookie deprecation, ITP changes), the fallback to `login()` keeps the app usable; the user would just see the popup again as before.
+- We do *not* attempt silent refresh on every visibility change or interval — the boot-time attempt plus the lazy `getValidToken()` path cover all sync triggers. Adding more silent attempts would risk hitting GIS rate limits without user benefit.
+- No new dependency, no backend, no scope change.
+
+---
+
 ## ADR-015 — Disable pinch-zoom app-wide (PWA-native feel)
 **Date:** 2026-05-10
 **Status:** Accepted

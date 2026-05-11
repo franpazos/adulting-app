@@ -4,6 +4,28 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-11 — Silent Google token refresh: no more daily reconnects
+
+**What was done**
+
+Both Fran and Sam reported having to reconnect to Google every time they opened the PWA. Audit confirmed: the cached access token persists fine, but Google's browser-only implicit flow issues no refresh token, so the cached token expires ~1h after issue. The prior code went straight to a visible `prompt: "consent"` popup on every `getValidToken()` call that found an expired token. The fix is to use GIS's silent token request (`prompt: ""`), which succeeds without UI when the user is still signed into Google in the same browser.
+
+- New `silentLogin()` in `lib/google/auth.ts`: wraps `initTokenClient` + `requestAccessToken({ prompt: "" })`. Returns `{ ok: true, token }` or `{ ok: false, reason }`. Calls `setExpired()` on the auth store on failure so the UI banner is correct without further plumbing.
+- `getValidToken()` now tries silent first when the cached token is expired, falling back to interactive `login()` only if silent fails. Most callers will never see the popup again.
+- `AppBoot.tsx` runs `silentLogin()` once on mount if the store has a remembered `email` but `!hasValidToken()` — proactive refresh at startup rather than lazily on first sync. Non-blocking; DB init proceeds in parallel.
+- Documented as ADR-016.
+
+**Decisions**
+- **Boot-time silent refresh + lazy-on-getValidToken, not interval-based.** The two trigger points cover every legitimate moment a sync would fire. Adding visibility-change or interval-based silent refresh would risk hitting GIS rate limits with no user benefit.
+- **Silent failure sets `expired`, not `error`.** Status `expired` is what the existing UI banner ("Reconnect to Google") already responds to. Reusing the existing state machine avoids new UI work.
+- **Keep the interactive `login()` path intact.** First-time connects still need `prompt: "consent"` to authorize scopes, and we want a usable fallback when silent fails (revoked grant, cleared cookies, ITP changes).
+
+**Open follow-ups**
+- If Google deprecates silent token requests in browser-only contexts (third-party cookie deprecation could conceivably affect this someday), we'd need to migrate to auth-code flow with PKCE plus a tiny backend. Not on the horizon today.
+- We don't currently try a silent refresh when the PWA is foregrounded after a long background period (>1h, token now stale). The next sync attempt will catch it via the `getValidToken()` path, so the user experience is the same with a one-tick delay. If that delay ever feels janky, add a `visibilitychange` listener that calls `silentLogin()` on `visible` if `!hasValidToken()`.
+
+---
+
 ## 2026-05-10 — Disable pinch-zoom app-wide (PWA-native feel)
 
 **What was done**
