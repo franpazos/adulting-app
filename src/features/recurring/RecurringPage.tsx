@@ -8,7 +8,7 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, Plus, ArrowDown, ArrowUp, Percent } from "lucide-react";
-
+import { AppHeader } from "@/components/AppHeader";
 import { Card, IconButton, Pill } from "@/components/ui";
 import { Avatar, type AvatarWho } from "@/components/Avatar";
 import { recurringRepo, categoriesRepo } from "@/lib/db";
@@ -38,6 +38,8 @@ export function RecurringPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 pt-4 pb-8 space-y-5">
+      <AppHeader />
+
       <div className="flex items-center justify-between">
         <IconButton
           aria-label={t("settlements.back")}

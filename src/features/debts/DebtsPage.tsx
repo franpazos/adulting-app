@@ -6,6 +6,7 @@ import { ChevronRight, Plus } from "lucide-react";
 import { Button, Card, EmptyState, IconButton, Pill } from "@/components/ui";
 import { Avatar, type AvatarWho } from "@/components/Avatar";
 import { EmptyArt } from "@/components/EmptyArt";
+import { AppHeader } from "@/components/AppHeader"
 import { debtsRepo } from "@/lib/db";
 import type { Debt, OwnerType } from "@/lib/db/types";
 import { useDbStore } from "@/store/dbStore";
@@ -61,6 +62,7 @@ export function DebtsPage() {
   if (debts.length === 0) {
     return (
       <div className="mx-auto max-w-md px-4 pt-6 pb-8 space-y-5">
+        <AppHeader />
         <h1 className="h-display">{t("debts.title")}</h1>
         <EmptyState
           variant="centered"
@@ -75,6 +77,8 @@ export function DebtsPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 pt-4 pb-8 space-y-5">
+      <AppHeader />
+      
       <div className="flex items-center justify-between">
         <h1 className="h-display">{t("debts.title")}</h1>
         <IconButton aria-label={t("debts.add")} variant="violet" size="sm">

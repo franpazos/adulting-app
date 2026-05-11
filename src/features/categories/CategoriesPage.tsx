@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
-
+import { AppHeader } from "@/components/AppHeader";
 import { Card, CardEyebrow, IconButton } from "@/components/ui";
 import { categoriesRepo } from "@/lib/db";
 import type { Category } from "@/lib/db/types";
@@ -24,6 +24,8 @@ export function CategoriesPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 pt-4 pb-8 space-y-5">
+      <AppHeader />
+      
       <div className="flex items-center justify-between">
         <IconButton
           aria-label={t("settlements.back")}

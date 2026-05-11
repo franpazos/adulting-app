@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft } from "lucide-react";
-
+import { AppHeader } from "@/components/AppHeader";
 import { Avatar, type AvatarWho } from "@/components/Avatar";
 import { Card, CardEyebrow, IconButton, Pill } from "@/components/ui";
 import { accountsRepo } from "@/lib/db";
@@ -35,6 +35,7 @@ export function AccountsPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 pt-4 pb-8 space-y-5">
+      <AppHeader />
       <div className="flex items-center justify-between">
         <IconButton
           aria-label={t("settlements.back")}

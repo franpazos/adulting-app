@@ -9,7 +9,7 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowRight, ChevronLeft } from "lucide-react";
-
+import { AppHeader } from "@/components/AppHeader";
 import { Avatar } from "@/components/Avatar";
 import {
   Button,
@@ -65,6 +65,8 @@ export function SettlementsPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 pt-4 pb-8 space-y-5">
+      <AppHeader />
+      
       <div className="flex items-center justify-between">
         <IconButton
           aria-label={t("settlements.back")}

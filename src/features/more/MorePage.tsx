@@ -8,6 +8,7 @@ import {
   Settings as SettingsIcon,
   ChevronRight,
 } from "lucide-react";
+import { AppHeader } from "@/components/AppHeader";
 
 export function MorePage() {
   const { t } = useTranslation();
@@ -24,6 +25,8 @@ export function MorePage() {
 
   return (
     <div className="mx-auto max-w-md px-4 pt-6 pb-8 space-y-6">
+      <AppHeader />
+      
       <h1 className="font-display text-3xl font-semibold tracking-tight">
         {t("more.title")}
       </h1>

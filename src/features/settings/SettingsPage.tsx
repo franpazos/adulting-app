@@ -30,6 +30,7 @@ import { exportDb } from "@/lib/db/client";
 import { clearSnapshot } from "@/lib/db/persistence";
 import { feedbackRepo } from "@/lib/db";
 import type { CashSource, OwnerType } from "@/lib/db/types";
+import { AppHeader } from "@/components/AppHeader";
 
 export function SettingsPage() {
   const { t } = useTranslation();
@@ -39,6 +40,7 @@ export function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 pt-6 pb-8 space-y-5">
+      <AppHeader />
       <h1 className="h-display">{t("more.items.settings")}</h1>
 
       <section className="space-y-2">
