@@ -125,8 +125,8 @@
   flex-shrink: 0;
 }
 .avatar-fran { background: linear-gradient(135deg, #7B5CF6 0%, #5B3FD9 100%); }
-.avatar-sam  { background: linear-gradient(135deg, #FF7D6B 0%, #E55A48 100%); }
-.avatar-house { background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%); }
+.avatar-sam { background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%); }
+.avatar-house  { background: linear-gradient(135deg, #FF7D6B 0%, #E55A48 100%); }
 .avatar-joint { background: linear-gradient(135deg, #3B82F6 0%, #1E5FD9 100%); }
 
 /* Hide scroll inside phones */
