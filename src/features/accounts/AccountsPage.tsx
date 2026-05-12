@@ -35,7 +35,7 @@ export function AccountsPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 pt-4 pb-8 space-y-5">
-      <AppHeader />
+      <AppHeader showMonth={false} />
       <div className="flex items-center justify-between">
         <IconButton
           aria-label={t("settlements.back")}
