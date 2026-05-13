@@ -4,6 +4,49 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-12 — UI polish on the train: AppHeader rollout, Sam's green letter, avatar swap
+
+**What was done**
+
+Four small commits Fran made on a train ride (`baa435e`, `e538bf5`, `82d1b7c`, `4d8611b`), reviewed and documented after the fact. Tests stayed at 99/99, typecheck and build clean.
+
+### 1. Sam's name gets a green initial on Home (`baa435e`)
+
+`PersonalCard` in `HomePage.tsx` now wraps the first letter of each name in a `<span>`. When `who === "SAM"`, that span gets `text-positive-ink`. Fran's letter stays neutral — intentionally asymmetric, it's a personal guiño from Fran to Sam, not a generic "color the initial" pattern.
+
+A local `samLikesGreen(name)` helper inside the component splits the string into `{ firstLetter, rest }`. The funky name is intentional and stays — leaving it as a small wink in the code.
+
+### 2. AppHeader added to every "important" page (`e538bf5`)
+
+Previously `AppHeader` was only mounted on tab-roots (Home, Transactions) and inside the FeedbackSheet. Now it's also on Accounts, Categories, Debts, More, Recurring, Settings, and Settlements. Pure additive — each page imports it and renders `<AppHeader />` at the top of the existing root container.
+
+Rationale Fran flagged: notifications bell, feedback button, sync/network badges and the brand row should be reachable from any screen, not only from the three tab-roots. The cost is a slightly heavier top chrome on sub-pages that also have a back-arrow row immediately below — flagged in review as a possible regression but Fran wants to live with it for now and re-evaluate after real-world use (and Lara's reaction).
+
+### 3. Avatar palette swap: Sam now green, Household now coral (`82d1b7c`)
+
+In `src/styles/tokens.css` (and the mirror in `docs/design-handoff/styles/tokens.css`), the `.avatar-sam` and `.avatar-house` linear-gradients were swapped. Sam is now the green one (`#22C55E → #16A34A`); Household is now coral (`#FF7D6B → #E55A48`). Fran's violet and JOINT's blue are untouched.
+
+The swap propagates everywhere the `Avatar` component renders Sam or Household — Settlements empty state, debt rows with HOUSEHOLD owner, allocation chips on shared transactions, etc. Fran confirmed the household-goes-coral side effect is intentional.
+
+Combined with #1, Sam's letter color and her avatar gradient now share the same green — which is also `--color-positive` in the token system. Not a coincidence to fight: there's one green in the app, and if we ever retune it, Sam's letter and avatar move with it. Coupling-by-design, documented here so a future agent doesn't try to "fix" the shared token by accident.
+
+### 4. Month selector dropped from non-month pages (`4d8611b`)
+
+Direct follow-up to #2. AppHeader defaults `showMonth = true`, which made the MonthSelector appear on pages where the active month is meaningless (Accounts is cumulative, Categories is global, Settings/More have no temporal data, Recurring is frequency-based, Debts/Settlements are per-debt/per-pair). The selector would have silently mutated the global `monthKey` and surprised the user on returning to Home/Transactions.
+
+Fran passed `showMonth={false}` on Accounts, Categories, Debts (both empty and populated branches), More, Recurring, Settings, and Settlements. Home and Transactions keep the default `true` because they're the only pages that legitimately filter by month.
+
+**Decisions**
+- **AppHeader on sub-pages stays for now.** Reviewed the doubled-chrome cost (AppHeader brand row + back-arrow row = ~88-100px before content on iPhone). Fran prefers to live with it and decide later based on use rather than rip out preemptively. If it bites, the fix is either restrict AppHeader to tab-roots or fold the back-arrow into AppHeader as a `back` prop.
+- **Sam's green letter uses `text-positive-ink`, not a dedicated `text-sam` token.** Intentionally coupled — if the app's green ever shifts (contrast retune, brand evolution), both Sam's letter and her avatar follow. One green in the app.
+- **Avatar swap done by editing the gradient assignments rather than introducing new tokens.** `.avatar-sam` and `.avatar-house` are class names, not semantic ("Sam's color" / "Household's color") — the gradient definition is the source of truth. Swapping the two definitions was the minimal change.
+
+**Open follow-ups**
+- Real-world feedback pending on whether AppHeader on every sub-page feels right or cluttered. If it bites in daily use, restrict to tab-roots.
+- Lara hasn't seen the changes yet — possible further iteration after her input.
+
+---
+
 ## 2026-05-11 — Silent Google token refresh: no more daily reconnects
 
 **What was done**
