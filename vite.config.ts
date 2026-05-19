@@ -50,7 +50,11 @@ export default defineConfig({
         short_name: "Adulting",
         description:
           "Local-first personal & shared finance for Fran and Sam.",
-        theme_color: "#7B5CF6",
+        // theme_color: align with app surface (not brand violet) so the
+        // Android status bar in PWA standalone mode and the task-switcher
+        // card blend into the UI. Splash screen still shows the violet logo
+        // on the warm-white background_color = strong brand contrast.
+        theme_color: "#FAF8F4",
         background_color: "#FAF8F4",
         display: "standalone",
         orientation: "portrait",
