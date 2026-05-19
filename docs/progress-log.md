@@ -4,6 +4,31 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-13 — Version 0.3.1: first numbered release, narrative anchor
+
+**What was done**
+
+Until today `package.json` sat at `0.0.0` since project init; the Settings → About card was rendering that literal. Picked the first real version and committed to a narrative for future bumps.
+
+- `pnpm version 0.3.1` — bumps `package.json`, commits, tags `v0.3.1`.
+- Settings → About now reads `0.3.1`. Build date keeps auto-updating via the Vite define at build time, so the line stays meaningful between bumps.
+
+**Decisions**
+- **0.3.1, not 0.2.2 or 0.1.0 or 1.0.0.** This is a private 2-user app — semver here is narrative, not a compatibility contract with external consumers. The chosen story:
+  - `0.1.x` (not retroactively tagged) = era when the spec was being implemented but the app didn't yet feel finished.
+  - `0.2.x` (not retroactively tagged) = post-UI-fix era. The 2026-05-09 color contrast / SegmentedControl race / `-ink` variants pass was the moment the app stopped being "a working webapp" and started being Adulting.
+  - `0.3.x` = current era, post-buzón. The feedback capture feature (`0.3.0` conceptually) and the polish wave it triggered — silent auth, AppHeader on sub-pages, sync connect 400 fix, iOS auto-zoom fix, viewport pinch-zoom decision, Sam's green letter, avatar swap, MonthSelector hide on sub-pages — all live here, landing at `0.3.1`.
+  - Future: `0.4.0` when the buzón gets removed (that's a legitimate era end — "we exited feedback-capture mode"). `1.0.0` when we explicitly declare out-of-beta.
+- **Strict semver vs project narrative: narrative wins.** By the letter of semver, the buzón addition was a minor feature and the polish commits since were patches. But there are no external consumers reading the version to predict breakage — the only readers are Fran and Sam, and a coherent era-based narrative tells the story better than mechanical commit-cadence increments.
+- **No automated bumping (changesets / semantic-release / etc.).** Overkill for a private 2-user app. `pnpm version <bump>` on milestones is enough.
+- **No SHA appended to the build line.** Considered but skipped — the build date already gives enough trazability for our scale, and adding a SHA means a `git rev-parse` step in the Vite config that complicates clean builds.
+
+**Open follow-ups**
+- When the buzón is retired, bump to `0.4.0` and remove the temporary-marked code paths.
+- Next time something user-visible ships, decide consciously whether it's a patch (`0.3.2`) or a new era (`0.4.0`). No formula, just judgement.
+
+---
+
 ## 2026-05-12 — UI polish on the train: AppHeader rollout, Sam's green letter, avatar swap
 
 **What was done**
