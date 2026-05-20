@@ -15,7 +15,11 @@
  * adds pull/reconcile so the divergence window is short.
  */
 
-import { clearValues, updateValues } from "@/lib/google/sheets-api";
+import {
+  batchClearValues,
+  batchUpdateValues,
+  type ValueRangeUpdate,
+} from "@/lib/google/sheets-api";
 import { RAW_TABS, columnLetter, ensureRawTabs } from "./tabs";
 import { buildSnapshot, type SnapshotData } from "./writers";
 import { listPending, markAllSynced } from "./queue";
@@ -51,6 +55,12 @@ export async function pushAll(spreadsheetId: string): Promise<PushReport> {
   // round. Avoids losing changes that happen mid-push.
   const pendingIds = listPending().map((q) => q.id);
 
+  // Build the clear-ranges and update-ranges lists in a single pass so we
+  // can fire just two batched API calls (down from 2N sequential calls).
+  // Clears come first because they're a separate endpoint; the update body
+  // size is the only meaningful cap and Sheets allows ~10MB per request.
+  const clearRanges: string[] = [];
+  const updates: ValueRangeUpdate[] = [];
   for (const spec of RAW_TABS) {
     const key = TAB_KEY_BY_TITLE[spec.title];
     if (!key) continue;
@@ -58,14 +68,20 @@ export async function pushAll(spreadsheetId: string): Promise<PushReport> {
     const lastCol = columnLetter(spec.headers.length);
 
     // Always clear from row 2 onwards so removed rows really disappear.
-    await clearValues(spreadsheetId, `${spec.title}!A2:${lastCol}`);
+    clearRanges.push(`${spec.title}!A2:${lastCol}`);
 
     if (rows.length > 0) {
-      const range = `${spec.title}!A2:${lastCol}${1 + rows.length}`;
-      await updateValues(spreadsheetId, range, rows);
+      updates.push({
+        range: `${spec.title}!A2:${lastCol}${1 + rows.length}`,
+        values: rows,
+      });
     }
     totals[spec.title] = rows.length;
   }
+
+  // One round-trip to clear, one to write. Was 2*RAW_TABS.length before.
+  await batchClearValues(spreadsheetId, clearRanges);
+  await batchUpdateValues(spreadsheetId, updates);
 
   if (pendingIds.length > 0) markAllSynced(pendingIds);
 

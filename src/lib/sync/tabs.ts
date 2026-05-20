@@ -7,7 +7,12 @@
  * the row layout is intuitive to read manually in the Sheet.
  */
 
-import { addSheet, getSpreadsheet, updateValues } from "@/lib/google/sheets-api";
+import {
+  addSheets,
+  batchUpdateValues,
+  getSpreadsheet,
+  type ValueRangeUpdate,
+} from "@/lib/google/sheets-api";
 
 export interface RawTabSpec {
   /** Tab title in the Sheet (`raw_*` prefix per spec §14.5). */
@@ -185,24 +190,25 @@ export const RAW_TABS: ReadonlyArray<RawTabSpec> = [
  * Returns the spreadsheet metadata after any tab additions.
  */
 export async function ensureRawTabs(spreadsheetId: string): Promise<void> {
-  let meta = await getSpreadsheet(spreadsheetId);
+  const meta = await getSpreadsheet(spreadsheetId);
   const existingTitles = new Set(meta.sheets.map((s) => s.title));
 
-  // Add any missing tabs sequentially (Sheets requires unique titles per call).
-  for (const spec of RAW_TABS) {
-    if (!existingTitles.has(spec.title)) {
-      await addSheet(spreadsheetId, spec.title);
-    }
+  // Create every missing tab in a single batchUpdate (one network call,
+  // independent of how many tabs are missing).
+  const missing = RAW_TABS.filter((spec) => !existingTitles.has(spec.title)).map(
+    (spec) => spec.title,
+  );
+  if (missing.length > 0) {
+    await addSheets(spreadsheetId, missing);
   }
 
-  // Re-read metadata once after creates so future code can rely on titles.
-  meta = await getSpreadsheet(spreadsheetId);
-
-  // Write/refresh the header row of each tab. RAW values, no formula risk.
-  for (const spec of RAW_TABS) {
-    const range = `${spec.title}!A1:${columnLetter(spec.headers.length)}1`;
-    await updateValues(spreadsheetId, range, [spec.headers as string[]]);
-  }
+  // Write/refresh every header row in a single values:batchUpdate. RAW
+  // values, no formula risk.
+  const headerUpdates: ValueRangeUpdate[] = RAW_TABS.map((spec) => ({
+    range: `${spec.title}!A1:${columnLetter(spec.headers.length)}1`,
+    values: [spec.headers as string[]],
+  }));
+  await batchUpdateValues(spreadsheetId, headerUpdates);
 }
 
 /** A → Z, then AA → AZ, BA → BZ, … (we never need beyond ~30 columns). */

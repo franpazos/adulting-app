@@ -4,6 +4,62 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-20 — Sync batching + retry-with-backoff: fix the 429 root cause
+
+**What was done**
+
+Hitting `Sheets API 429` during sync triggered an audit. Diagnosis: each sync was firing ~30+ HTTP requests against the Google Sheets API (10 reads on pull, 20+ clear/update writes on push, plus header writes from `ensureRawTabs`). The per-user quota is 60 requests/minute, so a single sync already consumed ~50% of the budget; two concurrent syncs (Fran + Sam at the same time, or a focus-event burst) trivially blew past it. And there was no 429-aware retry, so the first throttled response surfaced as a hard sync error.
+
+Fixed at the root by batching every multi-call pattern into single API calls, and added retry-with-backoff as defense-in-depth.
+
+### Batching changes in `src/lib/google/sheets-api.ts`
+
+New primitives, all no-op when given an empty list:
+- `batchGetValues(spreadsheetId, ranges[])` → one `values:batchGet` call returning rows per range.
+- `batchUpdateValues(spreadsheetId, updates[])` → one `values:batchUpdate` call with `valueInputOption: "RAW"`.
+- `batchClearValues(spreadsheetId, ranges[])` → one `values:batchClear` call.
+- `addSheets(spreadsheetId, titles[])` → packs multiple `addSheet` requests into one `:batchUpdate`. The original `addSheet(spreadsheetId, title)` now delegates to `addSheets`.
+
+### Refactors in sync layer
+
+- **`pull.ts`**: dropped `readTabRows` + `Promise.all` fan-out. `pullAll` now builds a single `ranges[]` and fires one `batchGetValues`. Empty-row filtering moved into a `stripEmptyRows` helper applied per-tab after the batch returns. **Pull: 10 calls → 1 call.**
+- **`push.ts`**: rewrote the per-tab loop to accumulate `clearRanges[]` and `updates[]` arrays, then fires `batchClearValues` + `batchUpdateValues` exactly once each. **Push: ~21 calls → 2 calls.**
+- **`tabs.ts`** (`ensureRawTabs`): one `addSheets` for any missing tabs (was N sequential `addSheet`), one `batchUpdateValues` for every header row (was N sequential `updateValues`). The second `getSpreadsheet` call after creates is also gone — we no longer need it because `batchUpdateValues` doesn't care about sheet IDs, only titles. **ensureRawTabs: 1 + 2N → 2 calls.**
+
+### Retry-with-backoff in `authorizedFetch`
+
+- Retries on **429** and any **5xx** (500, 502, 503, 504, etc.). Up to `MAX_RETRIES = 3` extra attempts = 4 total tries.
+- Respects the `Retry-After` response header (seconds or HTTP-date). Falls back to exponential backoff with **full jitter**: `min(800ms * 2^attempt, 8000ms) * random(0.5, 1.0)`.
+- **Does not retry on 401/403** (auth issues need a token refresh, retrying just burns quota) or other 4xx (client errors won't get better by trying again).
+- Implementation note: the `sleep` function lives on a module-local `_impl` object exported via `_internal` so tests can replace it with a no-op and not pay real backoff time.
+
+### Net effect
+
+A full sync now fires **3–4 HTTP calls** instead of 30+. Two users syncing simultaneously fit well within 60 reqs/min/user without ever touching the retry path. If they ever do hit 429 (e.g. background services, future scope expansion), the retry layer recovers transparently within a few seconds.
+
+### Tests
+
+- New `src/lib/google/__tests__/sheets-api.test.ts` (15 tests, all passing):
+  - Each batching primitive: no-op on empty input, request shape, response parsing.
+  - Retry helpers: `shouldRetry` classification, `parseRetryAfter` for seconds + HTTP-date + bad input.
+  - Retry loop (via `getValues`): retries on 429 then succeeds, retries on 503, **does not** retry on 401, gives up after `MAX_RETRIES + 1` attempts.
+- Existing 99 tests untouched — `applyTab`-level reconciler tests still pass because they exercise the DB writer path directly, independent of the network layer.
+- Total: **114/114 passing**.
+
+**Decisions**
+- **Batching at the root, then retry as safety net.** Either alone would have helped; both together makes sync near-immune to 429 under normal use AND robust to transient network/Google issues.
+- **Full jitter, not "equal jitter" or "decorrelated jitter".** Full jitter is the simplest variant and AWS's own analysis (the canonical reference for exponential backoff strategies) shows it produces the lowest collision rate when N clients retry concurrently. With only two users this is overkill but it's also free.
+- **No retry on 5xx for writes is unsafe in general** (the server might have applied the change and then died responding), but our writes are all idempotent by construction: clearValues + updateValues + batchUpdateValues all overwrite, and addSheet on a duplicate title returns 400 (which we don't retry). So 5xx retry is safe for our specific surface.
+- **`sleep` mockable via `_impl`** rather than via `vi.useFakeTimers()`. Tried fake timers first; ran into a hook timeout — fake timers don't compose well with Promise microtasks in some setups. Mocking `_impl.sleep` to a no-op is one line in `beforeEach` and gives instant, deterministic tests.
+- **Kept old single-range functions** (`getValues`, `updateValues`, `clearValues`, `addSheet`) as thin wrappers / standalone exports. They're still used by `month-sync.ts` and `conflicts.ts` for single-shot calls where batching would be over-engineering.
+
+**Open follow-ups**
+- `month-sync.ts` still uses single-shot `getSpreadsheet` + `duplicateSheet` (1–2 calls per month-creation). Could be folded into the main sync flow's `getSpreadsheet` call but not worth the coupling.
+- If we ever add more entities (more `raw_*` tabs), pull/push call counts stay constant at 1 and 2 respectively. No more per-tab scaling concerns.
+- The current quota math comfortably supports ~20 syncs/minute per user (60 / 3). If we ever hit that ceiling for real, the next move is incremental sync (only push changed rows) — but spec §10 explicitly defers that.
+
+---
+
 ## 2026-05-13 — Version 0.3.1: first numbered release, narrative anchor
 
 **What was done**

@@ -36,7 +36,7 @@ import {
   parseTransaction,
   parseUser,
 } from "./readers";
-import { getValues, type SheetRow } from "@/lib/google/sheets-api";
+import { batchGetValues, type SheetRow } from "@/lib/google/sheets-api";
 import { fromBool, nowIso } from "@/lib/db/repositories/_helpers";
 import { columnLetter, RAW_TABS } from "./tabs";
 import {
@@ -122,16 +122,9 @@ function loadLocalAges(table: string): Map<string, string> {
   return map;
 }
 
-/** Read raw_* rows for a tab, skipping the header. */
-async function readTabRows(
-  spreadsheetId: string,
-  tabTitle: string,
-  headerCount: number,
-): Promise<SheetRow[]> {
-  const range = `${tabTitle}!A2:${columnLetter(headerCount)}`;
-  const values = await getValues(spreadsheetId, range);
-  // Filter out completely empty rows that Sheets sometimes returns at the end.
-  return values.filter((row) => row.some((cell) => cell !== "" && cell != null));
+/** Remove fully-empty rows that Sheets sometimes pads at the end. */
+function stripEmptyRows(rows: SheetRow[]): SheetRow[] {
+  return rows.filter((row) => row.some((cell) => cell !== "" && cell != null));
 }
 
 export async function pullAll(spreadsheetId: string): Promise<PullReport> {
@@ -141,18 +134,19 @@ export async function pullAll(spreadsheetId: string): Promise<PullReport> {
   const skipped: Record<string, number> = {};
   const conflicts: Record<string, number> = {};
 
-  // Fetch all tabs in parallel — they're independent reads.
-  const fetches = await Promise.all(
-    RAW_TABS.map((spec) =>
-      readTabRows(spreadsheetId, spec.title, spec.headers.length).then(
-        (rows) => ({ spec, rows }),
-      ),
-    ),
+  // One network round-trip for every raw_* tab via `values:batchGet`.
+  // Previously fired N parallel `getValues` requests which burned through
+  // the 60-req/min/user quota fast and triggered Sheets API 429.
+  const ranges = RAW_TABS.map(
+    (spec) => `${spec.title}!A2:${columnLetter(spec.headers.length)}`,
   );
+  const tabRows = await batchGetValues(spreadsheetId, ranges);
 
   // All upserts run in one DB transaction for atomicity.
   transaction(() => {
-    for (const { spec, rows } of fetches) {
+    for (let i = 0; i < RAW_TABS.length; i++) {
+      const spec = RAW_TABS[i]!;
+      const rows = stripEmptyRows(tabRows[i] ?? []);
       const stats = applyTab(spec.title, rows);
       inserted[spec.title] = stats.inserted;
       updated[spec.title] = stats.updated;
