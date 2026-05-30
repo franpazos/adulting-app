@@ -134,7 +134,7 @@ export function EditExpensePage() {
   }
 
   return (
-    <div className="mx-auto max-w-md px-4 pb-32">
+    <div className="mx-auto max-w-md px-4 pb-32 overflow-x-hidden">
       <div className="flex items-center justify-between pt-4 pb-2">
         <IconButton aria-label={t("common.cancel")} onClick={() => navigate(-1)}>
           <ChevronLeft className="size-5" />
