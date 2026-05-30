@@ -37,6 +37,12 @@ interface AuthState {
 }
 
 const SCOPES = [
+  // openid + email are required for the authorization-code flow to issue
+  // an id_token in the exchange response — without them, Google returns
+  // only an access_token and our backend can't verify the user identity.
+  // The id_token's `sub` claim is what we key refresh_tokens by in KV.
+  "openid",
+  "email",
   "https://www.googleapis.com/auth/drive.file",
   "https://www.googleapis.com/auth/spreadsheets",
 ];
