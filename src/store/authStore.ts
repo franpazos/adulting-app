@@ -19,9 +19,18 @@ interface AuthState {
   token: StoredToken | null;
   /** Optional — populated after first profile fetch. */
   email: string | null;
+  /**
+   * Opaque HMAC-signed credential issued by `/api/auth/exchange`. The
+   * client holds this across reloads and presents it to
+   * `/api/auth/refresh` to get a new access_token without involving
+   * Google's popup. Persistence of this is the whole point of the
+   * backend.
+   */
+  sessionToken: string | null;
   error: string | null;
   setConnecting: () => void;
   setConnected: (token: StoredToken, email?: string | null) => void;
+  setSessionToken: (sessionToken: string | null) => void;
   setError: (msg: string) => void;
   setExpired: () => void;
   reset: () => void;
@@ -40,14 +49,22 @@ export const useAuthStore = create<AuthState>()(
       status: "idle",
       token: null,
       email: null,
+      sessionToken: null,
       error: null,
       setConnecting: () => set({ status: "connecting", error: null }),
       setConnected: (token, email = null) =>
         set({ status: "connected", token, email, error: null }),
+      setSessionToken: (sessionToken) => set({ sessionToken }),
       setError: (msg) => set({ status: "error", error: msg }),
       setExpired: () => set({ status: "expired" }),
       reset: () =>
-        set({ status: "idle", token: null, email: null, error: null }),
+        set({
+          status: "idle",
+          token: null,
+          email: null,
+          sessionToken: null,
+          error: null,
+        }),
     }),
     {
       name: "adulting.auth",
@@ -56,6 +73,7 @@ export const useAuthStore = create<AuthState>()(
         status: s.status,
         token: s.token,
         email: s.email,
+        sessionToken: s.sessionToken,
       }),
     },
   ),

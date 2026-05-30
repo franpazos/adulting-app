@@ -1,10 +1,26 @@
 /**
- * Google OAuth via Google Identity Services token client (implicit flow).
+ * Google OAuth via Google Identity Services — authorization-code flow
+ * with a server-side exchange (the "confidential client" pattern).
  *
- * GIS exposes `window.google.accounts.oauth2.initTokenClient(...)` which
- * pops up the consent screen and returns an access token. The token is
- * short-lived (~1h); for phase 9a we re-prompt silently when needed and
- * fall back to a visible prompt if Google rejects the silent request.
+ * The flow:
+ *
+ *   login()  →  GIS popup  →  auth code  →  POST /api/auth/exchange
+ *               (Google)                    (our server holds client_secret,
+ *                                            trades code for access+refresh,
+ *                                            stores refresh keyed by `sub`,
+ *                                            returns access + sessionToken)
+ *
+ *   silentLogin()  →  POST /api/auth/refresh
+ *                     { sessionToken }                  →  { access_token }
+ *
+ *   logout()  →  POST /api/auth/revoke
+ *                { sessionToken }                       →  Google revoke + KV del
+ *
+ * The `sessionToken` is the durable credential the client holds across
+ * page reloads. It replaces the implicit-flow access token as the
+ * primary "am I connected?" signal. Access tokens still live ~1h in
+ * authStore for direct Sheets-API calls; they're refreshed silently via
+ * /api/auth/refresh once expired.
  *
  * The popup requires `Cross-Origin-Opener-Policy: same-origin-allow-popups`
  * so window.opener stays accessible — see `vite.config.ts` and `vercel.json`.
@@ -17,6 +33,14 @@ import {
 } from "@/store/authStore";
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
+
+/**
+ * Popup mode in GIS uses the literal string "postmessage" as the
+ * redirect_uri the server must echo back when exchanging the code. This
+ * value MUST be added to the OAuth client's Authorized redirect URIs in
+ * Google Cloud Console.
+ */
+const REDIRECT_URI = "postmessage";
 
 function gis(): NonNullable<Window["google"]>["accounts"] {
   if (!window.google?.accounts) {
@@ -54,9 +78,22 @@ export class GoogleAuthError extends Error {
   }
 }
 
+interface ExchangeResponse {
+  access_token: string;
+  expires_in: number;
+  sessionToken: string;
+  email: string | null;
+}
+
+interface RefreshResponse {
+  access_token: string;
+  expires_in: number;
+}
+
 /**
- * Open the consent popup and resolve with the access token. Updates
- * `authStore` with status transitions (`connecting` → `connected` | `error`).
+ * Open the consent popup and resolve with the access token. On success,
+ * also stores a `sessionToken` so future boots can refresh silently via
+ * /api/auth/refresh.
  */
 export async function login(): Promise<string> {
   if (!isGoogleClientConfigured()) {
@@ -69,98 +106,109 @@ export async function login(): Promise<string> {
   const auth = useAuthStore.getState();
   auth.setConnecting();
 
-  return new Promise((resolve, reject) => {
-    const tokenClient = gis().oauth2.initTokenClient({
+  // Request an auth code (not an access token). The callback receives
+  // { code, ... } which we ship to our backend for exchange.
+  const code = await new Promise<string>((resolve, reject) => {
+    const codeClient = gis().oauth2.initCodeClient({
       client_id: CLIENT_ID!,
       scope: GOOGLE_SCOPES,
-      callback: (resp) => {
+      ux_mode: "popup",
+      // Force the consent screen so Google issues a refresh_token. Without
+      // this Google may return only an access_token on subsequent grants
+      // and our exchange endpoint will fail with "no refresh_token".
+      prompt: "consent",
+      callback: (resp: { code?: string; error?: string; error_description?: string }) => {
         if (resp.error) {
-          const msg =
-            resp.error_description ?? `Google auth error: ${resp.error}`;
-          auth.setError(msg);
+          const msg = resp.error_description ?? `Google auth error: ${resp.error}`;
           reject(new GoogleAuthError(msg));
           return;
         }
-        const expiresAt = Date.now() + resp.expires_in * 1000;
-        useAuthStore
-          .getState()
-          .setConnected({ accessToken: resp.access_token, expiresAt });
-        // Fetch user email opportunistically — non-blocking.
-        void fetchEmail(resp.access_token).then((email) => {
-          if (email) {
-            const s = useAuthStore.getState();
-            if (s.token) s.setConnected(s.token, email);
-          }
-        });
-        resolve(resp.access_token);
+        if (!resp.code) {
+          reject(new GoogleAuthError("Google callback missing code"));
+          return;
+        }
+        resolve(resp.code);
       },
-      error_callback: (err) => {
-        const msg = err.message ?? `Google auth error: ${err.type}`;
-        auth.setError(msg);
+      error_callback: (err: { message?: string; type?: string }) => {
+        const msg = err.message ?? `Google auth error: ${err.type ?? "unknown"}`;
         reject(new GoogleAuthError(msg));
       },
     });
-    tokenClient.requestAccessToken({ prompt: "consent" });
+    codeClient.requestCode();
+  }).catch((err) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    auth.setError(msg);
+    throw err;
   });
+
+  // Send the code to our backend to exchange for tokens. The backend
+  // stores the refresh_token in KV and hands us back an access_token +
+  // sessionToken.
+  const r = await fetch("/api/auth/exchange", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code, redirect_uri: REDIRECT_URI }),
+  });
+  if (!r.ok) {
+    const detail = await safeReadError(r);
+    const msg = `Auth exchange failed (${r.status}): ${detail}`;
+    auth.setError(msg);
+    throw new GoogleAuthError(msg);
+  }
+  const data = (await r.json()) as ExchangeResponse;
+
+  const expiresAt = Date.now() + data.expires_in * 1000;
+  const s = useAuthStore.getState();
+  s.setConnected({ accessToken: data.access_token, expiresAt }, data.email);
+  s.setSessionToken(data.sessionToken);
+  return data.access_token;
 }
 
 /**
- * Try to refresh the access token without showing UI. Succeeds when the user
- * is still signed into Google in this browser and previously granted the
- * scopes — the common case. Never opens a popup; resolves `{ ok: false }` on
- * any silent failure (interaction required, popup blocked by ITP, GIS not
- * loaded, etc.) so the caller can decide whether to fall back to `login()`.
+ * Refresh the access token silently via our backend. Succeeds when the
+ * user has a stored sessionToken whose underlying refresh_token is still
+ * valid at Google. Never opens a popup.
  *
- * Calls `setExpired()` on the auth store when silent renewal fails, so the
- * UI banner ("Reconnect to Google") is correct without further plumbing.
+ * Returns `{ ok: false }` on any silent failure so the caller can decide
+ * whether to fall back to interactive `login()`.
  */
 export async function silentLogin(): Promise<
   { ok: true; token: string } | { ok: false; reason: string }
 > {
-  if (!isGoogleClientConfigured()) {
-    return { ok: false, reason: "not-configured" };
-  }
-  try {
-    await waitForGis();
-  } catch {
-    return { ok: false, reason: "gis-load-failed" };
+  const { sessionToken } = useAuthStore.getState();
+  if (!sessionToken) {
+    return { ok: false, reason: "no-session-token" };
   }
 
-  return new Promise((resolve) => {
-    try {
-      const client = gis().oauth2.initTokenClient({
-        client_id: CLIENT_ID!,
-        scope: GOOGLE_SCOPES,
-        callback: (resp) => {
-          if (resp.error) {
-            useAuthStore.getState().setExpired();
-            resolve({ ok: false, reason: resp.error });
-            return;
-          }
-          const expiresAt = Date.now() + resp.expires_in * 1000;
-          const s = useAuthStore.getState();
-          s.setConnected(
-            { accessToken: resp.access_token, expiresAt },
-            s.email,
-          );
-          resolve({ ok: true, token: resp.access_token });
-        },
-        error_callback: (err) => {
-          useAuthStore.getState().setExpired();
-          resolve({ ok: false, reason: err?.type ?? "unknown" });
-        },
-      });
-      // prompt: "" = silent token request. Google returns interaction_required
-      // (or similar) if the user needs to re-consent.
-      client.requestAccessToken({ prompt: "" });
-    } catch (e) {
-      useAuthStore.getState().setExpired();
-      resolve({
-        ok: false,
-        reason: e instanceof Error ? e.message : "exception",
-      });
-    }
-  });
+  let r: Response;
+  try {
+    r = await fetch("/api/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionToken }),
+    });
+  } catch (e) {
+    // Network failure — keep the existing connected state; sync will retry.
+    return { ok: false, reason: e instanceof Error ? e.message : "fetch-failed" };
+  }
+
+  if (r.status === 401 || r.status === 404) {
+    // Session or refresh_token is invalid → drop client state so the UI
+    // surfaces "needs reconnect".
+    const s = useAuthStore.getState();
+    s.setExpired();
+    s.setSessionToken(null);
+    return { ok: false, reason: `status-${r.status}` };
+  }
+  if (!r.ok) {
+    return { ok: false, reason: `status-${r.status}` };
+  }
+
+  const data = (await r.json()) as RefreshResponse;
+  const expiresAt = Date.now() + data.expires_in * 1000;
+  const s = useAuthStore.getState();
+  s.setConnected({ accessToken: data.access_token, expiresAt }, s.email);
+  return { ok: true, token: data.access_token };
 }
 
 /**
@@ -176,34 +224,40 @@ export async function getValidToken(): Promise<string> {
   return login();
 }
 
-/** Revoke the current token and clear local auth state. */
+/**
+ * Disconnect: revoke at Google + KV deletion via backend, then clear
+ * local auth state. Best-effort on the network call — local state is
+ * always wiped.
+ */
 export async function logout(): Promise<void> {
-  const { token, reset } = useAuthStore.getState();
-  if (!token) {
-    reset();
-    return;
-  }
-  try {
-    await waitForGis();
-    await new Promise<void>((resolve) => {
-      gis().oauth2.revoke(token.accessToken, () => resolve());
-    });
-  } catch {
-    // Best-effort revoke — proceed to clear locally either way.
+  const { sessionToken, reset } = useAuthStore.getState();
+  if (sessionToken) {
+    try {
+      await fetch("/api/auth/revoke", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionToken }),
+      });
+    } catch {
+      // Best-effort — proceed to clear locally either way.
+    }
   }
   reset();
 }
 
-async function fetchEmail(accessToken: string): Promise<string | null> {
+async function safeReadError(r: Response): Promise<string> {
   try {
-    const r = await fetch(
-      "https://openidconnect.googleapis.com/v1/userinfo",
-      { headers: { Authorization: `Bearer ${accessToken}` } },
-    );
-    if (!r.ok) return null;
-    const json = (await r.json()) as { email?: string };
-    return json.email ?? null;
+    const body = await r.json();
+    if (body && typeof body === "object") {
+      const b = body as { error?: string; detail?: string };
+      return `${b.error ?? "error"}${b.detail ? `: ${b.detail}` : ""}`;
+    }
+    return JSON.stringify(body);
   } catch {
-    return null;
+    try {
+      return await r.text();
+    } catch {
+      return "<no body>";
+    }
   }
 }

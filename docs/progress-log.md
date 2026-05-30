@@ -4,6 +4,64 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-20 — Persistent Google auth via minimal backend (ADR-016)
+
+**What was done**
+
+The "Connect with Google every time I open the app" friction was structurally unfixable on the implicit OAuth flow: Google access tokens last 1h, refresh tokens are not issued to browser-only clients, and iOS PWAs in standalone mode have an isolated cookie jar that breaks GIS's silent refresh. After a long discussion ([see this session's diagnostic exchange]) we decided to introduce a minimal backend — three thin Vercel functions backed by Vercel KV — to hold refresh tokens and trade them silently for fresh access tokens. ADR-016 documents the architectural rationale.
+
+### Server (`api/`)
+
+- **`api/_lib/session.ts`** — sign/verify opaque HMAC-signed sessionTokens. Format `base64url(json).base64url(hmac256)`. Reads `SESSION_SECRET` lazily (not at module load) so tests can stub the env after import.
+- **`api/_lib/google-id-token.ts`** — verifies a Google id_token against Google's JWKS. Uses Node's `crypto.verify` with RS256 to avoid pulling in a JWT library. Caches JWKS for 1h; refetches once on cache miss before declaring "no matching kid". Checks `aud`, `iss`, `exp`.
+- **`api/_lib/google-oauth.ts`** — wraps the token endpoint at `oauth2.googleapis.com`. Two operations: `exchangeCode` (auth code → access+refresh+id) and `refreshAccessToken` (refresh → access). Plus `revokeToken` (best-effort POST to /revoke).
+- **`api/_lib/kv.ts`** — thin wrapper around `@upstash/redis`. Reads both `KV_*` and `UPSTASH_*` env vars so the project survives any future move off Vercel KV. Cached client across cold starts.
+- **`api/auth/exchange.ts`** — POST `{code, redirect_uri}` → exchange with Google → verify id_token → store refresh_token in KV → return `{access_token, expires_in, sessionToken, email}`.
+- **`api/auth/refresh.ts`** — POST `{sessionToken}` → verify HMAC → look up refresh in KV → trade with Google → return `{access_token, expires_in}`. 401 on bad session, 404 on no stored token, 401 + KV cleanup on Google `invalid_grant` (refresh revoked).
+- **`api/auth/revoke.ts`** — POST `{sessionToken}` → revoke at Google + delete from KV. Both steps best-effort; local KV deletion always runs.
+
+### Client
+
+- **`src/store/authStore.ts`** — added `sessionToken: string | null` with setter; included in `partialize` so it persists to localStorage. This is the durable credential that survives PWA restarts.
+- **`src/lib/google/auth.ts`** — major rewrite.
+  - `login()` now uses `oauth2.initCodeClient` (authorization code flow) with `ux_mode: "popup"` + `prompt: "consent"` (the `prompt=consent` is **load-bearing**: without it Google won't issue a refresh_token on subsequent grants for the same user). Callback gives us the code, we POST to `/api/auth/exchange`, store the returned access_token + sessionToken.
+  - `silentLogin()` no longer involves GIS at all. POSTs the stored sessionToken to `/api/auth/refresh`. Status 401/404 → drop sessionToken locally, mark expired. Status 200 → store fresh access_token in authStore.
+  - `logout()` POSTs to `/api/auth/revoke` then clears local state.
+  - `getValidToken()` shape unchanged — same fallback chain (cached → silent → interactive).
+- **`src/lib/google/types.d.ts`** — added GIS `initCodeClient` + `GoogleCodeResponse` types.
+
+### Config
+
+- **`vercel.json`** — the SPA catch-all rewrite was `{ source: "/(.*)", destination: "/index.html" }`, which would have swallowed `/api/*` routes. Changed to `{ source: "/((?!api/).*)", destination: "/index.html" }` so `/api/*` falls through to the Vercel function runtime.
+- **`package.json`** — added `@upstash/redis` (`@vercel/kv` is officially deprecated since Vercel moved KV to the Upstash marketplace integration) and dev-dep `@vercel/node` for the function types.
+
+### Tests
+
+- **`api/__tests__/session.test.ts`** (7 tests) — roundtrip, tampered sig, tampered payload, malformed input, missing fields, base64-invalid input.
+- **`api/__tests__/google-id-token.test.ts`** (8 tests) — happy path, both issuer variants, bad aud, bad iss, expired, wrong-key signature, unknown kid, non-RS256 alg, malformed JWT shape. Uses an in-memory RSA keypair generated per test; no network.
+- **`api/__tests__/google-oauth.test.ts`** (7 tests) — exchangeCode happy + 400 + missing refresh + missing id, refreshAccessToken happy + revoked, revokeToken happy + best-effort.
+- **`api/__tests__/handlers.test.ts`** (10 tests) — all three handlers end-to-end with mocked fetch, mocked KV (in-memory Map), mocked id-token verifier. Covers method-not-allowed, bad shape, happy path, Google rejection, revoked refresh + KV cleanup, no-stored-token.
+- **Total: 149/149 passing** (was 114; +35 new).
+
+### Migration
+
+- **One re-consent per user** after this ships. The implicit-flow tokens cached in `authStore` don't include refresh tokens, so the first `silentLogin()` call returns `no-session-token` and falls through to interactive `login()`. After that single consent, no more popups.
+- **Both old client secrets in Google Console remain active during rollout.** Once the new flow is verified working in production for ~3 days, the old `****JYTO` secret can be removed. (The currently-used `Lmo` secret should also be rotated once at end-of-cycle since it briefly appeared in conversation context.)
+
+**Decisions** (full rationale in ADR-016)
+- **Vercel KV, not Turso or Neon.** Boring tech wins for a one-click free-tier auth-only store. Migration cost is one afternoon if we ever outgrow it.
+- **Confidential client (no PKCE).** GIS's `initCodeClient` doesn't expose the PKCE verifier and our `client_secret` lives server-side anyway. The `codeVerifier` field is kept optional in `exchangeCode` for any future manual PKCE flow.
+- **HMAC-signed opaque token, not JWT.** No external readers, no need for JWT semantics, no library dependency.
+- **`prompt=consent` mandatory** on initCodeClient. Without it Google may skip the consent screen on subsequent grants and not return a refresh_token. The exchange handler explicitly errors if refresh_token is missing.
+- **Lazy env reads, not module-level constants.** `SESSION_SECRET` is read inside `requireSecret()` per call so `vi.stubEnv` works in tests. (Discovered the hard way: initial implementation captured env at module load and 12 tests failed because `beforeAll` runs AFTER top-level `await import`.)
+
+**Open follow-ups**
+- After ~3 days of stable production use: delete the old `****JYTO` Google client secret, rotate the current `Lmo` secret to a fresh #3, update `GOOGLE_CLIENT_SECRET` in Vercel.
+- Consider a "proactive refresh" — refresh when the cached token has <5 min left, while the app is open, so the network roundtrip happens off the user's critical path. Not urgent: silent refresh is already invisible.
+- The Vercel CLI flow for local dev (`vercel link` + `vercel env pull .env.local` + `vercel dev`) isn't documented yet. Add to README when we have it tested.
+
+---
+
 ## 2026-05-20 — Sync batching + retry-with-backoff: fix the 429 root cause
 
 **What was done**

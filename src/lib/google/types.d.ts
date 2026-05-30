@@ -22,6 +22,19 @@ interface GoogleTokenResponse {
   error_description?: string;
 }
 
+interface GoogleCodeClient {
+  requestCode(): void;
+}
+
+interface GoogleCodeResponse {
+  /** The authorization code, present on success. */
+  code?: string;
+  scope?: string;
+  /** Present on error / user dismissal. */
+  error?: string;
+  error_description?: string;
+}
+
 interface GoogleAccounts {
   oauth2: {
     initTokenClient(config: {
@@ -31,6 +44,15 @@ interface GoogleAccounts {
       callback: (resp: GoogleTokenResponse) => void;
       error_callback?: (err: { type: string; message?: string }) => void;
     }): GoogleTokenClient;
+    initCodeClient(config: {
+      client_id: string;
+      scope: string;
+      ux_mode?: "popup" | "redirect";
+      redirect_uri?: string;
+      prompt?: string;
+      callback: (resp: GoogleCodeResponse) => void;
+      error_callback?: (err: { type: string; message?: string }) => void;
+    }): GoogleCodeClient;
     revoke(token: string, done?: () => void): void;
   };
 }

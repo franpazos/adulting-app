@@ -2,6 +2,8 @@
 
 A **local-first, mobile-first PWA** for two users — Fran and Sam — to manage personal, shared household finances, recurring expenses, debts, and internal settlements.
 
+> Note: "local-first" is *almost* true. Financial data and the source of truth live exclusively on-device (SQLite) and in Google Sheets (sync target). A **minimal Vercel-hosted backend** (three `/api/auth/*` endpoints + Vercel KV) holds Google OAuth refresh tokens — and nothing else — so users don't have to re-consent every hour. See ADR-016 in `docs/decisions.md` for why and the security boundary.
+
 > **Private app for personal use only.** Not a commercial product. Optimize for simplicity, speed, correctness, and maintainability.
 
 ## At a glance
@@ -59,10 +61,23 @@ VITE_URL_GOOGLE_SHEET=https://docs.google.com/spreadsheets/d/<your-sheet-id>/edi
 - **`VITE_GOOGLE_CLIENT_ID`** (required for sync) — without it, the Sheets sync card in Settings shows a "not configured" hint and the rest of the app works offline-only.
 - **`VITE_URL_GOOGLE_SHEET`** (optional) — pre-fills the "Connect sheet" URL input on a fresh device so you don't paste it every time. Leave empty and the input starts blank. The value is **inlined into the JS bundle at build time**, so changing it requires a redeploy.
 
+**Server-only vars** (set in Vercel + `.env.local`, never prefixed with `VITE_`):
+
+```
+GOOGLE_CLIENT_SECRET=<google-oauth-client-secret>
+SESSION_SECRET=<32+ byte random hex; openssl rand -hex 32>
+KV_REST_API_URL=<auto-provisioned by Vercel KV>
+KV_REST_API_TOKEN=<auto-provisioned by Vercel KV>
+```
+
+- **`GOOGLE_CLIENT_SECRET`** — pair of the OAuth client_id. Used server-side by `/api/auth/exchange` and `/api/auth/refresh` to talk to `oauth2.googleapis.com/token`. Never exposed to the client.
+- **`SESSION_SECRET`** — HMAC key for signing the opaque sessionTokens issued to clients. Rotating it logs everyone out (forces one re-consent).
+- **`KV_REST_API_URL` + `KV_REST_API_TOKEN`** — Upstash Redis connection. Auto-injected by Vercel when a KV store is attached to the project; pull locally with `vercel env pull .env.local`.
+
 ## Architecture in one screen
 
 ```
-src/
+src/                         # client (PWA)
 ├── app/                     # Router, AppShell, AppBoot
 ├── features/                # One folder per route/screen
 │   ├── home/                # Dashboard with charts
@@ -80,13 +95,24 @@ src/
 │   ├── db/                  # SQLite client, migrations, repos, snapshot persistence
 │   ├── calculations/        # Pure: allocator, FX, settlements engine, aggregations
 │   ├── sync/                # Push, pull, syncAll, useAutoSync, month-sync
-│   ├── google/              # OAuth + Sheets API client
+│   ├── google/              # OAuth client (calls /api/auth/*) + Sheets API client
 │   ├── i18n/                # en.json + es.json
 │   ├── theme/               # ThemeProvider (light/dark/system)
 │   ├── pwa/                 # registerSW
 │   └── date/                # Month key helpers
 ├── store/                   # Zustand: ui, db, theme, network, sync, auth, install
 └── styles/tokens.css        # CSS variables for Soft Premium light + dark
+
+api/                         # Vercel serverless (auth only — ADR-016)
+├── _lib/
+│   ├── session.ts           # HMAC sign/verify opaque sessionTokens
+│   ├── google-id-token.ts   # JWKS-based RS256 id_token verification
+│   ├── google-oauth.ts      # exchangeCode / refreshAccessToken / revoke
+│   └── kv.ts                # @upstash/redis client (Vercel KV)
+└── auth/
+    ├── exchange.ts          # POST: code → access+refresh+sessionToken
+    ├── refresh.ts           # POST: sessionToken → access_token
+    └── revoke.ts            # POST: sessionToken → wipe + Google revoke
 ```
 
 **Layering rules** (enforced by the architecture, not the compiler):

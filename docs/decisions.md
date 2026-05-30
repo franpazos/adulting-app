@@ -21,6 +21,37 @@ Short, dated records of decisions that shape the codebase. Each entry is an ADR-
 
 ---
 
+## ADR-016 — Minimal backend for persistent Google auth
+**Date:** 2026-05-20
+**Status:** Accepted (partial departure from local-first)
+**Context:** Google's implicit OAuth flow (the GIS token client) issues access tokens with a hard 1-hour lifetime and never issues refresh tokens. The "silent refresh" via GIS depends on the user having an active Google session cookie in the same browser storage context as the app — which fails on iOS PWAs installed to the home screen, because the standalone webview's cookie jar is isolated from Safari proper. Practical result: every time Fran or Sam opens the PWA, they have to re-tap "Connect with Google" and dismiss the popup. After ~10 days of beta usage this was the dominant friction point — every other UX issue paled in comparison.
+
+We considered three paths:
+1. Accept the popup as the cost of being local-first.
+2. "Graceful degradation" — never auto-popup, show a discreet "Sync paused" banner instead, require explicit user tap to reconnect.
+3. Add a minimal backend to hold OAuth refresh_tokens (only) and trade them silently for fresh access tokens.
+
+(1) keeps the architecture pure but the friction is real. (2) softens the symptom but doesn't fix the underlying limitation — sync still pauses every hour. (3) is the actual fix at the cost of breaking the pure local-first stance.
+
+**Decision:** Take path (3). Introduce three thin Vercel functions under `/api/auth/*` backed by Vercel KV (Upstash Redis):
+  - `POST /api/auth/exchange` — accepts a Google authorization code, exchanges it for `{access, refresh, id}` tokens, verifies the id_token against Google's JWKS, persists the refresh_token in KV keyed by Google's stable `sub`, and returns `{access_token, expires_in, sessionToken, email}` to the client.
+  - `POST /api/auth/refresh` — accepts an opaque HMAC-signed sessionToken, looks up the refresh_token, trades it at Google, returns `{access_token, expires_in}`. Zero user interaction.
+  - `POST /api/auth/revoke` — calls Google's revoke endpoint and deletes the KV entry.
+
+Client `login()` switches from `oauth2.initTokenClient` (implicit flow) to `oauth2.initCodeClient` (authorization code flow). The `client_secret` lives on the server only — confidential-client pattern, no PKCE needed.
+
+**Consequences:**
+- **The "no backend" claim in CLAUDE.md and the original spec is no longer strictly true.** The server only ever sees refresh tokens and Google ID claims (`sub`, `email`, `aud`) — financial data still flows exclusively SQLite ↔ Google Sheets, never through our server.
+- **First boot after this ships requires one re-consent** for each user. The old implicit-flow tokens don't include refresh tokens, so the old `sessionToken === null` and `silentLogin` falls through to interactive `login()`. After that single consent, no more popups (until manual revoke or Google-side invalidation).
+- **Two new server-side secrets:** `GOOGLE_CLIENT_SECRET` (from Google Cloud Console) and `SESSION_SECRET` (32+ byte random, used for HMAC signing of sessionTokens). Both Vercel-env-only, never exposed to the client.
+- **KV storage:** Vercel KV via Upstash marketplace. Free tier (30k commands/month) sized for many orders of magnitude more than our actual use (a few requests per user per day). Chosen over Turso / Neon for boring-tech reasons: one-click provisioning from inside Vercel, no separate signup, no separate dashboard. Migration cost away from KV is one afternoon (the data is literally a `Map<sub, string>`).
+- **Lock-in is minimal.** If Vercel KV pricing changes, swap `@upstash/redis` for a direct Upstash account or any other KV/SQL service — `api/_lib/kv.ts` is the only place that touches the storage primitive.
+- **sessionToken is opaque, HMAC-signed, not a JWT.** Format: `base64url(json) + "." + base64url(hmac256)`. We don't need third-party verification, only our own server reads it. Skipping JWT semantics avoids the standard alg-confusion pitfalls and removes a dependency.
+- **Refresh token revocation is robust.** If Google ever returns 4xx on the refresh call, the handler drops the stored refresh_token AND returns a distinct `refresh_revoked` error so the client knows to force interactive re-auth.
+- **Future expansion is open.** If we ever want server-side features (push notifications outbox, cross-device cron-generated transactions, audit log), we have a backend to grow into. But we don't add anything else now — YAGNI.
+
+---
+
 ## ADR-015 — Disable pinch-zoom app-wide (PWA-native feel)
 **Date:** 2026-05-10
 **Status:** Accepted
