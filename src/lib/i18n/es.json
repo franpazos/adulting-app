@@ -96,6 +96,7 @@
     "description": "Descripción",
     "descriptionPlaceholder": "¿Para qué fue?",
     "date": "Fecha",
+    "today": "Hoy",
     "saveLabel": "Guardar gasto · {{amount}}",
     "saving": "Guardando…",
     "savedToast": "Guardado",

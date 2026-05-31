@@ -6,8 +6,9 @@
  * button (edit-only).
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Calendar } from "lucide-react";
 
 import {
   Card,
@@ -19,7 +20,6 @@ import {
 } from "@/components/ui";
 import { FlowDiagram } from "@/components/FlowDiagram";
 import { SettlementChip } from "@/components/SettlementChip";
-import { ConsequenceSentence } from "@/components/ConsequenceSentence";
 
 import { expenseAllocator } from "@/lib/calculations";
 import { categoriesRepo } from "@/lib/db";
@@ -118,7 +118,11 @@ export function TransactionForm({ values, onChange }: TransactionFormProps) {
 
   return (
     <>
-      <Card className="bg-gradient-to-b from-surface to-surface-2 px-5 py-5 space-y-2">
+      <Card className="relative bg-gradient-to-b from-surface to-surface-2 px-4 py-3 space-y-1.5">
+        <DateChip
+          value={values.date}
+          onChange={(v) => set("date", v)}
+        />
         <div className="text-center">
           <p className="t-eyebrow">{t("addExpense.amount")}</p>
           <div className="mt-1 flex items-baseline justify-center">
@@ -198,28 +202,78 @@ export function TransactionForm({ values, onChange }: TransactionFormProps) {
           placeholder={t("addExpense.descriptionPlaceholder")}
         />
       </Section>
+    </>
+  );
+}
 
-      <Section label={t("addExpense.date")}>
-        <Input
-          type="date"
-          value={values.date}
-          onChange={(e) => set("date", e.target.value)}
-        />
-      </Section>
+/**
+ * Compact date chip overlaid in the top-right corner of the amount Card.
+ * Renders the formatted date as text ("Hoy" if today, else "30 may") and
+ * uses an invisible native `<input type="date">` overlay so a tap opens
+ * the platform's picker — keeps the date editable without spending a
+ * full form section on it.
+ */
+function DateChip({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const today = new Date().toISOString().slice(0, 10);
+  const isToday = value === today;
+  const label = isToday
+    ? t("addExpense.today")
+    : new Date(value + "T00:00:00").toLocaleDateString(i18n.language, {
+        day: "numeric",
+        month: "short",
+      });
 
-      <div className="mt-5">
-        <Card variant="accent" className="space-y-2">
-          <CardEyebrow>{t("addExpense.title")}</CardEyebrow>
-          <p className="text-sm leading-relaxed text-text-secondary">
-            <ConsequenceSentence
-              amount={amount}
-              source={values.source}
-              owner={values.owner}
-              settlement={settlement}
-            />
-          </p>
-        </Card>
-      </div>
+  function openPicker() {
+    const el = inputRef.current;
+    if (!el) return;
+    // Prefer the explicit API (iOS 16+, modern browsers). Fall back to
+    // focus+click which still opens the native picker on some Androids.
+    if (typeof el.showPicker === "function") {
+      try {
+        el.showPicker();
+        return;
+      } catch {
+        // showPicker can throw if not user-activated; fall through.
+      }
+    }
+    el.focus();
+    el.click();
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={openPicker}
+        aria-label={t("addExpense.date")}
+        className={cn(
+          "absolute top-2 right-2 inline-flex items-center gap-1.5",
+          "h-7 px-2.5 rounded-full bg-surface-2/80 backdrop-blur",
+          "border border-border text-xs font-medium text-text-secondary",
+          "cursor-pointer select-none",
+        )}
+      >
+        <Calendar className="size-3.5" aria-hidden />
+        <span>{label}</span>
+      </button>
+      {/* Hidden but focusable so showPicker() / click() can target it. */}
+      <input
+        ref={inputRef}
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        tabIndex={-1}
+        aria-hidden
+        className="absolute top-2 right-2 size-0 opacity-0 pointer-events-none"
+      />
     </>
   );
 }
@@ -232,7 +286,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mt-5 space-y-2">
+    <section className="mt-4 space-y-2">
       <CardEyebrow>{label}</CardEyebrow>
       {children}
     </section>

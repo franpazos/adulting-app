@@ -85,7 +85,7 @@
     "add": "Add expense"
   },
   "addExpense": {
-    "title": "Add expense",
+    "title": "Add Expense",
     "amount": "Amount",
     "paidFrom": "Paid from",
     "belongsTo": "Belongs to",
@@ -96,6 +96,7 @@
     "description": "Description",
     "descriptionPlaceholder": "What was it for?",
     "date": "Date",
+    "today": "Today",
     "saveLabel": "Save expense · {{amount}}",
     "saving": "Saving…",
     "savedToast": "Saved",
