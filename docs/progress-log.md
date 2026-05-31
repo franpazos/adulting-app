@@ -4,6 +4,23 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-05-20 — Version 0.4.0: backend era starts (confirmed working)
+
+`pnpm version 0.4.0`. Marks the architectural shift introduced by ADR-016: Adulting is no longer purely client-side. The original reservation of 0.4.0 for "buzón retired" gets pushed forward — introducing a backend is genuinely the larger event in the project's life, and the narrative-versioning rule says minor bumps should track eras, not features. Buzón retirement now anchored at 0.5.0 (or whenever it ships).
+
+**Validation:** Fran re-consented once after deploy; ~1h later (when the cached access_token expired) the PWA opened with zero popup — `silentLogin()` POSTed the stored `sessionToken` to `/api/auth/refresh`, got a fresh access_token back, and continued normally. The flow works end-to-end on real iOS PWA standalone.
+
+Two shipping-day patches that landed before this bump (so they live inside the `0.4.0` history rather than a precarious `0.3.2`):
+- `ad96e9d` — added `openid` + `email` scopes so Google issues the id_token (without `openid`, no id_token; without id_token, no `sub`; without `sub`, no KV key for the refresh_token). Caught on first connect attempt against deployed backend; one-line fix.
+
+Settings → About will read `0.4.0` after the next Vercel deploy.
+
+**Reminder of pending follow-ups** (carrying over from the ADR-016 entry):
+- Rotate `GOOGLE_CLIENT_SECRET` (the `Lmo` one briefly appeared in conversation context — defense-in-depth rotation).
+- Delete the older `****JYTO` secret from Google Console.
+
+---
+
 ## 2026-05-20 — Persistent Google auth via minimal backend (ADR-016)
 
 **What was done**
