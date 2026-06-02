@@ -24,6 +24,7 @@ import { accountsRepo, debtsRepo, settlementsRepo } from "@/lib/db";
 import type { OwnerType } from "@/lib/db/types";
 import { DonutChart } from "@/components/charts/DonutChart";
 import { CompareBar } from "@/components/charts/CompareBar";
+import { formatEUR, formatMoney } from "@/lib/utils/format";
 
 const EMPTY_SUMMARY: MonthlySummary = {
   income: 0,
@@ -346,12 +347,7 @@ function JointSnapshotCard({
   accountName: string;
 }) {
   const { t } = useTranslation();
-  const fmt = (n: number) =>
-    new Intl.NumberFormat("es-ES", {
-      style: "currency",
-      currency,
-      minimumFractionDigits: 2,
-    }).format(n);
+  const fmt = (n: number) => formatMoney(n, currency);
 
   return (
     <Link
@@ -538,23 +534,11 @@ function DebtOwnerLine({
         <span className="font-medium tabular-nums tracking-tight flex flex-wrap gap-1.5 justify-end">
           {entries.map(([code, total]) => (
             <span key={code}>
-              {new Intl.NumberFormat("es-ES", {
-                style: "currency",
-                currency: code,
-                minimumFractionDigits: 0,
-              }).format(total)}
+              {formatMoney(total, code, { minimumFractionDigits: 0 })}
             </span>
           ))}
         </span>
       )}
     </li>
   );
-}
-
-function formatEUR(n: number): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 2,
-  }).format(n);
 }

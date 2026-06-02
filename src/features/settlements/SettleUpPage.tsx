@@ -33,6 +33,11 @@ import {
   SOURCE_TO_USER,
 } from "@/features/add-expense/sources";
 import { cn } from "@/lib/utils/cn";
+import {
+  formatEUR,
+  formatAmountForInput,
+  parseAmount,
+} from "@/lib/utils/format";
 
 const PARTIES: ReadonlyArray<OwnerType> = ["FRAN", "SAM", "HOUSEHOLD"];
 
@@ -177,14 +182,8 @@ export function SettleUpPage() {
           <input
             inputMode="decimal"
             type="text"
-            value={amount.toFixed(2).replace(".", ",")}
-            onChange={(e) => {
-              const sanitized = e.target.value
-                .replace(/[^\d,.]/g, "")
-                .replace(",", ".");
-              const n = Number.parseFloat(sanitized);
-              setAmount(Number.isFinite(n) && n >= 0 ? n : 0);
-            }}
+            value={formatAmountForInput(amount)}
+            onChange={(e) => setAmount(parseAmount(e.target.value))}
             className={cn(
               "bg-transparent border-0 outline-none flex-1",
               "font-display text-2xl font-semibold tabular-nums",
@@ -242,10 +241,3 @@ function nameOf(o: OwnerType, t: (k: string) => string): string {
   return t("addExpense.who.household");
 }
 
-function formatEUR(n: number): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 2,
-  }).format(n);
-}

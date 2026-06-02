@@ -28,6 +28,11 @@ import {
   accountIdToCashSource,
 } from "@/features/add-expense/sources";
 import { cn } from "@/lib/utils/cn";
+import {
+  parseAmount,
+  sanitizeAmountInput as sanitizeAmount,
+  formatAmountForInput as formatAmount,
+} from "@/lib/utils/format";
 
 interface RecurringFormState {
   type: RecurringType;
@@ -376,24 +381,3 @@ function CategoryPicker({
   );
 }
 
-function parseAmount(text: string): number {
-  if (!text) return 0;
-  const normalized = text.replace(/\s/g, "").replace(",", ".");
-  const n = Number.parseFloat(normalized);
-  return Number.isFinite(n) && n >= 0 ? n : 0;
-}
-
-function sanitizeAmount(text: string): string {
-  let out = text.replace(/[^\d,.]/g, "");
-  const firstSep = out.search(/[,.]/);
-  if (firstSep !== -1) {
-    out =
-      out.slice(0, firstSep + 1) + out.slice(firstSep + 1).replace(/[,.]/g, "");
-  }
-  return out;
-}
-
-function formatAmount(n: number): string {
-  if (n === 0) return "";
-  return n.toFixed(2).replace(".", ",");
-}

@@ -11,6 +11,7 @@ import { debtsRepo } from "@/lib/db";
 import type { Debt, OwnerType } from "@/lib/db/types";
 import { useDbStore } from "@/store/dbStore";
 import { cn } from "@/lib/utils/cn";
+import { formatMoney as formatAmount } from "@/lib/utils/format";
 
 type OwnerTotals = Record<OwnerType, Record<string, number>>;
 
@@ -207,10 +208,3 @@ function DebtRow({ debt, onClick }: { debt: Debt; onClick: () => void }) {
   );
 }
 
-function formatAmount(n: number, currency: string): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-  }).format(n);
-}

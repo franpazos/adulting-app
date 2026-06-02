@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils/cn";
+import { formatEUR } from "@/lib/utils/format";
 
 interface SaveFabProps {
   amount: number;
@@ -44,10 +45,3 @@ export function SaveFab({
   );
 }
 
-function formatEUR(n: number): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 2,
-  }).format(n);
-}

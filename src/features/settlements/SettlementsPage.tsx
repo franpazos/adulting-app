@@ -24,6 +24,7 @@ import { settlementsRepo } from "@/lib/db";
 import { useDbStore } from "@/store/dbStore";
 import type { OwnerType, SettlementLedgerEntry } from "@/lib/db/types";
 import { cn } from "@/lib/utils/cn";
+import { formatEUR } from "@/lib/utils/format";
 
 interface BalanceLine {
   from: OwnerType;
@@ -250,13 +251,6 @@ function formatDate(iso: string, lang: string): string {
   });
 }
 
-function formatEUR(n: number): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 2,
-  }).format(n);
-}
 
 // Suppress unused `cn` warning when this file evolves.
 void cn;

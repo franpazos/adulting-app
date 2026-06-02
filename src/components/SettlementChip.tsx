@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Avatar } from "@/components/Avatar";
 import type { AllocatorSettlement } from "@/lib/calculations";
 import { cn } from "@/lib/utils/cn";
+import { formatEUR } from "@/lib/utils/format";
 
 interface SettlementChipProps {
   /** Computed settlement, or null when there is no impact. */
@@ -79,10 +80,3 @@ function whoName(
   return t("addExpense.who.household");
 }
 
-function formatEUR(n: number): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 2,
-  }).format(n);
-}

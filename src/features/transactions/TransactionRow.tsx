@@ -5,6 +5,7 @@ import type { Transaction } from "@/lib/db/types";
 import { categoriesRepo } from "@/lib/db";
 import { accountIdToCashSource } from "@/features/add-expense/sources";
 import { cn } from "@/lib/utils/cn";
+import { formatMoney } from "@/lib/utils/format";
 
 interface TransactionRowProps {
   tx: Transaction;
@@ -84,11 +85,5 @@ export function TransactionRow({
 }
 
 function formatSigned(n: number, currency: string): string {
-  const formatted = new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-    signDisplay: "auto",
-  }).format(n);
-  return formatted;
+  return formatMoney(n, currency, { signDisplay: "auto" });
 }

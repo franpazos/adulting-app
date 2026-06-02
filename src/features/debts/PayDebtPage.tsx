@@ -48,6 +48,13 @@ import {
   SOURCE_TO_USER,
 } from "@/features/add-expense/sources";
 import { cn } from "@/lib/utils/cn";
+import {
+  formatMoney as formatAmount,
+  formatRate,
+  parseAmount,
+  sanitizeAmountInput as sanitizeAmount,
+  formatAmountForInput as formatForInput,
+} from "@/lib/utils/format";
 
 const ACCOUNT_CURRENCY = "EUR"; // All MVP source accounts are EUR
 
@@ -281,13 +288,12 @@ export function PayDebtPage() {
                   {t("payDebt.youPay")}
                 </p>
                 <p className="font-display text-xl font-semibold tabular-nums mt-0.5">
-                  {debtSymbol}
-                  {debtAmount.toFixed(2)}
+                  {formatAmount(debtAmount, debt.currency_code)}
                 </p>
               </div>
               <div className="px-2 py-1 rounded-md bg-violet/10 text-violet text-[11px] font-semibold flex items-center gap-1">
                 <RefreshCw className="size-3" />
-                <span>1 € = {debtSymbol}{rate.toFixed(4)}</span>
+                <span>1 € = {debtSymbol}{formatRate(rate)}</span>
               </div>
               <div className="flex-1 text-right min-w-0">
                 <p className="text-[10px] uppercase tracking-widest font-semibold text-text-muted">
@@ -395,7 +401,7 @@ export function PayDebtPage() {
             {saving
               ? t("addExpense.saving")
               : t("payDebt.saveLabel", {
-                  amount: `${debtSymbol}${debtAmount.toFixed(2)}`,
+                  amount: formatAmount(debtAmount, debt.currency_code),
                 })}
           </Button>
         </div>
@@ -408,36 +414,6 @@ function currencySymbol(code: string): string {
   if (code === "USD") return "$";
   if (code === "GBP") return "£";
   return "€";
-}
-
-function formatAmount(n: number, currency: string): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-  }).format(n);
-}
-
-function parseAmount(text: string): number {
-  if (!text) return 0;
-  const normalized = text.replace(/\s/g, "").replace(",", ".");
-  const n = Number.parseFloat(normalized);
-  return Number.isFinite(n) && n >= 0 ? n : 0;
-}
-
-function sanitizeAmount(text: string): string {
-  let out = text.replace(/[^\d,.]/g, "");
-  const firstSep = out.search(/[,.]/);
-  if (firstSep !== -1) {
-    out =
-      out.slice(0, firstSep + 1) + out.slice(firstSep + 1).replace(/[,.]/g, "");
-  }
-  return out;
-}
-
-function formatForInput(n: number): string {
-  if (n === 0) return "";
-  return n.toFixed(2).replace(".", ",");
 }
 
 function round2(n: number): number {

@@ -12,6 +12,7 @@ import { Avatar } from "@/components/Avatar";
 import { Button, Card, CardEyebrow, IconButton, Pill } from "@/components/ui";
 import { debtsRepo, debtPaymentsRepo } from "@/lib/db";
 import { useDbStore } from "@/store/dbStore";
+import { formatMoney as formatAmount, formatRate } from "@/lib/utils/format";
 
 export function DebtDetailPage() {
   const { t, i18n } = useTranslation();
@@ -159,7 +160,7 @@ export function DebtDetailPage() {
                   </p>
                   {p.exchange_rate != null && (
                     <p className="text-[11px] text-text-muted">
-                      @ {p.exchange_rate.toFixed(4)} ·{" "}
+                      @ {formatRate(p.exchange_rate)} ·{" "}
                       {formatAmount(
                         p.amount_in_account_currency ?? 0,
                         "EUR",
@@ -198,13 +199,6 @@ function ownerKey(o: string): "fran" | "sam" | "household" {
   return "household";
 }
 
-function formatAmount(n: number, currency: string): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-  }).format(n);
-}
 
 function formatDate(iso: string, lang: string): string {
   const locale = lang?.startsWith("es") ? "es-ES" : "en-US";

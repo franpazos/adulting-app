@@ -4,6 +4,32 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-06-02 — Version 0.4.2: es-ES money formatting everywhere + format module
+
+Fran asked for the European thousand-separator format (`1.234.567,89`) everywhere money is shown, including *while typing in input fields*. Turned out the codebase had eight near-identical copies of `formatEUR` / `formatAmount` (all already producing es-ES grouping), plus three broken display sites using raw `toFixed(2)` that bypassed grouping entirely, plus four money input fields with inconsistent typing behavior.
+
+**New module: `src/lib/utils/format.ts`** — single source of truth. Exports:
+- `formatEUR(n)` — `"1.234,56 €"`.
+- `formatMoney(n, currency, opts?)` — multi-currency, with optional `minimumFractionDigits` and `signDisplay`. Replaces the eight duplicated locals and the one bespoke `formatSigned` in `TransactionRow.tsx`.
+- `formatRate(n, fractionDigits = 4)` — `"1,2345"`. For exchange rates (previously displayed via `toFixed(4)` in `PayDebtPage` and `DebtDetailPage`, which produced `1.2345` and looked ambiguous in an es-ES context).
+- `parseAmount(text)` — robust parser; uses the *last* separator as the decimal point so both `"1.234,56"` (es-ES) and `"1,234.56"` (en-US) survive the round trip. Strips currency symbols and whitespace.
+- `sanitizeAmountInput(raw)` — the key piece for the live-typing requirement. On every keystroke, strips junk, picks the last separator as decimal, drops the rest as thousand groupers, strips leading zeros (except a lone `0`), re-inserts dots every three digits in the integer part, and seeds `"0,"` when the user starts with a decimal separator.
+- `formatAmountForInput(n)` — seeds an input from a stored number (`"" ` for zero so the placeholder shows).
+
+**Fixes that came out of the centralization:**
+- `PayDebtPage.tsx`: three display sites went from `${debtSymbol}${debtAmount.toFixed(2)}` (no grouping, English point) to `formatAmount(debtAmount, currency_code)` (grouping + locale-correct symbol position). Rate display went from `rate.toFixed(4)` to `formatRate(rate)`.
+- `DebtDetailPage.tsx`: rate at line 162 now uses `formatRate` too.
+- `SettleUpPage.tsx`: the input field was rebuilding its value from the numeric `amount` state on every render (`amount.toFixed(2).replace(".",",")`), which made it impossible to type freely — typing `"12,"` instantly re-rendered to `"12,00"`. Switched to `formatAmountForInput(amount)` for display and `parseAmount(e.target.value)` on change, matching the text-state pattern used elsewhere. Plus thousand separators while typing as a bonus.
+- `TransactionForm.tsx`, `RecurringFormPage.tsx`, `PayDebtPage.tsx` inputs: same `sanitizeAmountInput` swap so the thousand dots appear live as the user types large amounts.
+
+**Tests added: `src/lib/utils/__tests__/format.test.ts`** — 23 cases covering: display formatting (EUR/USD/GBP, negatives, custom precision, signDisplay), exchange rates, parser robustness against es-ES + en-US shapes + garbage + symbols, sanitize edge cases (multiple separators, leading zeros, lone-dot interpretation, `",5"`→`"0,5"`), and a `parseAmount(formatAmountForInput(n)) === n` round-trip across magnitudes. Full suite: 172/172 green.
+
+**Not covered by automated tests** (mobile-only verification): caret position when editing inside the number (separators jumping mid-edit) and that the platform numeric keypad behaves correctly on iOS/Android. Pre-existing inputs had the same caret limitation; this change doesn't make it worse, but worth re-checking on device.
+
+**Files touched (12 + 1 new):** `format.ts` (new), `format.test.ts` (new), `TransactionForm.tsx`, `SaveFab.tsx`, `HomePage.tsx`, `DebtsPage.tsx`, `DebtDetailPage.tsx`, `PayDebtPage.tsx`, `SettleUpPage.tsx`, `RecurringFormPage.tsx`, `RecurringPage.tsx`, `SettlementsPage.tsx`, `AccountsPage.tsx`, `SettlementChip.tsx`, `ConsequenceSentence.tsx`, `TransactionRow.tsx`.
+
+---
+
 ## 2026-06-02 — Version 0.4.1: Add Expense form densification (Sam's buzón request)
 
 Sam dropped a suggestion in the buzón: *"Change expense input layout. I would like all inputs to be in one view without having to scroll - for efficiency."* First pass against that, with Fran in the loop deciding each trade-off rather than batch-applying a redesign.

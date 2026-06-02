@@ -9,6 +9,7 @@ import { accountsRepo } from "@/lib/db";
 import type { Account } from "@/lib/db/types";
 import { useDbStore } from "@/store/dbStore";
 import { accountBalance } from "@/lib/calculations";
+import { formatMoney as formatAmount } from "@/lib/utils/format";
 
 export function AccountsPage() {
   const { t } = useTranslation();
@@ -131,11 +132,4 @@ function computeBalance(a: Account): number {
   return accountBalance(a.id, a.initial_balance);
 }
 
-function formatAmount(n: number, currency: string): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-  }).format(n);
-}
 

@@ -15,6 +15,7 @@ import { recurringRepo, categoriesRepo } from "@/lib/db";
 import { useDbStore } from "@/store/dbStore";
 import type { RecurringItem, RecurringType } from "@/lib/db/types";
 import { cn } from "@/lib/utils/cn";
+import { formatEUR } from "@/lib/utils/format";
 
 export function RecurringPage() {
   const { t } = useTranslation();
@@ -205,10 +206,3 @@ function ownerToWho(o: RecurringItem["owner_type"]): AvatarWho {
   return o;
 }
 
-function formatEUR(n: number): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 2,
-  }).format(n);
-}

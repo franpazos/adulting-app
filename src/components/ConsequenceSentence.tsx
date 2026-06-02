@@ -2,6 +2,7 @@ import { Trans, useTranslation } from "react-i18next";
 import type { CashSource, OwnerType } from "@/lib/db/types";
 import type { AllocatorSettlement } from "@/lib/calculations";
 import { whoFromCashSource } from "@/components/Avatar";
+import { formatEUR } from "@/lib/utils/format";
 
 interface ConsequenceSentenceProps {
   amount: number;
@@ -75,10 +76,3 @@ function whoLabel(
   return t("addExpense.who.joint");
 }
 
-function formatEUR(n: number): string {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 2,
-  }).format(n);
-}
