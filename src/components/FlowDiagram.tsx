@@ -21,15 +21,11 @@ export function FlowDiagram({ source, owner, className }: FlowDiagramProps) {
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-2 py-3.5",
+        "flex items-center justify-between gap-2 py-2",
         className,
       )}
     >
-      <FlowEnd
-        who={sourceWho}
-        topLabel={t("addExpense.flow.paidBy")}
-        bottomLabel={whoLabel(sourceWho, t)}
-      />
+      <FlowEnd who={sourceWho} label={whoLabel(sourceWho, t)} />
       <div className="flex-1 flex flex-col items-center gap-1 max-w-[120px]">
         <svg
           viewBox="0 0 100 22"
@@ -46,37 +42,17 @@ export function FlowDiagram({ source, owner, className }: FlowDiagramProps) {
           />
           <polygon points="92,11 86,7 86,15" className="fill-violet" />
         </svg>
-        <span className="text-[10px] font-semibold text-violet">
-          {t("addExpense.flow.belongsTo")}
-        </span>
       </div>
-      <FlowEnd
-        who={ownerWho}
-        topLabel={t("addExpense.flow.owner")}
-        bottomLabel={whoLabel(ownerWho, t)}
-      />
+      <FlowEnd who={ownerWho} label={whoLabel(ownerWho, t)} />
     </div>
   );
 }
 
-function FlowEnd({
-  who,
-  topLabel,
-  bottomLabel,
-}: {
-  who: AvatarWho;
-  topLabel: string;
-  bottomLabel: string;
-}) {
+function FlowEnd({ who, label }: { who: AvatarWho; label: string }) {
   return (
-    <div className="flex flex-col items-center gap-1.5 min-w-[60px]">
-      <Avatar who={who} size={42} />
-      <span className="text-[10px] font-semibold uppercase tracking-widest text-text-muted">
-        {topLabel}
-      </span>
-      <span className="text-xs font-semibold text-text-primary">
-        {bottomLabel}
-      </span>
+    <div className="flex flex-col items-center gap-1 min-w-[60px]">
+      <Avatar who={who} size={36} />
+      <span className="text-xs font-semibold text-text-primary">{label}</span>
     </div>
   );
 }

@@ -4,6 +4,32 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-06-02 — Version 0.4.1: Add Expense form densification (Sam's buzón request)
+
+Sam dropped a suggestion in the buzón: *"Change expense input layout. I would like all inputs to be in one view without having to scroll - for efficiency."* First pass against that, with Fran in the loop deciding each trade-off rather than batch-applying a redesign.
+
+**Bugfix that came out of the same conversation**
+- Page-level horizontal pan on Add Expense, Edit Expense and Recurring Form. Root cause: `CategoryPicker` uses `-mx-4 px-4 overflow-x-auto` so chips reach the screen edges; the page wrapper wasn't clipping, so the chip row pushed the page width past the viewport. Added `overflow-x-hidden` to all three page wrappers — chips still scroll horizontally inside their own container, the page no longer pans. Commit `93fb97d`.
+
+**Densification of the Add Expense form** (commit `4d69211` + follow-ups)
+- Removed `ConsequenceSentence` card at the bottom of the form (Fran had already deleted the JSX; cleaned the orphan import). Redundant with `SettlementChip` + the amount inside the FAB.
+- Amount Card: `px-5 py-5 space-y-2` → `px-4 py-3 space-y-1.5`.
+- `Section` margin between blocks: `mt-5` → `mt-4`.
+- Date field promoted out of its own `Section` into a compact chip pinned to the top-right of the amount Card. Shows `"Hoy"` / `"Today"` when the date is today; otherwise a localized short date (`"30 may"`). Tap calls `inputRef.current.showPicker()` on a hidden native `<input type="date">`, with `focus() + click()` fallback for older Androids. The first attempt overlaid an opacity-0 input on a `<label>` — didn't fire reliably on iOS Safari, hence the `showPicker()` rewrite.
+- Page bottom padding `pb-32` → `pb-24` to close the dead space between the last field and the sticky `SaveFab`.
+- `FlowDiagram` (the source-avatar → arrow → owner-avatar block inside the amount Card): trimmed from ~110px tall to ~78px. Dropped the per-avatar top eyebrow (`"PAGADO POR"` / `"OWNER"`) because the segmented controls directly below already carry those exact labels — pure duplication. Kept the bottom label (the live selection name, e.g. `"Conjunta"` / `"Hogar"`) since that's the immediate feedback when toggling. Avatar 42 → 36, `py-3.5` → `py-2`, `gap-1.5` → `gap-1`.
+
+**i18n**
+- Added `addExpense.today` to `es.json` and `en.json`.
+- Orphans left in place for now: `addExpense.flow.paidBy`, `addExpense.flow.owner`. Clean up if/when we close out the redesign.
+
+**Still on the table for this redesign** (discussed, not yet decided)
+- Description input: candidate for collapsing or moving into a row with something else, since it's optional.
+- Segmented controls "Pagado por" / "Pertenece a": Sam floated the idea of a vertical slot-machine-style picker; alternatives include smaller segmented controls or fusing both into a single flow row with an arrow in the middle (which would also subsume the FlowDiagram).
+- Whether to keep or further shrink the FlowDiagram.
+
+---
+
 ## 2026-05-20 — Version 0.4.0: backend era starts (confirmed working)
 
 `pnpm version 0.4.0`. Marks the architectural shift introduced by ADR-016: Adulting is no longer purely client-side. The original reservation of 0.4.0 for "buzón retired" gets pushed forward — introducing a backend is genuinely the larger event in the project's life, and the narrative-versioning rule says minor bumps should track eras, not features. Buzón retirement now anchored at 0.5.0 (or whenever it ships).
