@@ -12,18 +12,18 @@ describe("formatEUR", () => {
   it("formats whole euros with thousand separators", () => {
     expect(formatEUR(0)).toBe("0,00 €");
     expect(formatEUR(1)).toBe("1,00 €");
-    expect(formatEUR(1234)).toBe("1234,00 €"); // 4 digits: locale-dependent
+    expect(formatEUR(1234)).toBe("1.234,00 €");
   });
 
-  it("inserts thousand separators for >= 5 digits", () => {
-    // es-ES uses NO grouping below 5 digits historically; modern Node
-    // does group from 4. Spot-check large values regardless.
+  it("inserts thousand separators for larger values", () => {
+    // useGrouping: "always" forces grouping from 4 digits up — the
+    // es-ES CLDR default would skip 4-digit grouping.
     expect(formatEUR(12345)).toBe("12.345,00 €");
     expect(formatEUR(1234567.89)).toBe("1.234.567,89 €");
   });
 
   it("handles negatives", () => {
-    expect(formatEUR(-1234.5)).toBe("-1234,50 €");
+    expect(formatEUR(-1234.5)).toBe("-1.234,50 €");
   });
 });
 

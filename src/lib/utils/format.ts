@@ -17,6 +17,7 @@ export function formatEUR(n: number): string {
     style: "currency",
     currency: "EUR",
     minimumFractionDigits: 2,
+    useGrouping: true,
   }).format(n);
 }
 
@@ -35,6 +36,7 @@ export function formatMoney(
     currency,
     minimumFractionDigits: opts.minimumFractionDigits ?? 2,
     ...(opts.signDisplay ? { signDisplay: opts.signDisplay } : {}),
+    useGrouping: true,
   }).format(n);
 }
 
@@ -43,6 +45,7 @@ export function formatRate(n: number, fractionDigits = 4): string {
   return new Intl.NumberFormat("es-ES", {
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
+    useGrouping: true,
   }).format(n);
 }
 
