@@ -4,6 +4,38 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-06-02 — Version 0.4.4: Debts CRUD finally closes the loop
+
+Sam reported the `+` button on `/debts` did nothing. Auditing showed it had been a placeholder without an `onClick` since the very first Phase 7 commit (`b7aff59`, 2026-05-04). The audit also surfaced a deeper hole: there was no `NewDebtPage` or `EditDebtPage` at all, no routes for them, and `debtsRepo` had no `softDelete` or `delete` method. Debts you could see, list, pay, but never create, edit or remove from the UI — the seed data was your only source of debts. Same "consumption built before construction" pattern that already bit us in categories (still pending — Fran takes that one). Logged the audit of every other suspected gap in this conversation; for `accounts` the answer was "by design" (three fixed enum-backed accounts per spec §11.9), no fix needed.
+
+This release closes the debts loop top-to-bottom.
+
+**`src/lib/db/repositories/debts.ts`** — three new methods and a behavioral upgrade to one existing one:
+- `deactivate(id)` — soft delete via `is_active = 0`. Reversible. Mirrors `recurringRepo.deactivate`.
+- `reactivate(id)` — undoes deactivate. Does NOT re-trigger auto-deactivate even if balance is still zero — reactivating a paid-off debt is a legitimate "taking on this loan again" gesture.
+- `delete(id)` — hard delete with cascade to `debt_payments` (inside a transaction). The original `transactions` rows survive in the user's history; settlement_ledger entries already computed off those transactions stay intact too. Enqueues a `DELETE` sync row per cascaded payment plus one for the debt itself.
+- `adjustBalance(id, delta)` now auto-deactivates the debt when the resulting balance drops to ≤ `ZERO_BALANCE_EPS` (0.005). Guards against float-drift residuals on FX-converted payments leaving something like `0.0000003` that exact-zero comparison would miss.
+
+**`src/features/debts/DebtFormPage.tsx`** (new) — single component serving both `/debts/new` and `/debts/:id/edit` (modeled on `RecurringFormPage`). Fields: name, owner, currency (`EUR`/`USD` segmented control), original amount, current balance, minimum payment (optional), payment day 1-31 (optional), notes (optional). The three non-form fields — `interest_rate`, `strategy_priority`, `is_active` — are preserved verbatim on edit via a `carryover` state slice. **Currency is locked on edit** — a read-only card replaces the segmented control with a "Bloqueada" pill and a hint explaining that re-interpreting currency on an existing debt would break stored payments and FX rates. To switch currency you delete and re-create.
+
+**`src/app/router.tsx`** — registered `/debts/new` and `/debts/:id/edit`. Route order matters because React Router v7 already prioritises static segments over `:id`, so `/debts/new` resolves before `/debts/:id`.
+
+**`src/features/debts/DebtsPage.tsx`** — the `+` button got its `onClick → navigate("/debts/new")`. Empty-state button got wired the same way. The list now fetches `list(false)` and splits into `active` / `archived` in-memory. Active section renders all the previous cards (totals, by-owner, monthly minimum) — but only when there are active debts; the cards collapse cleanly if you only have archived ones. Archived section sits below with a `t("debts.archivedHeader")` eyebrow, rendering the same `DebtRow` with `archived={true}` which applies `opacity-60 grayscale` and swaps the currency pill for a green "Pagada" / "Paid off" pill.
+
+**`src/features/debts/DebtDetailPage.tsx`** — pencil icon in the header → `/debts/:id/edit`. New "Acciones" section above the sticky CTA: a flat Card with two rows. Active debts get [Archive] + [Delete forever]; archived debts get [Reactivate] + [Delete forever]. The CTA button itself flips dynamically: violet "Pagar deuda" for active, ghost-style "Reactivar deuda" for archived. The archived state also shows a green "Pagada" badge next to the currency pill in the hero card. Delete uses the `Sheet` component in `side="center"` modal mode with a destructive confirm: title interpolates the debt name ("¿Eliminar 'Préstamo coche'?"), description spells out that the transactions remain in history but lose the debt reference, primary action is expense-red.
+
+**Tests** — `src/lib/db/repositories/__tests__/debts.test.ts` (new, 9 cases). Covers: deactivate hides from default list, reactivate restores, reactivate does NOT auto-deactivate even at zero balance, auto-deactivate fires on exact zero, auto-deactivate fires on sub-epsilon residual (`0.003`), no auto-deactivate while there's real balance, adjusting an already-inactive debt doesn't break, hard delete removes the debt row, hard delete cascades to `debt_payments` but leaves the source `transactions` intact. Full suite: 181/181 green.
+
+**i18n** — full `debts.form.*`, `debts.deleteConfirm.*`, plus `debts.archivedHeader`, `archivedBadge`, `editAria`, `actions`, `archive`, `archiveHint`, `reactivate`, `reactivateHint`, `reactivateCta`, `deleteForever`, `deleteForeverHint`. Both `en.json` and `es.json` updated together.
+
+**Scope decisions captured for the next agent**
+- Currency selector is `EUR`/`USD` only — those are Fran and Sam's two real currencies. Adding more is a one-line change in `currencyOptions` if needed later.
+- Three delete modalities coexist: auto on full payment, manual "Archivar" (reversible), and hard "Eliminar definitivamente" (irreversible). The user explicitly asked for all three after I initially proposed only soft.
+- Hard delete cascades to `debt_payments` rather than nulling them out or snapshotting the debt name onto each payment. Simpler, fits a two-user app. If we ever start preserving "which deleted debt did this tx pay off" metadata in `transactions`, the snapshot option is documented in this entry as a fallback.
+- `interest_rate`, `strategy_priority`, and `notes` weren't in scope for the new-debt form (only the minimal set + the two practical optionals `minimum_payment` and `payment_day`). The form preserves them on edit via a `carryover` state. To set `interest_rate` for the first time today, you'd have to edit a debt that already has one or do it via DB.
+
+---
+
 ## 2026-06-02 — Version 0.4.3: local dev with backend functions (`pnpm dev:local`)
 
 Fran wanted to test the "Connect with Google" flow in local dev on his laptop. With just `pnpm dev` (Vite only), every `/api/auth/*` call 404'd because Vite doesn't know about the `api/` folder. The fix turned out to need three independent pieces, and the debugging session surfaced an interesting Upstash heads-up too.

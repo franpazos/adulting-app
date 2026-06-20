@@ -21,9 +21,14 @@ export function DebtsPage() {
   const dbReady = useDbStore((s) => s.status === "ready");
   const dbVersion = useDbStore((s) => s.dbVersion);
 
-  const debts = useMemo(
-    () => (dbReady ? debtsRepo.list(true) : []),
+  const allDebts = useMemo(
+    () => (dbReady ? debtsRepo.list(false) : []),
     [dbReady, dbVersion],
+  );
+  const debts = useMemo(() => allDebts.filter((d) => d.is_active), [allDebts]);
+  const archived = useMemo(
+    () => allDebts.filter((d) => !d.is_active),
+    [allDebts],
   );
 
   // Group by currency for the totals card.
@@ -60,7 +65,7 @@ export function DebtsPage() {
     return out;
   }, [debts]);
 
-  if (debts.length === 0) {
+  if (allDebts.length === 0) {
     return (
       <div className="mx-auto max-w-md px-4 pt-6 pb-8 space-y-5">
         <AppHeader showMonth={false} />
@@ -70,7 +75,11 @@ export function DebtsPage() {
           art={<EmptyArt kind="debts" />}
           title={t("debts.empty.title")}
           description={t("debts.empty.description")}
-          action={<Button size="sm">{t("debts.empty.action")}</Button>}
+          action={
+            <Button size="sm" onClick={() => navigate("/debts/new")}>
+              {t("debts.empty.action")}
+            </Button>
+          }
         />
       </div>
     );
@@ -82,28 +91,36 @@ export function DebtsPage() {
       
       <div className="flex items-center justify-between">
         <h1 className="h-display">{t("debts.title")}</h1>
-        <IconButton aria-label={t("debts.add")} variant="violet" size="sm">
+        <IconButton
+          aria-label={t("debts.add")}
+          variant="violet"
+          size="sm"
+          onClick={() => navigate("/debts/new")}
+        >
           <Plus className="size-4" />
         </IconButton>
       </div>
 
-      <Card className="space-y-2">
-        <p className="t-eyebrow">{t("debts.totalOutstanding")}</p>
-        <div className="flex flex-wrap gap-3 items-baseline">
-          {Object.entries(totalsByCurrency).map(([code, total]) => (
-            <span key={code} className="t-amount tabular-nums">
-              {formatAmount(total, code)}
-            </span>
-          ))}
-        </div>
-        <p className="t-label">
-          {t("debts.summary", { count: debts.length })}
-        </p>
-      </Card>
+      {debts.length > 0 && (
+        <Card className="space-y-2">
+          <p className="t-eyebrow">{t("debts.totalOutstanding")}</p>
+          <div className="flex flex-wrap gap-3 items-baseline">
+            {Object.entries(totalsByCurrency).map(([code, total]) => (
+              <span key={code} className="t-amount tabular-nums">
+                {formatAmount(total, code)}
+              </span>
+            ))}
+          </div>
+          <p className="t-label">
+            {t("debts.summary", { count: debts.length })}
+          </p>
+        </Card>
+      )}
 
-      <Card className="space-y-3">
-        <p className="t-eyebrow">{t("debts.byOwner")}</p>
-        <ul className="divide-y divide-border/60">
+      {debts.length > 0 && (
+        <Card className="space-y-3">
+          <p className="t-eyebrow">{t("debts.byOwner")}</p>
+          <ul className="divide-y divide-border/60">
           <OwnerRow
             who="FRAN"
             label={t("debts.owner.fran")}
@@ -120,25 +137,47 @@ export function DebtsPage() {
             totals={totalsByOwner.HOUSEHOLD}
           />
         </ul>
-        {Object.keys(monthlyByCurrency).length > 0 && (
-          <div className="pt-2 mt-1 border-t border-border/60 flex items-baseline justify-between gap-3">
-            <span className="t-label">{t("debts.monthlyTotal")}</span>
-            <span className="font-medium tabular-nums tracking-tight text-sm flex flex-wrap gap-2 justify-end">
-              {Object.entries(monthlyByCurrency).map(([code, total]) => (
-                <span key={code}>{formatAmount(total, code)}</span>
-              ))}
-            </span>
-          </div>
-        )}
-      </Card>
+          {Object.keys(monthlyByCurrency).length > 0 && (
+            <div className="pt-2 mt-1 border-t border-border/60 flex items-baseline justify-between gap-3">
+              <span className="t-label">{t("debts.monthlyTotal")}</span>
+              <span className="font-medium tabular-nums tracking-tight text-sm flex flex-wrap gap-2 justify-end">
+                {Object.entries(monthlyByCurrency).map(([code, total]) => (
+                  <span key={code}>{formatAmount(total, code)}</span>
+                ))}
+              </span>
+            </div>
+          )}
+        </Card>
+      )}
 
-      <ul className="space-y-2">
-        {debts.map((d) => (
-          <li key={d.id}>
-            <DebtRow debt={d} onClick={() => navigate(`/debts/${d.id}`)} />
-          </li>
-        ))}
-      </ul>
+      {debts.length > 0 && (
+        <ul className="space-y-2">
+          {debts.map((d) => (
+            <li key={d.id}>
+              <DebtRow debt={d} onClick={() => navigate(`/debts/${d.id}`)} />
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {archived.length > 0 && (
+        <section className="space-y-2 pt-2">
+          <h2 className="t-eyebrow px-1">
+            {t("debts.archivedHeader", { count: archived.length })}
+          </h2>
+          <ul className="space-y-2">
+            {archived.map((d) => (
+              <li key={d.id}>
+                <DebtRow
+                  debt={d}
+                  archived
+                  onClick={() => navigate(`/debts/${d.id}`)}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }
@@ -170,7 +209,16 @@ function OwnerRow({
   );
 }
 
-function DebtRow({ debt, onClick }: { debt: Debt; onClick: () => void }) {
+function DebtRow({
+  debt,
+  onClick,
+  archived = false,
+}: {
+  debt: Debt;
+  onClick: () => void;
+  archived?: boolean;
+}) {
+  const { t } = useTranslation();
   const owner = debt.owner_type as AvatarWho;
   const isUsd = debt.currency_code === "USD";
   return (
@@ -181,19 +229,26 @@ function DebtRow({ debt, onClick }: { debt: Debt; onClick: () => void }) {
         "w-full flex items-center gap-3 px-3 py-3 rounded-2xl",
         "bg-surface border border-border shadow-card",
         "active:scale-[0.99] transition-transform text-left",
+        archived && "opacity-60 grayscale",
       )}
     >
       <Avatar who={owner} size={40} />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold truncate">{debt.name}</p>
         <div className="flex items-center gap-2 mt-0.5">
-          <Pill
-            tone={isUsd ? "info" : "neutral"}
-            className="h-5 px-2 text-[10px]"
-          >
-            {debt.currency_code}
-          </Pill>
-          {debt.minimum_payment != null && (
+          {archived ? (
+            <Pill tone="positive" className="h-5 px-2 text-[10px]">
+              {t("debts.archivedBadge")}
+            </Pill>
+          ) : (
+            <Pill
+              tone={isUsd ? "info" : "neutral"}
+              className="h-5 px-2 text-[10px]"
+            >
+              {debt.currency_code}
+            </Pill>
+          )}
+          {!archived && debt.minimum_payment != null && (
             <span className="text-[11px] text-text-secondary">
               min {formatAmount(debt.minimum_payment, debt.currency_code)}
             </span>

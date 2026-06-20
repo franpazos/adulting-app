@@ -146,6 +146,43 @@
       "title": "Debt-free, for now",
       "description": "Track loans, credit cards, or anything you owe (or are owed) — separately from internal Settlements.",
       "action": "+ Add a debt"
+    },
+    "archivedHeader_one": "Archived ({{count}})",
+    "archivedHeader_other": "Archived ({{count}})",
+    "archivedBadge": "Paid off",
+    "editAria": "Edit debt",
+    "actions": "Actions",
+    "archive": "Archive debt",
+    "archiveHint": "Stays in history but leaves the active list.",
+    "reactivate": "Reactivate debt",
+    "reactivateHint": "Returns to the active list. Balance is unchanged.",
+    "reactivateCta": "Reactivate debt",
+    "deleteForever": "Delete forever",
+    "deleteForeverHint": "Removes the debt permanently. Cannot be undone.",
+    "deleteConfirm": {
+      "title": "Delete \"{{name}}\"?",
+      "description": "This cannot be undone. Payment transactions on this debt stay in your history but will no longer reference any debt.",
+      "confirm": "Delete forever"
+    },
+    "form": {
+      "newTitle": "New debt",
+      "editTitle": "Edit debt",
+      "name": "Name",
+      "namePlaceholder": "e.g. Family loan",
+      "owner": "Belongs to",
+      "currency": "Currency",
+      "locked": "Locked",
+      "currencyLockedHint": "Currency can't be changed after the debt is created — it would break stored payments and FX rates.",
+      "originalAmount": "Original amount",
+      "currentBalance": "Current balance",
+      "minimumPayment": "Minimum payment (optional)",
+      "paymentDay": "Payment day (optional)",
+      "paymentDayPlaceholder": "1-31",
+      "paymentDayError": "Must be a number between 1 and 31.",
+      "notes": "Notes (optional)",
+      "notesPlaceholder": "Details, bank, contact…",
+      "saveNew": "Create debt",
+      "saveEdit": "Save changes"
     }
   },
   "payDebt": {

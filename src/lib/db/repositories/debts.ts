@@ -70,16 +70,70 @@ export const debtsRepo = {
     return d;
   },
 
-  /** Apply a delta (signed, in debt currency) to the running balance. */
+  /**
+   * Apply a delta (signed, in debt currency) to the running balance.
+   * When the resulting balance drops to (effectively) zero or below the
+   * debt is auto-deactivated — the row stays for history, just no longer
+   * appears in the default "active" listing.
+   */
   adjustBalance(id: string, delta: number): void {
     const debt = this.getById(id);
     if (!debt) throw new Error(`Debt ${id} not found`);
     const next = round2(debt.current_balance + delta);
+    const shouldAutoDeactivate = debt.is_active && next <= ZERO_BALANCE_EPS;
+    const now = nowIso();
+    if (shouldAutoDeactivate) {
+      exec(
+        "UPDATE debts SET current_balance = ?, is_active = 0, updated_at = ? WHERE id = ?",
+        [next, now, id],
+      );
+    } else {
+      exec(
+        "UPDATE debts SET current_balance = ?, updated_at = ? WHERE id = ?",
+        [next, now, id],
+      );
+    }
+    enqueueChange("debt", id, "UPDATE");
+  },
+
+  /** Mark a debt as inactive without losing its history. Reversible. */
+  deactivate(id: string): void {
     exec(
-      "UPDATE debts SET current_balance = ?, updated_at = ? WHERE id = ?",
-      [next, nowIso(), id],
+      "UPDATE debts SET is_active = 0, updated_at = ? WHERE id = ?",
+      [nowIso(), id],
     );
     enqueueChange("debt", id, "UPDATE");
+  },
+
+  /** Bring an archived debt back to the active list. */
+  reactivate(id: string): void {
+    exec(
+      "UPDATE debts SET is_active = 1, updated_at = ? WHERE id = ?",
+      [nowIso(), id],
+    );
+    enqueueChange("debt", id, "UPDATE");
+  },
+
+  /**
+   * Hard-delete a debt and cascade to `debt_payments`. The original
+   * payment transactions in the `transactions` table are left intact —
+   * they remain in the user's history as DEBT_PAYMENT entries, just
+   * without a debt to point back to. `settlement_ledger` entries
+   * already computed off those transactions are also preserved.
+   */
+  delete(id: string): void {
+    transaction(() => {
+      const payments = selectAll<{ id: string }>(
+        "SELECT id FROM debt_payments WHERE debt_id = ?",
+        [id],
+      );
+      for (const p of payments) {
+        exec("DELETE FROM debt_payments WHERE id = ?", [p.id]);
+        enqueueChange("debt_payment", p.id, "DELETE");
+      }
+      exec("DELETE FROM debts WHERE id = ?", [id]);
+    });
+    enqueueChange("debt", id, "DELETE");
   },
 
   update(id: string, input: Omit<CreateDebtInput, "id">): Debt {
@@ -119,6 +173,11 @@ export const debtsRepo = {
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
+
+// A debt with a balance under half a cent is treated as paid off — guards
+// against float-drift on FX-converted payments leaving a balance like
+// 0.0000003 that would never trigger an exact-zero auto-deactivate.
+const ZERO_BALANCE_EPS = 0.005;
 
 interface CreateDebtPaymentInput
   extends Omit<DebtPayment, "id" | "created_at" | "updated_at"> {

@@ -146,6 +146,43 @@
       "title": "Sin deudas, de momento",
       "description": "Aquí puedes registrar préstamos, tarjetas o cualquier deuda — aparte de los Ajustes internos.",
       "action": "+ Añadir deuda"
+    },
+    "archivedHeader_one": "Archivada ({{count}})",
+    "archivedHeader_other": "Archivadas ({{count}})",
+    "archivedBadge": "Pagada",
+    "editAria": "Editar deuda",
+    "actions": "Acciones",
+    "archive": "Archivar deuda",
+    "archiveHint": "Se queda en el historial pero sale de la lista activa.",
+    "reactivate": "Reactivar deuda",
+    "reactivateHint": "Vuelve a la lista activa. El saldo no cambia.",
+    "reactivateCta": "Reactivar deuda",
+    "deleteForever": "Eliminar definitivamente",
+    "deleteForeverHint": "Esto borra la deuda para siempre. No se puede deshacer.",
+    "deleteConfirm": {
+      "title": "¿Eliminar \"{{name}}\"?",
+      "description": "Esta acción no se puede deshacer. Las transacciones de pagos a esta deuda se mantienen en tu historial, pero perderán la referencia a la deuda.",
+      "confirm": "Eliminar definitivamente"
+    },
+    "form": {
+      "newTitle": "Nueva deuda",
+      "editTitle": "Editar deuda",
+      "name": "Nombre",
+      "namePlaceholder": "p. ej. Préstamo familiar",
+      "owner": "Pertenece a",
+      "currency": "Moneda",
+      "locked": "Bloqueada",
+      "currencyLockedHint": "La moneda no se puede cambiar tras crear la deuda — afectaría a los pagos y su FX.",
+      "originalAmount": "Importe original",
+      "currentBalance": "Saldo actual",
+      "minimumPayment": "Pago mínimo (opcional)",
+      "paymentDay": "Día de pago (opcional)",
+      "paymentDayPlaceholder": "1-31",
+      "paymentDayError": "Debe ser un número entre 1 y 31.",
+      "notes": "Notas (opcional)",
+      "notesPlaceholder": "Detalles, banco, contacto…",
+      "saveNew": "Crear deuda",
+      "saveEdit": "Guardar cambios"
     }
   },
   "payDebt": {

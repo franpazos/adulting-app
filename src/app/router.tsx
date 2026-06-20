@@ -32,6 +32,10 @@ const PayDebtPage = lazyNamed(
   () => import("@/features/debts/PayDebtPage"),
   "PayDebtPage",
 );
+const DebtFormPage = lazyNamed(
+  () => import("@/features/debts/DebtFormPage"),
+  "DebtFormPage",
+);
 const MorePage = lazyNamed(
   () => import("@/features/more/MorePage"),
   "MorePage",
@@ -112,7 +116,9 @@ export const router = createBrowserRouter([
       { path: "transactions/:id", element: Lazy(<EditExpensePage />) },
       { path: "add", element: Lazy(<AddExpensePage />) },
       { path: "debts", element: Lazy(<DebtsPage />) },
+      { path: "debts/new", element: Lazy(<DebtFormPage />) },
       { path: "debts/:id", element: Lazy(<DebtDetailPage />) },
+      { path: "debts/:id/edit", element: Lazy(<DebtFormPage />) },
       { path: "debts/:id/pay", element: Lazy(<PayDebtPage />) },
       { path: "more", element: Lazy(<MorePage />) },
       { path: "settings", element: Lazy(<SettingsPage />) },

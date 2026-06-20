@@ -3,13 +3,27 @@
  * Pay button routes to /debts/:id/pay (PayDebtPage handles the FX flow).
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, Wallet } from "lucide-react";
+import {
+  ChevronLeft,
+  Wallet,
+  Pencil,
+  Archive,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
 
 import { Avatar } from "@/components/Avatar";
-import { Button, Card, CardEyebrow, IconButton, Pill } from "@/components/ui";
+import {
+  Button,
+  Card,
+  CardEyebrow,
+  IconButton,
+  Pill,
+  Sheet,
+} from "@/components/ui";
 import { debtsRepo, debtPaymentsRepo } from "@/lib/db";
 import { useDbStore } from "@/store/dbStore";
 import { formatMoney as formatAmount, formatRate } from "@/lib/utils/format";
@@ -20,6 +34,7 @@ export function DebtDetailPage() {
   const { id } = useParams<{ id: string }>();
   const dbReady = useDbStore((s) => s.status === "ready");
   const dbVersion = useDbStore((s) => s.dbVersion);
+  const bumpVersion = useDbStore((s) => s.bumpVersion);
 
   const debt = useMemo(
     () => (dbReady && id ? debtsRepo.getById(id) : null),
@@ -29,6 +44,28 @@ export function DebtDetailPage() {
     () => (dbReady && id ? debtPaymentsRepo.listForDebt(id) : []),
     [dbReady, dbVersion, id],
   );
+
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+
+  function handleArchive() {
+    if (!id) return;
+    debtsRepo.deactivate(id);
+    bumpVersion();
+  }
+
+  function handleReactivate() {
+    if (!id) return;
+    debtsRepo.reactivate(id);
+    bumpVersion();
+  }
+
+  function handleConfirmDelete() {
+    if (!id) return;
+    debtsRepo.delete(id);
+    bumpVersion();
+    setConfirmDeleteOpen(false);
+    navigate("/debts");
+  }
 
   if (!debt) {
     return (
@@ -63,7 +100,12 @@ export function DebtDetailPage() {
         <h1 className="font-display text-base font-semibold">
           {t("debts.detailTitle")}
         </h1>
-        <span className="size-10" aria-hidden />
+        <IconButton
+          aria-label={t("debts.editAria")}
+          onClick={() => navigate(`/debts/${debt.id}/edit`)}
+        >
+          <Pencil className="size-5" />
+        </IconButton>
       </div>
 
       <Card className="space-y-3">
@@ -73,13 +115,18 @@ export function DebtDetailPage() {
             <p className="font-display text-lg font-semibold truncate">
               {debt.name}
             </p>
-            <div className="flex items-center gap-2 mt-0.5">
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
               <Pill
                 tone={debt.currency_code === "USD" ? "info" : "neutral"}
                 className="h-5 px-2 text-[10px]"
               >
                 {debt.currency_code}
               </Pill>
+              {!debt.is_active && (
+                <Pill tone="positive" className="h-5 px-2 text-[10px]">
+                  {t("debts.archivedBadge")}
+                </Pill>
+              )}
               <span className="text-[11px] text-text-secondary">
                 {t(`addExpense.who.${ownerKey(debt.owner_type)}`)}
               </span>
@@ -177,19 +224,126 @@ export function DebtDetailPage() {
         )}
       </section>
 
+      <section className="space-y-2 pt-1">
+        <CardEyebrow>{t("debts.actions")}</CardEyebrow>
+        <Card variant="flat" className="divide-y divide-border/60 p-0">
+          {debt.is_active ? (
+            <ActionRow
+              icon={<Archive className="size-4" />}
+              label={t("debts.archive")}
+              hint={t("debts.archiveHint")}
+              onClick={handleArchive}
+            />
+          ) : (
+            <ActionRow
+              icon={<RotateCcw className="size-4" />}
+              label={t("debts.reactivate")}
+              hint={t("debts.reactivateHint")}
+              onClick={handleReactivate}
+            />
+          )}
+          <ActionRow
+            icon={<Trash2 className="size-4" />}
+            label={t("debts.deleteForever")}
+            hint={t("debts.deleteForeverHint")}
+            danger
+            onClick={() => setConfirmDeleteOpen(true)}
+          />
+        </Card>
+      </section>
+
       <div className="fixed inset-x-0 bottom-0 z-30 pointer-events-none">
         <div className="mx-auto max-w-md px-4 pb-safe-bottom pb-4 pointer-events-auto">
+          {debt.is_active ? (
+            <Button
+              block
+              size="lg"
+              onClick={() => navigate(`/debts/${debt.id}/pay`)}
+              className="bg-gradient-to-br from-violet-soft via-violet to-violet-ink text-white shadow-violet-glow"
+            >
+              {t("debts.payCta")}
+            </Button>
+          ) : (
+            <Button
+              block
+              size="lg"
+              variant="ghost"
+              onClick={handleReactivate}
+              className="border border-border"
+            >
+              {t("debts.reactivateCta")}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <Sheet
+        open={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        side="center"
+        title={t("debts.deleteConfirm.title", { name: debt.name })}
+        description={t("debts.deleteConfirm.description")}
+      >
+        <div className="flex flex-col gap-2 mt-2">
           <Button
             block
             size="lg"
-            onClick={() => navigate(`/debts/${debt.id}/pay`)}
-            className="bg-gradient-to-br from-violet-soft via-violet to-violet-ink text-white shadow-violet-glow"
+            onClick={handleConfirmDelete}
+            className="bg-expense text-white"
           >
-            {t("debts.payCta")}
+            {t("debts.deleteConfirm.confirm")}
+          </Button>
+          <Button
+            block
+            size="lg"
+            variant="ghost"
+            onClick={() => setConfirmDeleteOpen(false)}
+          >
+            {t("common.cancel")}
           </Button>
         </div>
-      </div>
+      </Sheet>
     </div>
+  );
+}
+
+function ActionRow({
+  icon,
+  label,
+  hint,
+  onClick,
+  danger = false,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  hint?: string;
+  onClick: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors active:bg-surface-2 ${
+        danger ? "text-expense-ink" : "text-text-primary"
+      }`}
+    >
+      <span
+        className={`grid place-items-center size-8 rounded-lg ${
+          danger ? "bg-expense/10" : "bg-surface-2"
+        }`}
+      >
+        {icon}
+      </span>
+      <span className="flex-1">
+        <span className="block text-sm font-medium">{label}</span>
+        {hint && (
+          <span className="block text-[11px] text-text-secondary mt-0.5">
+            {hint}
+          </span>
+        )}
+      </span>
+    </button>
   );
 }
 
