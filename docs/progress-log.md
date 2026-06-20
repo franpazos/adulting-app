@@ -4,6 +4,27 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-06-02 — Version 0.4.3: local dev with backend functions (`pnpm dev:local`)
+
+Fran wanted to test the "Connect with Google" flow in local dev on his laptop. With just `pnpm dev` (Vite only), every `/api/auth/*` call 404'd because Vite doesn't know about the `api/` folder. The fix turned out to need three independent pieces, and the debugging session surfaced an interesting Upstash heads-up too.
+
+**New: `pnpm dev:local` script.** Runs `vercel dev --listen 5173`, which boots Vite under the hood AND serves the `api/` functions on the same port — so the local app at `http://localhost:5173` works end-to-end including auth, matching the redirect URI Fran already had registered in Google Console. The script also pre-sources `.env.local` into the shell (`set -a && . ./.env.local && set +a`) because of the env-var quirk below.
+
+**Removed: SPA fallback rewrite in `vercel.json`.** The explicit `"rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]` block was rewriting every Vite dev-mode module path (`/main.tsx`, `/@react-refresh`, `/manifest.webmanifest`) to `/index.html`, which made the browser receive HTML when it asked for JS/JSON. The page would render blank with 500s in the console. Removed the block entirely — `framework: "vite"` already gives us the SPA fallback in production automatically. Verified post-deploy: `https://adultingapp.vercel.app/settings` loads fine from a cold URL bar, so the auto-fallback works.
+
+**Added: `pnpm-workspace.yaml`** with `onlyBuiltDependencies: [esbuild]`. pnpm 10+ refuses to run `postinstall` scripts unless explicitly allowed; `esbuild` needs its postinstall to fetch the platform binary. Without this, `pnpm install` errored on a clean checkout. Tried `package.json` `"pnpm"` field first (deprecated in v10+) and the `pnpm-workspace.yaml` `allowBuilds: { esbuild: ... }` shape (wrong key) before landing on `onlyBuiltDependencies` as a list.
+
+**Debug rabbit holes worth remembering**
+- First failure on `vercel dev --listen 5173` was a port collision: Vercel CLI was assigning Vite the same port (5173), so two Node processes ended up bound — Vercel on `*:5173`, Vite on `[::1]:5173`. macOS resolves `localhost` IPv6-first, so requests went to Vite (returning either the SPA HTML or the raw `.ts` source for `/api/*` paths) and never hit Vercel's function router. Killing both processes and starting fresh fixed it; Vercel picked a random free port for Vite the second time. If this resurfaces: `pkill -9 -f vite; pkill -9 -f "vercel dev"; sleep 2; pnpm dev:local`.
+- `vercel dev` does *not* inject `.env.local` into the function runtime when the linked project has no Development-target env vars defined (ours are only Production + Preview). The shell-source trick in `dev:local` works around this; the "more correct" fix would be `vercel env add … development` for each secret, but it's tedious for nine vars and we're two users.
+- A Vite zombie in `[::1]:5173` from an earlier failed `vercel dev` will silently intercept all requests on subsequent attempts — same symptom as the port collision. Worth checking with `lsof -nP -iTCP:5173 -sTCP:LISTEN` whenever local dev acts weird.
+
+**Heads-up logged here so the next agent sees it:** Upstash sent an "Inactive Database Notice" warning that the project's Vercel Marketplace KV (`upstash-kv-cobalt-anchor`) hasn't received traffic in weeks and is in line to be archived. Email said one more notice before archiving, so it's still alive — but if the auth flow starts 500'ing on `kv.set(...)` calls in prod, that's the cause. Mitigations: use the app regularly on mobile (free traffic), upgrade Upstash plan, or migrate the refresh-token store to a different backend. Not urgent today, real risk later.
+
+**Files touched:** `package.json` (script + version bump), `vercel.json` (removed rewrite), `pnpm-workspace.yaml` (new config), `README.md` (added `pnpm dev:local` to common commands and explained when to use each).
+
+---
+
 ## 2026-06-02 — Version 0.4.2: es-ES money formatting everywhere + format module
 
 Fran asked for the European thousand-separator format (`1.234.567,89`) everywhere money is shown, including *while typing in input fields*. Turned out the codebase had eight near-identical copies of `formatEUR` / `formatAmount` (all already producing es-ES grouping), plus three broken display sites using raw `toFixed(2)` that bypassed grouping entirely, plus four money input fields with inconsistent typing behavior.

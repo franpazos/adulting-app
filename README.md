@@ -41,13 +41,16 @@ pnpm dev        # http://localhost:5173
 ### Common commands
 
 ```bash
-pnpm dev        # dev server with HMR + service worker
+pnpm dev        # Vite only — fast UI iteration, /api/* will 404
+pnpm dev:local  # vercel dev on :5173 — frontend + /api/auth/* together
 pnpm build      # type-check + production build (writes dist/)
 pnpm preview    # preview the production build locally
 pnpm lint       # eslint
 pnpm test       # vitest, runs the full suite once
 pnpm typecheck  # tsc -b --noEmit
 ```
+
+Use `pnpm dev` for everyday work — it's faster to boot and HMR is snappier. Switch to `pnpm dev:local` when you need to exercise the OAuth flow end-to-end (`/api/auth/exchange`, `refresh`, `revoke`). The `dev:local` script also pre-sources `.env.local` into the shell because `vercel dev` only auto-injects vars marked for the "Development" target in the linked Vercel project — and ours live in Production/Preview only.
 
 ### Environment variables
 

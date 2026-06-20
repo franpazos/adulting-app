@@ -1,10 +1,11 @@
 {
   "name": "adulting-app",
   "private": true,
-  "version": "0.4.2",
+  "version": "0.4.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:local": "set -a && . ./.env.local && set +a && vercel dev --listen 5173",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
