@@ -145,6 +145,7 @@ describe("entity → row mappers", () => {
       is_default: false,
       sort_order: 0,
       color: null,
+      is_active: true,
       created_at: "x",
       updated_at: "x",
     };

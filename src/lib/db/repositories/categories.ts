@@ -1,4 +1,4 @@
-import { exec, selectAll, selectOne } from "../client";
+import { exec, selectAll, selectOne, type SqlValue } from "../client";
 import type { Category, CategoryKind } from "../types";
 import { coerceBooleans, fromBool, newId, nowIso } from "./_helpers";
 import { enqueueChange } from "@/lib/sync/queue";
@@ -34,7 +34,7 @@ interface UpdateCategoryInput {
 export const categoriesRepo = {
   list(kind?: CategoryKind, activeOnly = true): Category[] {
     const whereParts: string[] = [];
-    const params: unknown[] = [];
+    const params: SqlValue[] = [];
     if (kind) {
       whereParts.push("kind = ?");
       params.push(kind);
