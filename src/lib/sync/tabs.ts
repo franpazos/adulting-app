@@ -52,6 +52,7 @@ export const RAW_TABS: ReadonlyArray<RawTabSpec> = [
       "color",
       "created_at",
       "updated_at",
+      "is_active",
     ],
   },
   {

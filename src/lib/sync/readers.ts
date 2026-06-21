@@ -106,6 +106,10 @@ export function parseCategory(row: SheetRow): Category {
     color: str(row[6]),
     created_at: reqStr(row[7], "category.created_at"),
     updated_at: reqStr(row[8], "category.updated_at"),
+    // `is_active` was added in v4. Sheets created before that won't have
+    // the column — default to `true` rather than `false` so legacy rows
+    // don't all get marked archived on first pull.
+    is_active: row[9] === undefined ? true : bool(row[9]),
   };
 }
 

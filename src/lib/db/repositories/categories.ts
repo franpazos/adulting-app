@@ -19,6 +19,18 @@ interface CreateCategoryInput {
   color?: string | null;
 }
 
+/**
+ * Update only the user-editable surface from the form: name, kind,
+ * color. The non-form fields (`is_default`, `sort_order`, `parent_id`,
+ * `is_active`) stay untouched — they're owned by other paths (seed,
+ * future reordering UI, `softDelete` / `reactivate`).
+ */
+interface UpdateCategoryInput {
+  name: string;
+  kind: CategoryKind;
+  color?: string | null;
+}
+
 export const categoriesRepo = {
   list(kind?: CategoryKind, activeOnly = true): Category[] {
     const whereParts: string[] = [];
@@ -83,23 +95,22 @@ export const categoriesRepo = {
     return c;
   },
 
-  update(id: string, input: Omit<CreateCategoryInput, "id">): Category {
+  /**
+   * Edit a category's user-facing fields (name, kind, color).
+   *
+   * Deliberately does NOT touch `is_active`, `is_default`, `sort_order`
+   * or `parent_id`. `is_active` is owned by `softDelete` / `reactivate`
+   * (editing a name shouldn't accidentally un-archive a category). The
+   * other three are populated by the seed today and would belong to
+   * future dedicated flows (drag-to-reorder, "make default" toggle,
+   * subcategory picker) — not to this form.
+   */
+  update(id: string, input: UpdateCategoryInput): Category {
     const now = nowIso();
     exec(
-      `UPDATE categories SET
-           name = ?, kind = ?, parent_id = ?, is_default = ?,
-           sort_order = ?, color = ?, updated_at = ?
-         WHERE id = ?`,
-      [
-        input.name,
-        input.kind,
-        input.parent_id ?? null,
-        fromBool(input.is_default ?? false),
-        input.sort_order ?? 0,
-        input.color ?? null,
-        now,
-        id,
-      ],
+      `UPDATE categories SET name = ?, kind = ?, color = ?, updated_at = ?
+       WHERE id = ?`,
+      [input.name, input.kind, input.color ?? null, now, id],
     );
     enqueueChange("category", id, "UPDATE");
     const c = this.getById(id);

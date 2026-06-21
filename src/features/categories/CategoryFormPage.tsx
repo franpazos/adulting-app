@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Archive, RotateCcw } from "lucide-react";
 
 import {
   Button,
@@ -9,6 +9,7 @@ import {
   CardEyebrow,
   IconButton,
   Input,
+  Pill,
   SegmentedControl,
   type SegmentedOption,
 } from "@/components/ui";
@@ -43,6 +44,7 @@ export function CategoryFormPage() {
   const [name, setName] = useState("");
   const [kind, setKind] = useState<CategoryKind>("EXPENSE");
   const [color, setColor] = useState(COLOR_PALETTE[0]!);
+  const [isActive, setIsActive] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -53,6 +55,7 @@ export function CategoryFormPage() {
     setName(c.name);
     setKind(c.kind);
     setColor(c.color ?? COLOR_PALETTE[0]!);
+    setIsActive(c.is_active);
   }, [dbReady, isEdit, id]);
 
   const valid = useMemo(() => name.trim().length > 0, [name]);
@@ -61,6 +64,31 @@ export function CategoryFormPage() {
     { value: "EXPENSE", label: t("categories.kind.expense") },
     { value: "INCOME", label: t("categories.kind.income") },
   ];
+
+  function handleArchive() {
+    if (!isEdit || !id) return;
+    if (!window.confirm(t("categories.confirmArchive"))) return;
+    try {
+      categoriesRepo.softDelete(id);
+      bumpVersion();
+      navigate("/categories");
+    } catch (err) {
+      console.error("[category-form] archive failed", err);
+      setSaveError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  function handleReactivate() {
+    if (!isEdit || !id) return;
+    try {
+      categoriesRepo.reactivate(id);
+      bumpVersion();
+      navigate("/categories");
+    } catch (err) {
+      console.error("[category-form] reactivate failed", err);
+      setSaveError(err instanceof Error ? err.message : String(err));
+    }
+  }
 
   function handleSave() {
     if (!dbReady || !valid || saving) return;
@@ -99,9 +127,16 @@ export function CategoryFormPage() {
         >
           <ChevronLeft className="size-5" />
         </IconButton>
-        <h1 className="font-display text-base font-semibold">
-          {isEdit ? t("categories.editTitle") : t("categories.newTitle")}
-        </h1>
+        <div className="flex items-center gap-2">
+          <h1 className="font-display text-base font-semibold">
+            {isEdit ? t("categories.editTitle") : t("categories.newTitle")}
+          </h1>
+          {isEdit && !isActive && (
+            <Pill tone="positive" className="h-5 px-2 text-[10px]">
+              {t("categories.archivedBadge")}
+            </Pill>
+          )}
+        </div>
         <span className="size-10" aria-hidden />
       </div>
 
@@ -148,6 +183,29 @@ export function CategoryFormPage() {
         </Card>
       </section>
 
+      {isEdit && (
+        <section className="mt-5 space-y-2">
+          <CardEyebrow>{t("categories.actions")}</CardEyebrow>
+          <Card variant="flat" className="p-0">
+            {isActive ? (
+              <ActionRow
+                icon={<Archive className="size-4" />}
+                label={t("categories.archive")}
+                hint={t("categories.archiveHint")}
+                onClick={handleArchive}
+              />
+            ) : (
+              <ActionRow
+                icon={<RotateCcw className="size-4" />}
+                label={t("categories.reactivate")}
+                hint={t("categories.reactivateHint")}
+                onClick={handleReactivate}
+              />
+            )}
+          </Card>
+        </section>
+      )}
+
       {saveError && (
         <p className="mt-3 text-sm text-expense-ink" role="alert">
           {saveError}
@@ -168,5 +226,37 @@ export function CategoryFormPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function ActionRow({
+  icon,
+  label,
+  hint,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  hint?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors active:bg-surface-2 text-text-primary"
+    >
+      <span className="grid place-items-center size-8 rounded-lg bg-surface-2">
+        {icon}
+      </span>
+      <span className="flex-1">
+        <span className="block text-sm font-medium">{label}</span>
+        {hint && (
+          <span className="block text-[11px] text-text-secondary mt-0.5">
+            {hint}
+          </span>
+        )}
+      </span>
+    </button>
   );
 }

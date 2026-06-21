@@ -176,4 +176,26 @@ describe("categoriesRepo.update", () => {
     });
     expect(categoriesRepo.getById(id)?.is_active).toBe(false);
   });
+
+  it("preserves is_default and sort_order on edits", () => {
+    // Bug-1 regression guard: editing the name of a seed category used
+    // to reset is_default=true to false and sort_order from 1..N to 0,
+    // because the form only passes {name, kind, color} and the old
+    // `update` filled missing fields with `?? false` / `?? 0`.
+    const id = SEED_IDS.categories.home; // seeded with is_default=true, sort_order=1
+    const before = categoriesRepo.getById(id)!;
+    expect(before.is_default).toBe(true);
+    expect(before.sort_order).toBe(1);
+
+    categoriesRepo.update(id, {
+      name: "Hogar renamed",
+      kind: before.kind,
+      color: before.color,
+    });
+
+    const after = categoriesRepo.getById(id)!;
+    expect(after.name).toBe("Hogar renamed");
+    expect(after.is_default).toBe(true);
+    expect(after.sort_order).toBe(1);
+  });
 });

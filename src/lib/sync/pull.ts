@@ -404,8 +404,8 @@ function updateAccount(a: Account): void {
 function insertCategory(c: Category): void {
   exec(
     `INSERT INTO categories (id, name, kind, parent_id, is_default, sort_order,
-       color, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       color, created_at, updated_at, is_active)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       c.id,
       c.name,
@@ -416,13 +416,14 @@ function insertCategory(c: Category): void {
       c.color,
       c.created_at,
       c.updated_at,
+      fromBool(c.is_active),
     ],
   );
 }
 function updateCategory(c: Category): void {
   exec(
     `UPDATE categories SET name = ?, kind = ?, parent_id = ?, is_default = ?,
-       sort_order = ?, color = ?, updated_at = ?
+       sort_order = ?, color = ?, updated_at = ?, is_active = ?
      WHERE id = ?`,
     [
       c.name,
@@ -432,6 +433,7 @@ function updateCategory(c: Category): void {
       c.sort_order,
       c.color,
       c.updated_at,
+      fromBool(c.is_active),
       c.id,
     ],
   );

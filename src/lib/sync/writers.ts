@@ -58,6 +58,7 @@ const categoryToRow = (c: Category): SheetRow => [
   c.color,
   c.created_at,
   c.updated_at,
+  b(c.is_active),
 ];
 
 const transactionToRow = (t: Transaction): SheetRow => [
