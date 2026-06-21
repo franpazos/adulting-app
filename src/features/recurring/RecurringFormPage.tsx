@@ -97,7 +97,7 @@ export function RecurringFormPage() {
   useEffect(() => {
     if (!dbReady) return;
     setCategories(
-      categoriesRepo.list(state.type === "INCOME" ? "INCOME" : "EXPENSE"),
+      categoriesRepo.list(state.type === "INCOME" ? "INCOME" : "EXPENSE", true),
     );
   }, [dbReady, state.type]);
 

@@ -214,6 +214,14 @@
     "expense": "Gastos",
     "income": "Ingresos",
     "empty": "Aún no hay categorías.",
+    "archivedHeader_one": "Archivada ({{count}})",
+    "archivedHeader_other": "Archivadas ({{count}})",
+    "archivedBadge": "Archivada",
+    "archive": "Archivar categoría",
+    "archiveHint": "Se queda en el historial pero sale del selector.",
+    "reactivate": "Reactivar categoría",
+    "reactivateHint": "Vuelve al selector de gastos.",
+    "confirmArchive": "¿Archivar esta categoría? Los movimientos antiguos la siguen mostrando.",
     "kind": {
       "expense": "Gasto",
       "income": "Ingreso"

@@ -3,7 +3,7 @@ import type { Category, CategoryKind } from "../types";
 import { coerceBooleans, fromBool, newId, nowIso } from "./_helpers";
 import { enqueueChange } from "@/lib/sync/queue";
 
-const BOOL_KEYS = ["is_default"] as const satisfies ReadonlyArray<keyof Category>;
+const BOOL_KEYS = ["is_default", "is_active"] as const satisfies ReadonlyArray<keyof Category>;
 
 function map(row: Record<string, unknown>): Category {
   return coerceBooleans<Category>(row, BOOL_KEYS);
@@ -20,15 +20,23 @@ interface CreateCategoryInput {
 }
 
 export const categoriesRepo = {
-  list(kind?: CategoryKind): Category[] {
+  list(kind?: CategoryKind, activeOnly = true): Category[] {
+    const whereParts: string[] = [];
+    const params: unknown[] = [];
     if (kind) {
-      return selectAll<Record<string, unknown>>(
-        "SELECT * FROM categories WHERE kind = ? ORDER BY sort_order ASC, name ASC",
-        [kind],
-      ).map(map);
+      whereParts.push("kind = ?");
+      params.push(kind);
     }
+    if (activeOnly) {
+      whereParts.push("is_active = 1");
+    }
+    const where = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
+    const orderBy = kind
+      ? "ORDER BY sort_order ASC, name ASC"
+      : "ORDER BY kind ASC, sort_order ASC, name ASC";
     return selectAll<Record<string, unknown>>(
-      "SELECT * FROM categories ORDER BY kind ASC, sort_order ASC, name ASC",
+      `SELECT * FROM categories ${where} ${orderBy}`,
+      params,
     ).map(map);
   },
 
@@ -52,11 +60,12 @@ export const categoriesRepo = {
       color: input.color ?? null,
       created_at: now,
       updated_at: now,
+      is_active: true,
     };
     exec(
       `INSERT INTO categories (id, name, kind, parent_id, is_default, sort_order,
-        color, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        color, created_at, updated_at, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         c.id,
         c.name,
@@ -67,9 +76,50 @@ export const categoriesRepo = {
         c.color,
         c.created_at,
         c.updated_at,
+        fromBool(c.is_active),
       ],
     );
     enqueueChange("category", c.id, "CREATE");
     return c;
+  },
+
+  update(id: string, input: Omit<CreateCategoryInput, "id">): Category {
+    const now = nowIso();
+    exec(
+      `UPDATE categories SET
+           name = ?, kind = ?, parent_id = ?, is_default = ?,
+           sort_order = ?, color = ?, updated_at = ?
+         WHERE id = ?`,
+      [
+        input.name,
+        input.kind,
+        input.parent_id ?? null,
+        fromBool(input.is_default ?? false),
+        input.sort_order ?? 0,
+        input.color ?? null,
+        now,
+        id,
+      ],
+    );
+    enqueueChange("category", id, "UPDATE");
+    const c = this.getById(id);
+    if (!c) throw new Error(`Category ${id} disappeared after update`);
+    return c;
+  },
+
+  softDelete(id: string): void {
+    exec(
+      "UPDATE categories SET is_active = 0, updated_at = ? WHERE id = ?",
+      [nowIso(), id],
+    );
+    enqueueChange("category", id, "UPDATE");
+  },
+
+  reactivate(id: string): void {
+    exec(
+      "UPDATE categories SET is_active = 1, updated_at = ? WHERE id = ?",
+      [nowIso(), id],
+    );
+    enqueueChange("category", id, "UPDATE");
   },
 };

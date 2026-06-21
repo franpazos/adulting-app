@@ -214,6 +214,14 @@
     "expense": "Expenses",
     "income": "Income",
     "empty": "No categories yet.",
+    "archivedHeader_one": "Archived ({{count}})",
+    "archivedHeader_other": "Archived ({{count}})",
+    "archivedBadge": "Archived",
+    "archive": "Archive category",
+    "archiveHint": "Stays in history but leaves the selector.",
+    "reactivate": "Reactivate category",
+    "reactivateHint": "Returns to the expense selector.",
+    "confirmArchive": "Archive this category? Past transactions will still show it.",
     "kind": {
       "expense": "Expense",
       "income": "Income"

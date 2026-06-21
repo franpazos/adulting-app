@@ -232,6 +232,13 @@ const MIGRATIONS: Migration[] = [
         ON feedback(is_deleted);
     `,
   },
+  {
+    version: 4,
+    name: "categories_update",
+    sql: `
+      ALTER TABLE categories ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1;
+    `,
+  }
 ];
 
 function ensureMigrationsTable(): void {

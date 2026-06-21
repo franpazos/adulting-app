@@ -55,6 +55,7 @@ export interface Category {
   color: string | null;
   created_at: string;
   updated_at: string;
+  is_active: boolean; // added in v4
 }
 
 export interface Transaction {

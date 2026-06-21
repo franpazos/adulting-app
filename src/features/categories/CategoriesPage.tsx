@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
-import { Card, CardEyebrow, IconButton } from "@/components/ui";
+import { Card, CardEyebrow, IconButton, Pill } from "@/components/ui";
 import { categoriesRepo } from "@/lib/db";
 import type { Category } from "@/lib/db/types";
 import { useDbStore } from "@/store/dbStore";
@@ -16,11 +16,13 @@ export function CategoriesPage() {
   const dbVersion = useDbStore((s) => s.dbVersion);
 
   const all = useMemo(
-    () => (dbReady ? categoriesRepo.list() : []),
+    () => (dbReady ? categoriesRepo.list(undefined, false) : []),
     [dbReady, dbVersion],
   );
-  const expense = all.filter((c) => c.kind === "EXPENSE");
-  const income = all.filter((c) => c.kind === "INCOME");
+  const active = all.filter((c) => c.is_active);
+  const archived = all.filter((c) => !c.is_active);
+  const expense = active.filter((c) => c.kind === "EXPENSE");
+  const income = active.filter((c) => c.kind === "INCOME");
 
   return (
     <div className="mx-auto max-w-md px-4 pt-4 pb-8 space-y-5">
@@ -61,6 +63,16 @@ export function CategoriesPage() {
         </Section>
       )}
 
+      {archived.length > 0 && (
+        <Section
+          title={t("categories.archivedHeader", { count: archived.length })}
+        >
+          {archived.map((c) => (
+            <Row key={c.id} category={c} archived />
+          ))}
+        </Section>
+      )}
+
       {all.length === 0 && (
         <Card variant="flat" className="text-text-secondary text-sm text-center">
           {t("categories.empty")}
@@ -87,7 +99,14 @@ function Section({
   );
 }
 
-function Row({ category }: { category: Category }) {
+function Row({
+  category,
+  archived = false,
+}: {
+  category: Category;
+  archived?: boolean;
+}) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   return (
     <li>
@@ -97,6 +116,7 @@ function Row({ category }: { category: Category }) {
         className={cn(
           "w-full flex items-center gap-3 px-3.5 py-3 text-left",
           "active:bg-surface-2 transition-colors",
+          archived && "opacity-60 grayscale",
         )}
       >
         <span
@@ -109,11 +129,17 @@ function Row({ category }: { category: Category }) {
           {category.name.slice(0, 1).toUpperCase()}
         </span>
         <span className="flex-1 text-sm font-medium">{category.name}</span>
-        {category.color && (
-          <span
-            className="size-3 rounded-full"
-            style={{ background: category.color }}
-          />
+        {archived ? (
+          <Pill tone="positive" className="h-5 px-2 text-[10px]">
+            {t("categories.archivedBadge")}
+          </Pill>
+        ) : (
+          category.color && (
+            <span
+              className="size-3 rounded-full"
+              style={{ background: category.color }}
+            />
+          )
         )}
         <ChevronRight className="size-4 text-text-muted" />
       </button>

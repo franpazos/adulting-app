@@ -68,15 +68,11 @@ export function CategoryFormPage() {
     setSaveError(null);
     try {
       if (isEdit && id) {
-        // categoriesRepo doesn't expose `update` yet; do an inline UPDATE.
-        // (Phase 7b candidate to formalize.)
-        const existing = categoriesRepo.getById(id);
-        if (existing) {
-          // We have to reach into client.exec because update isn't on the repo.
-          // Keep it explicit and inline rather than adding a half-baked method.
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-        }
-        updateCategoryInline(id, { name: name.trim(), kind, color });
+        categoriesRepo.update(id, {
+          name: name.trim(),
+          kind,
+          color,
+        });
       } else {
         categoriesRepo.create({
           name: name.trim(),
@@ -172,21 +168,5 @@ export function CategoryFormPage() {
         </div>
       </div>
     </div>
-  );
-}
-
-// Inline update helper — avoids broadening the repo for this single call site.
-// If categories grow more edit operations, promote this to categoriesRepo.update.
-import { exec } from "@/lib/db/client";
-import { nowIso } from "@/lib/db/repositories/_helpers";
-
-function updateCategoryInline(
-  id: string,
-  patch: { name: string; kind: CategoryKind; color: string },
-) {
-  exec(
-    `UPDATE categories SET name = ?, kind = ?, color = ?, updated_at = ?
-     WHERE id = ?`,
-    [patch.name, patch.kind, patch.color, nowIso(), id],
   );
 }
