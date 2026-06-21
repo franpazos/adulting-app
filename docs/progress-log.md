@@ -4,6 +4,43 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-06-03 — Version 0.4.6: Categories CRUD closes the loop + sync fixes
+
+Companion to 0.4.4 (Debts CRUD). After auditing the codebase for the same "consumption built before construction" pattern we'd just closed in Debts, Categories popped up as the next biggest gap: edit was a hack (inline raw `UPDATE` bypassing the repo, called `updateCategoryInline`), there was no delete UI, and `categoriesRepo` was missing `update` / `softDelete` / `reactivate`. Fran took 0.4.5 to do the repo work himself old-school (commits `8f59681` + `dcfa5dc`); I followed in 0.4.6 with the UI wire-up and three bug fixes the audit surfaced.
+
+**Schema + repo** (Fran in 0.4.5)
+- Migration v4 added `is_active INTEGER NOT NULL DEFAULT 1` to the `categories` table.
+- `Category` type gained `is_active: boolean`.
+- `categoriesRepo` gained `update(id, input)`, `softDelete(id)`, `reactivate(id)`. `BOOL_KEYS` now includes `is_active` (necessary so rows come back as real booleans, not `0/1`).
+- `list()` signature is now `list(kind?, activeOnly = true)`; default filters by `is_active = 1` and explicit `false` returns archived too.
+- `CategoryFormPage` swapped its inline SQL hack for a clean `categoriesRepo.update(id, payload)` call. Dead code from the abandoned refactor (the `if (existing) { /* comment-only block */ }`) was removed in the process.
+- `CategoriesPage` now shows an "Archivadas (N)" section with the same archived-row visual we built for Debts: `opacity-60 grayscale` plus a green "Archivada" pill in place of the color dot.
+
+**Three audit bugs caught between 0.4.5 and 0.4.6**
+- **`update()` was clobbering `is_default` and `sort_order` on every form save.** The form passes only `{name, kind, color}`; the previous `update()` filled missing fields with `?? false` / `?? 0`, so editing the name of "Hogar" (seeded with `is_default=true, sort_order=1`) reset both to defaults. Two fixes weighed: full-update + carryover (the pattern we used in DebtFormPage), or limited-update where `update()` only touches form-editable fields. Picked the limited approach — new `UpdateCategoryInput { name, kind, color }` type, SQL only writes those columns + `updated_at`. Cleaner contract, impossible to clobber by mistake, and `is_active` stays out of the `update()` API surface entirely (`softDelete` / `reactivate` are the only paths that flip it). JSDoc above `update()` documents the ownership boundary so the next agent doesn't have to re-derive it. Regression test pinned in `categories.test.ts:preserves is_default and sort_order on edits`.
+- **The sync pipeline didn't know about `is_active`.** Four sites: `tabs.ts` headers didn't include the column, `writers.ts/categoryToRow` didn't emit it, `readers.ts/parseCategory` didn't read it, and `pull.ts insertCategory` / `updateCategory` didn't write it. Result: a multi-device sync round-trip would clobber the archived state — Sam's pull from a sheet without the column would default everything to active again, OR (worse) if `bool(undefined)` coerced to `false` in some path, every category would get marked archived on first pull. Fixed all four. The reader uses `row[9] === undefined ? true : bool(row[9])` so legacy sheets without the column default to active, never to archived.
+- **Trailing newline missing** in `categories.ts` after Fran's manual edits. Cosmetic but POSIX-y. Fixed.
+
+**UI completion** (0.4.6)
+- `CategoryFormPage` loads `c.is_active` into local state on edit.
+- When the category is archived, a green "Archivada" pill sits next to the title in the header.
+- New "Acciones" section (edit mode only) below the color picker:
+  - Active → Archive row with `window.confirm(t("categories.confirmArchive"))`, then `softDelete` + bump + navigate back to `/categories`.
+  - Archived → Reactivate row (no confirm, non-destructive), then `reactivate` + bump + navigate.
+- Local `ActionRow` component mirrors the pattern from `DebtDetailPage`, minus the danger variant since categories deliberately have no hard-delete (decided after a short discussion: blocking delete when transactions reference a category is "more restrictive, not more professional"; soft delete preserves both UX and historical integrity without any caller having to ask "can I delete this?").
+
+**i18n** — `categories.actions`, `categories.archive`, `categories.archiveHint`, `categories.reactivate`, `categories.reactivateHint`, `categories.confirmArchive`, `categories.archivedHeader_one`/`_other`, `categories.archivedBadge`. Both locales updated.
+
+**Tests** — `src/lib/db/repositories/__tests__/categories.test.ts` (11 → 12 cases). New: `list()` default-active filter, `activeOnly=false` returns archived, kind + active filter together, `is_active` comes back as boolean (the BOOL_KEYS regression), softDelete/reactivate round-trip, transactions referencing an archived category still resolve, `update()` changes name/kind/color, `update()` preserves `created_at`, `update()` advances `updated_at`, `update()` doesn't reactivate by accident, and the new Bug-1 regression test pinning `is_default` + `sort_order` preservation. Full suite 193/193 green.
+
+**Scope deliberately left out** (notes for whoever comes next)
+- No hard-delete option for categories. The discussion concluded soft delete handles the real use case ("stop using this category for new expenses") without losing historical context. If we ever want hard delete, the gating logic — only allow if no transactions reference the category — is documented in this session's transcript.
+- The `update()` API surface is now narrow on purpose. If `sort_order` ever becomes user-editable (drag-to-reorder), it should get its own `reorder(id, sortOrder)` method on the repo, not get folded back into `update()`. Same for `is_default` ("mark as default") — dedicated toggle, not part of the name/color edit flow.
+
+**Files touched** (across 0.4.5 + 0.4.6): `src/lib/db/migrations.ts`, `src/lib/db/types.ts`, `src/lib/db/repositories/categories.ts` (+ tests), `src/lib/sync/tabs.ts`, `src/lib/sync/writers.ts`, `src/lib/sync/readers.ts`, `src/lib/sync/pull.ts`, `src/features/categories/CategoriesPage.tsx`, `src/features/categories/CategoryFormPage.tsx`, `src/features/recurring/RecurringFormPage.tsx`, `src/lib/i18n/{en,es}.json`.
+
+---
+
 ## 2026-06-02 — Version 0.4.4: Debts CRUD finally closes the loop
 
 Sam reported the `+` button on `/debts` did nothing. Auditing showed it had been a placeholder without an `onClick` since the very first Phase 7 commit (`b7aff59`, 2026-05-04). The audit also surfaced a deeper hole: there was no `NewDebtPage` or `EditDebtPage` at all, no routes for them, and `debtsRepo` had no `softDelete` or `delete` method. Debts you could see, list, pay, but never create, edit or remove from the UI — the seed data was your only source of debts. Same "consumption built before construction" pattern that already bit us in categories (still pending — Fran takes that one). Logged the audit of every other suspected gap in this conversation; for `accounts` the answer was "by design" (three fixed enum-backed accounts per spec §11.9), no fix needed.
