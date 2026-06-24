@@ -60,6 +60,10 @@ const RecurringFormPage = lazyNamed(
   () => import("@/features/recurring/RecurringFormPage"),
   "RecurringFormPage",
 );
+const RecurringDetailPage = lazyNamed(
+  () => import("@/features/recurring/RecurringDetailPage"),
+  "RecurringDetailPage",
+);
 const CategoriesPage = lazyNamed(
   () => import("@/features/categories/CategoriesPage"),
   "CategoriesPage",
@@ -126,7 +130,8 @@ export const router = createBrowserRouter([
       { path: "settlements/settle", element: Lazy(<SettleUpPage />) },
       { path: "recurring", element: Lazy(<RecurringPage />) },
       { path: "recurring/new", element: Lazy(<RecurringFormPage />) },
-      { path: "recurring/:id", element: Lazy(<RecurringFormPage />) },
+      { path: "recurring/:id", element: Lazy(<RecurringDetailPage />) },
+      { path: "recurring/:id/edit", element: Lazy(<RecurringFormPage />) },
       { path: "categories", element: Lazy(<CategoriesPage />) },
       { path: "categories/new", element: Lazy(<CategoryFormPage />) },
       { path: "categories/:id", element: Lazy(<CategoryFormPage />) },

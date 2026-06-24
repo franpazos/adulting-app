@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 
@@ -18,6 +18,7 @@ import { IconButton } from "@/components/ui";
 import {
   TransactionForm,
   defaultFormValues,
+  formatAmountForInput,
   parseAmount,
   type TransactionFormValues,
 } from "./TransactionForm";
@@ -27,11 +28,15 @@ import {
   expenseAllocator,
   recomputeForTransaction,
 } from "@/lib/calculations";
-import { transactionsRepo } from "@/lib/db";
+import { recurringRepo, transactionsRepo } from "@/lib/db";
 import { useDbStore } from "@/store/dbStore";
 import { useUiStore } from "@/store/uiStore";
 import { useDefaultsStore } from "@/store/defaultsStore";
-import { SOURCE_TO_ACCOUNT, SOURCE_TO_USER } from "./sources";
+import {
+  SOURCE_TO_ACCOUNT,
+  SOURCE_TO_USER,
+  accountIdToCashSource,
+} from "./sources";
 import {
   buildPatternKey,
   lookupLastUsed,
@@ -41,9 +46,12 @@ import {
 export function AddExpensePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const dbReady = useDbStore((s) => s.status === "ready");
   const bumpVersion = useDbStore((s) => s.bumpVersion);
   const setMonthKey = useUiStore((s) => s.setMonthKey);
+
+  const fromRecurringId = searchParams.get("fromRecurring");
 
   const defaults = useDefaultsStore.getState();
   const [values, setValues] = useState<TransactionFormValues>(() => {
@@ -74,6 +82,30 @@ export function AddExpensePage() {
     }
     setValues(next);
   };
+
+  // Prefill from a recurring item when ?fromRecurring=<id> is present.
+  // Date stays "today" — the user types the actual paid date if needed.
+  // Flagging the category as touched stops the pattern-suggestion effect
+  // from clobbering the recurring's category once source/owner mount.
+  useEffect(() => {
+    if (!dbReady || !fromRecurringId) return;
+    const r = recurringRepo.getById(fromRecurringId);
+    if (!r || r.type === "DEBT_PAYMENT") return;
+    userTouchedCategoryRef.current = true;
+    setValues((prev) => ({
+      ...prev,
+      amountText: formatAmountForInput(r.amount),
+      source: r.source_account_id
+        ? accountIdToCashSource(r.source_account_id)
+        : prev.source,
+      owner: r.owner_type,
+      splitFranPercent:
+        r.owner_type === "HOUSEHOLD"
+          ? r.default_shared_split_percent ?? prev.splitFranPercent
+          : prev.splitFranPercent,
+      categoryId: r.category_id ?? prev.categoryId,
+    }));
+  }, [dbReady, fromRecurringId]);
 
   // When the pattern (source/owner/split) changes and the user hasn't
   // touched the category, refresh the suggestion from memory.
@@ -125,7 +157,7 @@ export function AddExpensePage() {
         buildPatternKey(values.source, values.owner, values.splitFranPercent),
         { categoryId: values.categoryId },
       );
-      navigate("/");
+      navigate(fromRecurringId ? `/recurring/${fromRecurringId}` : "/");
     } catch (err) {
       console.error("[add-expense] save failed", err);
       setSaveError(err instanceof Error ? err.message : String(err));

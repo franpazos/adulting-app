@@ -144,11 +144,13 @@ export function RecurringFormPage() {
       };
       if (isEdit && id) {
         recurringRepo.update(id, payload);
+        bumpVersion();
+        navigate(`/recurring/${id}`);
       } else {
         recurringRepo.create(payload);
+        bumpVersion();
+        navigate("/recurring");
       }
-      bumpVersion();
-      navigate("/recurring");
     } catch (err) {
       console.error("[recurring-form] save failed", err);
       setSaveError(err instanceof Error ? err.message : String(err));

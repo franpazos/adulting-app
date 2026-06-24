@@ -124,4 +124,12 @@ export const recurringRepo = {
     );
     enqueueChange("recurring_item", id, "UPDATE");
   },
+
+  reactivate(id: string): void {
+    exec(
+      "UPDATE recurring_items SET is_active = 1, updated_at = ? WHERE id = ?",
+      [nowIso(), id],
+    );
+    enqueueChange("recurring_item", id, "UPDATE");
+  },
 };

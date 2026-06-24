@@ -4,6 +4,38 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-06-25 — Version 0.4.7: Recurring Level 1 — quick-fill from a recurring
+
+First of three planned levels for closing the gap between "recurring as forecast" and "recurring as a real workflow". Today: registering this month's payment of a recurring is one tap, with amount/source/owner/category/split prefilled from the recurring's defaults. Levels 2 (paid/pending state per month, with `transactions.recurring_id`) and 3 (auto-instantiation behind the `auto_generate_transaction` flag) are deliberately out of scope.
+
+**Architecture decision: introduced `RecurringDetailPage`** instead of bolting the CTA onto `RecurringFormPage`. The form was previously serving double duty as "edit" and "view" via `/recurring/:id`. With Level 2 on the horizon (paid/pending toggles, monthly state, etc.) we'd need a proper detail home anyway, so doing the refactor now costs the same as doing it in two steps later. New route shape mirrors debts:
+- `/recurring` → `RecurringPage` (list, unchanged)
+- `/recurring/new` → `RecurringFormPage` (unchanged)
+- `/recurring/:id` → `RecurringDetailPage` (new — read-only summary, actions, sticky CTA)
+- `/recurring/:id/edit` → `RecurringFormPage` (was `/recurring/:id`)
+
+**`RecurringDetailPage`** (new) — header with back chevron + edit pencil (→ `/edit`), hero Card with avatar/name/type+monthly+archived pills/amount in the recurring's accent color (`positive-ink` for income, `text-primary` for expense), summary row of source/owner/category labels, an "Acciones" Card mirroring the debts pattern (Archive when active, Reactivate when archived), and the sticky CTA at the bottom: **"Registrar pago de este mes"** → navigates to `/add?fromRecurring=<id>`. For DEBT_PAYMENT recurrings the CTA is suppressed and replaced with an inline hint Card linking to `/debts`, because `/add` is the expense flow and there's no recurring→debt FK yet (a Level 3 concern). For INCOME the CTA is also hidden — you don't "pay" income, you just receive it. Archived items get a ghost-style "Reactivar recurrente" sticky in place of the violet CTA, matching `DebtDetailPage`.
+
+**`RecurringFormPage`** — on edit-mode save, now navigates to `/recurring/${id}` (the new detail page) instead of `/recurring`. New-mode save still goes to `/recurring` because there's nowhere else useful to land. Deactivate still goes to `/recurring` since the item is now hidden from the active list.
+
+**`AddExpensePage`** — reads `?fromRecurring=<id>` via `useSearchParams`. Effect on `dbReady + fromRecurringId` loads the recurring and prefills `amountText`, `source` (via `accountIdToCashSource`), `owner`, `splitFranPercent` (from `default_shared_split_percent` when owner=HOUSEHOLD), and `categoryId`. **Date stays "today"** — the user types the actual paid date if it differs, which is the modal case. Setting `userTouchedCategoryRef.current = true` before the prefill ensures the existing pattern-tracker effect (`source/owner/split` → smart-suggest category from `lastUsed`) doesn't immediately clobber the recurring's category. On save, when `fromRecurring` is present, navigates back to `/recurring/${id}` (the detail page) instead of Home — closes the loop nicely.
+
+**`recurringRepo.reactivate(id)`** (new) — mirrors the `deactivate` shape: flips `is_active = 1`, bumps `updated_at`, enqueues an UPDATE sync row. Symmetric with `categoriesRepo.reactivate` and `debtsRepo.reactivate`. Without this method the Detail page's "Reactivate" actions had no repo to call.
+
+**Scope decisions captured for the next agent**
+- The Detail page does not yet hard-delete a recurring. Today, soft-delete (Archive) is the only destruction path. If hard-delete ever becomes a requirement, mirror the debts pattern (a `Sheet side="center"` with destructive confirm and a dedicated `recurringRepo.delete(id)` method).
+- The CTA is hidden for INCOME too, not just DEBT_PAYMENT. Income recurrings exist as forecast inputs ("Nómina €2.500"), not actions to confirm. If a "Mark income received" workflow ever materializes, that's its own UI — not the quick-fill flow.
+- No "already paid this month" detection on the Detail page yet. That belongs to Level 2 — it needs `transactions.recurring_id`, which doesn't exist yet. The CTA today happily creates a second transaction if the user taps it twice; a `console.warn` for that case will come with Level 2.
+- No new types schema: zero changes to `recurring_items`, zero changes to `transactions`. Level 1 is pure UX wiring — that's why it's shippable as a standalone increment.
+
+**i18n** — added `recurring.detailTitle`, `editAria`, `notFound`, `backToList`, `monthlyExpected`, `actions`, `archive`, `archiveHint`, `reactivate`, `reactivateHint`, `reactivateCta`, `archivedBadge`, `quickFillCta`, plus the `debtHint.{title,body,cta}` group. Both `es.json` and `en.json` updated.
+
+**Tests** — `src/lib/db/repositories/__tests__/recurring.test.ts` (new, 3 cases). Covers deactivate → hidden-by-default, reactivate → restored, reactivate idempotent on an already-active item. The richer paid/pending semantics (`isPaidForMonth`, soft-deleted transaction → unpaid, etc.) intentionally deferred to Level 2 where they're meaningful. Full suite: 196/196 green. `pnpm exec tsc -b` clean. `pnpm build` succeeds (RecurringDetailPage emits as a 5.36 kB chunk, 1.83 kB gzipped).
+
+**Files touched**: `src/features/recurring/RecurringDetailPage.tsx` (new), `src/features/recurring/RecurringFormPage.tsx`, `src/features/add-expense/AddExpensePage.tsx`, `src/lib/db/repositories/recurring.ts`, `src/lib/db/repositories/__tests__/recurring.test.ts` (new), `src/app/router.tsx`, `src/lib/i18n/{en,es}.json`, `package.json`.
+
+---
+
 ## 2026-06-03 — Version 0.4.6: Categories CRUD closes the loop + sync fixes
 
 Companion to 0.4.4 (Debts CRUD). After auditing the codebase for the same "consumption built before construction" pattern we'd just closed in Debts, Categories popped up as the next biggest gap: edit was a hack (inline raw `UPDATE` bypassing the repo, called `updateCategoryInline`), there was no delete UI, and `categoriesRepo` was missing `update` / `softDelete` / `reactivate`. Fran took 0.4.5 to do the repo work himself old-school (commits `8f59681` + `dcfa5dc`); I followed in 0.4.6 with the UI wire-up and three bug fixes the audit surfaced.
