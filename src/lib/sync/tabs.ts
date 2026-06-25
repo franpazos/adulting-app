@@ -133,6 +133,7 @@ export const RAW_TABS: ReadonlyArray<RawTabSpec> = [
       "is_active",
       "created_at",
       "updated_at",
+      "is_deleted",
     ],
   },
   {

@@ -135,6 +135,8 @@ const debtToRow = (d: Debt): SheetRow => [
   b(d.is_active),
   d.created_at,
   d.updated_at,
+  // Appended in v7. Soft-delete tombstone propagates via sync.
+  b(d.is_deleted),
 ];
 
 const debtPaymentToRow = (p: DebtPayment): SheetRow => [

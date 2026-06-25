@@ -199,6 +199,9 @@ export function parseDebt(row: SheetRow): Debt {
     is_active: bool(row[11]),
     created_at: reqStr(row[12], "debt.created_at"),
     updated_at: reqStr(row[13], "debt.updated_at"),
+    // Appended in v7. Legacy pre-v7 sheets stop at index 13, so a
+    // missing cell at 14 → false (the debt is "live", not soft-deleted).
+    is_deleted: row[14] === undefined ? false : bool(row[14]),
   };
 }
 

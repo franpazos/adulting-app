@@ -102,16 +102,33 @@ describe("debtsRepo.adjustBalance auto-deactivate", () => {
   });
 });
 
-describe("debtsRepo.delete (hard delete with cascade)", () => {
-  it("removes the debt row from the table", () => {
+describe("debtsRepo.delete (soft delete — v7)", () => {
+  it("hides the debt from getById and all list paths", () => {
     const id = SEED_IDS.debts.franToFamilyUsd;
     expect(debtsRepo.getById(id)).not.toBeNull();
     debtsRepo.delete(id);
     expect(debtsRepo.getById(id)).toBeNull();
+    expect(debtsRepo.list(true).some((d) => d.id === id)).toBe(false);
+    // Crucially, even `list(false)` (which exposes archived/inactive
+    // debts) must filter soft-deleted rows. Otherwise they'd resurface
+    // in the "Archivadas" section.
     expect(debtsRepo.list(false).some((d) => d.id === id)).toBe(false);
   });
 
-  it("cascades to debt_payments but leaves the original transactions intact", () => {
+  it("preserves the row in the table so sync round-trips don't re-insert it", () => {
+    const id = SEED_IDS.debts.franToFamilyUsd;
+    debtsRepo.delete(id);
+    // Read raw (bypassing the repo's filter) — the row is still there
+    // with is_deleted=1, which is what sync needs to push as a tombstone.
+    const rows = selectAll<{ id: string; is_deleted: number }>(
+      "SELECT id, is_deleted FROM debts WHERE id = ?",
+      [id],
+    );
+    expect(rows.length).toBe(1);
+    expect(rows[0].is_deleted).toBe(1);
+  });
+
+  it("keeps debt_payments intact (no cascade) — soft-delete is reversible at the DB level", () => {
     const id = SEED_IDS.debts.franToFamilyUsd;
 
     // Seed a debt_payment + transaction pointing at this debt.
@@ -140,8 +157,8 @@ describe("debtsRepo.delete (hard delete with cascade)", () => {
 
     debtsRepo.delete(id);
 
-    // debt_payments row for this debt is gone.
-    expect(debtPaymentsRepo.listForDebt(id).length).toBe(0);
+    // Payment history is preserved — the cascade was tied to hard delete.
+    expect(debtPaymentsRepo.listForDebt(id).length).toBe(1);
     // The transaction itself stays in /transactions for history.
     const txRows = selectAll<{ id: string }>(
       "SELECT id FROM transactions WHERE id = ?",

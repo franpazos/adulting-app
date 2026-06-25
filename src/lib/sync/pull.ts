@@ -607,8 +607,8 @@ function insertDebt(d: Debt): void {
   exec(
     `INSERT INTO debts (id, name, owner_type, original_amount, current_balance,
        currency_code, interest_rate, minimum_payment, payment_day,
-       strategy_priority, notes, is_active, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       strategy_priority, notes, is_active, is_deleted, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       d.id,
       d.name,
@@ -622,6 +622,7 @@ function insertDebt(d: Debt): void {
       d.strategy_priority,
       d.notes,
       fromBool(d.is_active),
+      fromBool(d.is_deleted),
       d.created_at,
       d.updated_at,
     ],
@@ -632,7 +633,7 @@ function updateDebt(d: Debt): void {
     `UPDATE debts SET name = ?, owner_type = ?, original_amount = ?,
        current_balance = ?, currency_code = ?, interest_rate = ?,
        minimum_payment = ?, payment_day = ?, strategy_priority = ?,
-       notes = ?, is_active = ?, updated_at = ?
+       notes = ?, is_active = ?, is_deleted = ?, updated_at = ?
      WHERE id = ?`,
     [
       d.name,
@@ -646,6 +647,7 @@ function updateDebt(d: Debt): void {
       d.strategy_priority,
       d.notes,
       fromBool(d.is_active),
+      fromBool(d.is_deleted),
       d.updated_at,
       d.id,
     ],

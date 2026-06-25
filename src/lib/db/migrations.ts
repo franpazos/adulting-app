@@ -266,6 +266,20 @@ const MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_recurring_debt
         ON recurring_items(debt_id);
     `,
+  },
+  {
+    // Convert debts hard-delete into soft-delete. The pull reconciler
+    // re-INSERTs anything it sees on Sheets that isn't local — for
+    // hard-deleted rows that means "the delete bounces back as an insert"
+    // the next time pull runs before push. Soft-delete with a flag
+    // sidesteps the problem: the row stays locally with is_deleted=1,
+    // sync propagates the flag, no row goes missing for the reconciler
+    // to misread. Same model as transactions.is_deleted.
+    version: 7,
+    name: "debts_is_deleted",
+    sql: `
+      ALTER TABLE debts ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0;
+    `,
   }
 ];
 

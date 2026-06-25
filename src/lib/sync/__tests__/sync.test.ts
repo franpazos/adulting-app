@@ -205,6 +205,7 @@ describe("entity → row mappers", () => {
       strategy_priority: 1,
       notes: null,
       is_active: true,
+      is_deleted: false,
       created_at: "x",
       updated_at: "x",
     };

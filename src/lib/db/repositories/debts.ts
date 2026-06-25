@@ -3,34 +3,43 @@ import type { Debt, DebtPayment, OwnerType } from "../types";
 import { coerceBooleans, fromBool, newId, nowIso } from "./_helpers";
 import { enqueueChange } from "@/lib/sync/queue";
 
-const DEBT_BOOL_KEYS = ["is_active"] as const satisfies ReadonlyArray<keyof Debt>;
+const DEBT_BOOL_KEYS = [
+  "is_active",
+  "is_deleted",
+] as const satisfies ReadonlyArray<keyof Debt>;
 
 function mapDebt(row: Record<string, unknown>): Debt {
   return coerceBooleans<Debt>(row, DEBT_BOOL_KEYS);
 }
 
-interface CreateDebtInput extends Omit<Debt, "id" | "created_at" | "updated_at"> {
+interface CreateDebtInput
+  extends Omit<Debt, "id" | "created_at" | "updated_at" | "is_deleted"> {
   id?: string;
+  /** Defaults to false. Soft-deleted debts are unreachable from any UI flow. */
+  is_deleted?: boolean;
 }
 
 export const debtsRepo = {
+  // All read methods filter `is_deleted = 0` unconditionally — soft-deleted
+  // debts are invisible to every UI path, including the "Archivadas"
+  // section. Sync still round-trips them via the row's flag.
   list(activeOnly = true): Debt[] {
     const sql = activeOnly
-      ? "SELECT * FROM debts WHERE is_active = 1 ORDER BY name ASC"
-      : "SELECT * FROM debts ORDER BY name ASC";
+      ? "SELECT * FROM debts WHERE is_active = 1 AND is_deleted = 0 ORDER BY name ASC"
+      : "SELECT * FROM debts WHERE is_deleted = 0 ORDER BY name ASC";
     return selectAll<Record<string, unknown>>(sql).map(mapDebt);
   },
 
   listByOwner(owner: OwnerType): Debt[] {
     return selectAll<Record<string, unknown>>(
-      "SELECT * FROM debts WHERE owner_type = ? AND is_active = 1 ORDER BY name ASC",
+      "SELECT * FROM debts WHERE owner_type = ? AND is_active = 1 AND is_deleted = 0 ORDER BY name ASC",
       [owner],
     ).map(mapDebt);
   },
 
   getById(id: string): Debt | null {
     const row = selectOne<Record<string, unknown>>(
-      "SELECT * FROM debts WHERE id = ?",
+      "SELECT * FROM debts WHERE id = ? AND is_deleted = 0",
       [id],
     );
     return row ? mapDebt(row) : null;
@@ -41,14 +50,15 @@ export const debtsRepo = {
     const d: Debt = {
       ...input,
       id: input.id ?? newId(),
+      is_deleted: input.is_deleted ?? false,
       created_at: now,
       updated_at: now,
     };
     exec(
       `INSERT INTO debts (id, name, owner_type, original_amount, current_balance,
         currency_code, interest_rate, minimum_payment, payment_day, strategy_priority,
-        notes, is_active, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        notes, is_active, is_deleted, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         d.id,
         d.name,
@@ -62,6 +72,7 @@ export const debtsRepo = {
         d.strategy_priority,
         d.notes,
         fromBool(d.is_active),
+        fromBool(d.is_deleted),
         d.created_at,
         d.updated_at,
       ],
@@ -115,25 +126,26 @@ export const debtsRepo = {
   },
 
   /**
-   * Hard-delete a debt and cascade to `debt_payments`. The original
-   * payment transactions in the `transactions` table are left intact —
-   * they remain in the user's history as DEBT_PAYMENT entries, just
-   * without a debt to point back to. `settlement_ledger` entries
-   * already computed off those transactions are also preserved.
+   * Soft-delete (v7). Flips `is_deleted = 1` so every UI query filters
+   * the row out, but the row physically persists. This is critical for
+   * sync: a hard DELETE leaves no tombstone, and the pull reconciler
+   * (which can't tell "deleted locally" from "never existed locally")
+   * would re-INSERT the debt the next time it pulls a Sheet that still
+   * has it. Soft-delete propagates the flag instead — same model as
+   * `transactions.is_deleted`. `debt_payments` rows stay untouched too
+   * (no cascade); they remain in `debt_payments_repo` but unreachable
+   * because the only access path is `listForDebt(debtId)` and the
+   * debt's getById returns null.
+   *
+   * Sync action is UPDATE, not DELETE — pushing as DELETE would remove
+   * the row from the Sheet on snapshot push, defeating the tombstone.
    */
   delete(id: string): void {
-    transaction(() => {
-      const payments = selectAll<{ id: string }>(
-        "SELECT id FROM debt_payments WHERE debt_id = ?",
-        [id],
-      );
-      for (const p of payments) {
-        exec("DELETE FROM debt_payments WHERE id = ?", [p.id]);
-        enqueueChange("debt_payment", p.id, "DELETE");
-      }
-      exec("DELETE FROM debts WHERE id = ?", [id]);
-    });
-    enqueueChange("debt", id, "DELETE");
+    exec(
+      "UPDATE debts SET is_deleted = 1, is_active = 0, updated_at = ? WHERE id = ?",
+      [nowIso(), id],
+    );
+    enqueueChange("debt", id, "UPDATE");
   },
 
   update(id: string, input: Omit<CreateDebtInput, "id">): Debt {

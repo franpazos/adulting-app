@@ -4,6 +4,42 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-06-26 — Version 0.5.2: debt delete becomes soft-delete (sync resurrection fix)
+
+Bugfix. Fran reported that hard-deleting a debt made it disappear briefly and then reappear seconds later. Root cause was a latent bug since 0.4.4 (when debts hard-delete shipped): the pull reconciler in `src/lib/sync/pull.ts:210-243` treats "row exists on the Sheet but not locally" as a remote INSERT and re-creates the row. Hard-deleted debts leave no tombstone for the reconciler to respect, so any pull between local-delete and the snapshot-push to Sheets resurrects them.
+
+**Why transactions don't have this bug.** `transactions.is_deleted` has been a soft-delete flag since the original schema. The row stays in the table, the reconciler sees it during pull, and the `updated_at` comparison handles propagation normally. Debts got hard-delete in 0.4.4 because at the time the audit didn't think about the sync round-trip. This commit aligns debts with the transactions model.
+
+**Migration v7.** `ALTER TABLE debts ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0`. Appended at the end of the row, same "additive columns go at the end" rule that v5 and v6 established. Default 0 means every existing debt is "live" post-migration.
+
+**`debtsRepo.delete()` semantics flipped:**
+- Before: `DELETE FROM debts` + manual cascade `DELETE FROM debt_payments`, enqueue `sync_queue` entry as `DELETE`.
+- After: `UPDATE debts SET is_deleted = 1, is_active = 0` (no cascade), enqueue as `UPDATE`. The "soft-delete also flips is_active" is intentional — keeps the row out of every "active" query path even if some caller forgot to filter is_deleted.
+- `debt_payments` rows survive. They're unreachable from UI because `listForDebt(id)` is the only access path and the debt's `getById` now returns null, but raw queries can still see them — useful for historical audits and future undelete features.
+
+**Filter-everywhere on read.** `debtsRepo.list`, `listByOwner`, `getById` all gain `AND is_deleted = 0`. Soft-deleted debts are invisible to every UI flow including the "Archivadas" section (the user already has Archive for reversible hiding; this filter is for the irreversible kind).
+
+**Sync (5 sites).** `tabs.ts` headers append `"is_deleted"`. `writers.ts/debtToRow` appends `b(d.is_deleted)`. `readers.ts/parseDebt` reads `row[14] === undefined ? false : bool(row[14])` (defensive: pre-v7 sheets default to "live"). `pull.ts insertDebt` / `updateDebt` both write the flag. Same pattern as the previous additive columns — no mid-row insertion, no index shift.
+
+**Sync action change.** `enqueueChange("debt", id, "UPDATE")` instead of `"DELETE"`. Critical: pushing as DELETE on snapshot push removes the row from the Sheet, defeating the tombstone. With UPDATE, the Sheet gets the row with `is_deleted=1` so other devices propagate the flag.
+
+**Behavioral impact for the user**
+- "Eliminar definitivamente" still works the same way visually (the debt disappears, doesn't come back).
+- The label "definitivamente" is now slightly less literal — the row physically persists, just unreachable. Practical experience unchanged. Not renaming the i18n key.
+- If a future "Recuperar deuda eliminada" UI ever lands, it's a `UPDATE is_deleted=0` away.
+
+**Scope decisions captured for the next agent**
+- **No reactivation UI for soft-deleted debts.** Archive is reversible (the user has Reactivar), soft-delete is intentionally not. If we ever want true undelete, it's trivial to add — but exposing it makes the "Archivar vs Eliminar definitivamente" distinction blurry. Keep them distinct.
+- **`debt_payments` not cascaded.** Soft-delete is reversible at the DB level (just flip is_deleted=0). If we ever undelete, the payment history reappears intact. If a future cleanup wants to actually hard-delete a soft-deleted debt (e.g. GDPR), it should cascade then.
+- **`recurring_items.debt_id` orphan risk.** A recurring DEBT_PAYMENT linked to a now-soft-deleted debt: the form's picker won't show it (filtered), but the existing recurring keeps the orphan FK. `debtsRepo.getById` returns null, so the autoGenerate's `if (!debt) continue` skips silently. The user sees the recurring stays in /recurring but stops materializing. The DetailPage's "debtUnlinked" hint card uses `!item.debt_id` so it wouldn't fire — the recurring looks linked but the link is broken. Acceptable for the edge case; if it bites, the fix is to also null-out the debt_id in `recurring_items` during `debtsRepo.delete`. Not doing it now to keep scope tight.
+- **The same problem would affect `accounts` if we ever delete them.** Currently the spec mandates 3 fixed accounts and we never delete them, but if AccountsPage ever gets a delete CTA, apply the same soft-delete pattern.
+
+**Tests.** `debts.test.ts` describe block renamed to `"debtsRepo.delete (soft delete — v7)"`. Three cases (up from two): hides from getById + list paths, preserves the row with `is_deleted=1` for sync round-trip purposes, debt_payments survive (no cascade). The `sync.test.ts` debt fixture gains `is_deleted: false`. Full suite: 221/221 green. `pnpm exec tsc -b` clean. `pnpm build` succeeds.
+
+**Files touched**: `src/lib/db/migrations.ts`, `src/lib/db/types.ts`, `src/lib/db/repositories/debts.ts`, `src/lib/db/repositories/__tests__/debts.test.ts`, `src/lib/sync/tabs.ts`, `src/lib/sync/writers.ts`, `src/lib/sync/readers.ts`, `src/lib/sync/pull.ts`, `src/lib/sync/__tests__/sync.test.ts`, `package.json`.
+
+---
+
 ## 2026-06-26 — Version 0.5.1: Manual INCOME entry in /add
 
 Patch on top of 0.5.0 — the recurring era left INCOME flow half-resolved. With Level 4 you can auto-generate income each month if you turn on auto_generate, but there was no path to manually enter income (Sam's variable nómina, one-off ingresos). 0.5.1 makes `/add` polymorphic over Expense/Income so the manual flows exist.
