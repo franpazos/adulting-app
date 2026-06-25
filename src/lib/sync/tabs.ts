@@ -77,6 +77,7 @@ export const RAW_TABS: ReadonlyArray<RawTabSpec> = [
       "amount_in_debt_currency",
       "created_at",
       "updated_at",
+      "recurring_id",
     ],
   },
   {

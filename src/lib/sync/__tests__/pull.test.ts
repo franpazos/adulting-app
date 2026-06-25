@@ -124,11 +124,74 @@ describe("readers round-trip with writers", () => {
       amount_in_debt_currency: 108,
       created_at: "2026-05-04T00:00:00Z",
       updated_at: "2026-05-04T00:00:00Z",
+      recurring_id: null,
     });
     const parsed = parseTransaction(row as SheetRow);
     expect(parsed.exchange_rate).toBe(1.08);
     expect(parsed.amount_in_debt_currency).toBe(108);
     expect(parsed.is_deleted).toBe(false);
+  });
+
+  it("transaction reader defaults recurring_id to null on legacy rows", () => {
+    // Pre-v5 sheets had 19 cells ending at updated_at (index 18). v5
+    // appends recurring_id at index 19. A legacy row simply has no cell
+    // there — the reader treats undefined as null (the tx isn't linked
+    // to any recurring item).
+    const legacyRow: SheetRow = [
+      "t-legacy",                // 0  id
+      "EXPENSE",                 // 1  type
+      "2026-04-10",              // 2  date
+      "2026-04",                 // 3  month_key
+      40,                        // 4  amount
+      "EUR",                     // 5  currency_code
+      null,                      // 6  description
+      null,                      // 7  notes
+      null,                      // 8  category_id
+      SEED_IDS.accounts.joint,   // 9  source_account_id
+      null,                      // 10 created_by_user_id
+      null,                      // 11 merchant
+      0,                         // 12 is_deleted
+      "MANUAL",                  // 13 origin
+      null,                      // 14 exchange_rate
+      null,                      // 15 amount_in_account_currency
+      null,                      // 16 amount_in_debt_currency
+      "2026-04-10T00:00:00Z",    // 17 created_at
+      "2026-04-10T00:00:00Z",    // 18 updated_at
+      // index 19 absent → recurring_id is missing
+    ];
+    const parsed = parseTransaction(legacyRow);
+    expect(parsed.recurring_id).toBe(null);
+    expect(parsed.created_at).toBe("2026-04-10T00:00:00Z");
+    expect(parsed.updated_at).toBe("2026-04-10T00:00:00Z");
+  });
+
+  it("transaction reader round-trips recurring_id when present", () => {
+    const row = _mappers.transactionToRow({
+      id: "t-linked",
+      type: "EXPENSE",
+      date: "2026-06-15",
+      month_key: "2026-06",
+      amount: 800,
+      currency_code: "EUR",
+      description: null,
+      notes: null,
+      category_id: null,
+      source_account_id: SEED_IDS.accounts.joint,
+      created_by_user_id: null,
+      merchant: null,
+      is_deleted: false,
+      origin: "MANUAL",
+      sheet_sync_status: "PENDING",
+      sheet_row_ref: null,
+      exchange_rate: null,
+      amount_in_account_currency: null,
+      amount_in_debt_currency: null,
+      created_at: "2026-06-15T00:00:00Z",
+      updated_at: "2026-06-15T00:00:00Z",
+      recurring_id: "rec-1",
+    });
+    const parsed = parseTransaction(row as SheetRow);
+    expect(parsed.recurring_id).toBe("rec-1");
   });
 
   it("readers reject rows missing the primary key", () => {
@@ -169,6 +232,7 @@ describe("applyTab reconciler", () => {
       amount_in_debt_currency: null,
       created_at: "2026-06-01T00:00:00Z",
       updated_at: "2026-06-01T00:00:00Z",
+      recurring_id: null,
     };
     const row = _mappers.transactionToRow(remoteTx) as SheetRow;
     const stats = _pull.applyTab("raw_transactions", [row]);
@@ -256,6 +320,7 @@ describe("applyTab reconciler", () => {
       amount_in_debt_currency: null,
       created_at: "2026-06-02T00:00:00Z",
       updated_at: "2026-06-02T00:00:00Z",
+      recurring_id: null,
     };
     const bad: SheetRow = ["", "EXPENSE", "2026-06-02"];
     const good = _mappers.transactionToRow(valid) as SheetRow;

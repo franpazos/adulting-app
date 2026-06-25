@@ -136,6 +136,11 @@ export function parseTransaction(row: SheetRow): Transaction {
     amount_in_debt_currency: num(row[16]),
     created_at: reqStr(row[17], "transaction.created_at"),
     updated_at: reqStr(row[18], "transaction.updated_at"),
+    // Appended in v5 — keep at the end so legacy pre-v5 sheets simply
+    // have `undefined` here (a transaction isn't linked to any
+    // recurring item). Mid-row insertion would shift the timestamp
+    // indices and break legacy pull.
+    recurring_id: row[19] === undefined ? null : str(row[19]),
   };
 }
 

@@ -1,7 +1,19 @@
-import { exec, selectAll, selectOne, transaction } from "../client";
+import { exec, selectAll, selectOne, selectScalar, transaction } from "../client";
 import type { RecurringItem, RecurringType } from "../types";
 import { coerceBooleans, fromBool, newId, nowIso } from "./_helpers";
 import { enqueueChange } from "@/lib/sync/queue";
+
+/**
+ * Paid-state summary for a single recurring within a month. `count` is
+ * the number of non-deleted transactions tied to the recurring in that
+ * month; a recurring is "paid" iff `count >= 1`. `lastDate` is the most
+ * recent transaction date, used in the Detail page subtitle.
+ */
+export interface RecurringMonthState {
+  count: number;
+  totalAmount: number;
+  lastDate: string | null;
+}
 
 const BOOL_KEYS = [
   "is_active",
@@ -131,5 +143,58 @@ export const recurringRepo = {
       [nowIso(), id],
     );
     enqueueChange("recurring_item", id, "UPDATE");
+  },
+
+  /** True iff at least one non-deleted transaction links to this recurring in the given month. */
+  isPaidForMonth(id: string, monthKey: string): boolean {
+    const count = selectScalar(
+      `SELECT COUNT(*) FROM transactions
+       WHERE recurring_id = ? AND month_key = ? AND is_deleted = 0`,
+      [id, monthKey],
+    );
+    return count > 0;
+  },
+
+  /**
+   * Batched paid-state for every recurring touched in a month. Returns a
+   * Map keyed by `recurring_id`; recurrings with no transaction in the
+   * month are simply absent from the Map (caller treats absence as
+   * unpaid). One query for the whole page, not N+1.
+   */
+  paidStateForMonth(monthKey: string): Map<string, RecurringMonthState> {
+    const rows = selectAll<{
+      recurring_id: string;
+      count: number;
+      total_amount: number;
+      last_date: string;
+    }>(
+      `SELECT recurring_id,
+              COUNT(*) AS count,
+              COALESCE(SUM(amount), 0) AS total_amount,
+              MAX(date) AS last_date
+         FROM transactions
+        WHERE recurring_id IS NOT NULL
+          AND month_key = ?
+          AND is_deleted = 0
+        GROUP BY recurring_id`,
+      [monthKey],
+    );
+    const map = new Map<string, RecurringMonthState>();
+    for (const r of rows) {
+      map.set(r.recurring_id, {
+        count: r.count,
+        totalAmount: r.total_amount,
+        lastDate: r.last_date ?? null,
+      });
+      if (import.meta.env.DEV && r.count > 1) {
+        // Surface duplicate payments while debugging; the UI still shows
+        // a single ✅ — counting/visualizing duplicates is out of scope
+        // for Level 2 (see decisions log).
+        console.warn(
+          `[recurring] ${r.recurring_id} has ${r.count} transactions in ${monthKey}`,
+        );
+      }
+    }
+    return map;
   },
 };

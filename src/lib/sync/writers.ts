@@ -81,6 +81,9 @@ const transactionToRow = (t: Transaction): SheetRow => [
   t.amount_in_debt_currency,
   t.created_at,
   t.updated_at,
+  // Appended in v5. Keep at the end so legacy sheets without the column
+  // simply yield `undefined` at this index (reader → null).
+  t.recurring_id,
 ];
 
 const allocationToRow = (a: TransactionAllocation): SheetRow => [

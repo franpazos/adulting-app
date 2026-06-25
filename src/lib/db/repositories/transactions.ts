@@ -44,6 +44,7 @@ export interface CreateTransactionInput {
   exchange_rate?: number | null;
   amount_in_account_currency?: number | null;
   amount_in_debt_currency?: number | null;
+  recurring_id?: string | null;
   allocations: AllocationInput[];
 }
 
@@ -75,6 +76,7 @@ export const transactionsRepo = {
       exchange_rate: input.exchange_rate ?? null,
       amount_in_account_currency: input.amount_in_account_currency ?? null,
       amount_in_debt_currency: input.amount_in_debt_currency ?? null,
+      recurring_id: input.recurring_id ?? null,
       created_at: now,
       updated_at: now,
     };
@@ -85,8 +87,8 @@ export const transactionsRepo = {
           description, notes, category_id, source_account_id, created_by_user_id,
           merchant, is_deleted, origin, sheet_sync_status, sheet_row_ref,
           exchange_rate, amount_in_account_currency, amount_in_debt_currency,
-          created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          recurring_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           tx.id,
           tx.type,
@@ -107,6 +109,7 @@ export const transactionsRepo = {
           tx.exchange_rate,
           tx.amount_in_account_currency,
           tx.amount_in_debt_currency,
+          tx.recurring_id,
           tx.created_at,
           tx.updated_at,
         ],

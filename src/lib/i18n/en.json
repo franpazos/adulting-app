@@ -282,6 +282,11 @@
     "reactivateHint": "Counts toward the monthly forecast again.",
     "reactivateCta": "Reactivate recurring",
     "archivedBadge": "Archived",
+    "paidThisMonth": "Paid this month",
+    "pendingThisMonth": "Pending this month",
+    "lastPaidOn": "Last paid: {{date}}",
+    "paidProgress": "Paid this month",
+    "paidOfExpected": "{{paid}} of {{total}}",
     "quickFillCta": "Register this month's payment",
     "debtHint": {
       "title": "Debt payment",

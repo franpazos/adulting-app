@@ -445,8 +445,8 @@ function insertTransaction(t: Transaction): void {
        description, notes, category_id, source_account_id, created_by_user_id,
        merchant, is_deleted, origin, sheet_sync_status, sheet_row_ref,
        exchange_rate, amount_in_account_currency, amount_in_debt_currency,
-       created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       recurring_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       t.id,
       t.type,
@@ -467,6 +467,7 @@ function insertTransaction(t: Transaction): void {
       t.exchange_rate,
       t.amount_in_account_currency,
       t.amount_in_debt_currency,
+      t.recurring_id,
       t.created_at,
       t.updated_at,
     ],
@@ -479,7 +480,7 @@ function updateTransaction(t: Transaction): void {
        source_account_id = ?, created_by_user_id = ?, merchant = ?,
        is_deleted = ?, origin = ?, sheet_sync_status = ?,
        exchange_rate = ?, amount_in_account_currency = ?,
-       amount_in_debt_currency = ?, updated_at = ?
+       amount_in_debt_currency = ?, recurring_id = ?, updated_at = ?
      WHERE id = ?`,
     [
       t.type,
@@ -499,6 +500,7 @@ function updateTransaction(t: Transaction): void {
       t.exchange_rate,
       t.amount_in_account_currency,
       t.amount_in_debt_currency,
+      t.recurring_id,
       t.updated_at,
       t.id,
     ],

@@ -112,6 +112,7 @@ describe("entity → row mappers", () => {
       amount_in_debt_currency: null,
       created_at: "2026-05-04T00:00:00Z",
       updated_at: "2026-05-04T00:00:00Z",
+      recurring_id: null,
     };
     const row = _mappers.transactionToRow(t);
     expect(row[12]).toBe(0); // is_deleted

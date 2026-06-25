@@ -18,6 +18,8 @@ import {
   Archive,
   RotateCcw,
   ArrowRight,
+  Check,
+  Clock,
 } from "lucide-react";
 
 import { Avatar } from "@/components/Avatar";
@@ -32,14 +34,17 @@ import { categoriesRepo, recurringRepo } from "@/lib/db";
 import { useDbStore } from "@/store/dbStore";
 import { formatEUR } from "@/lib/utils/format";
 import { accountIdToCashSource } from "@/features/add-expense/sources";
+import { currentMonthKey } from "@/lib/date/month";
 
 export function RecurringDetailPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const dbReady = useDbStore((s) => s.status === "ready");
   const dbVersion = useDbStore((s) => s.dbVersion);
   const bumpVersion = useDbStore((s) => s.bumpVersion);
+
+  const monthKey = currentMonthKey();
 
   const item = useMemo(
     () => (dbReady && id ? recurringRepo.getById(id) : null),
@@ -52,6 +57,11 @@ export function RecurringDetailPage() {
         : null,
     [dbReady, dbVersion, item?.category_id],
   );
+  const monthState = useMemo(() => {
+    if (!dbReady || !id) return null;
+    return recurringRepo.paidStateForMonth(monthKey).get(id) ?? null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dbReady, dbVersion, id, monthKey]);
 
   function handleArchive() {
     if (!id) return;
@@ -88,6 +98,10 @@ export function RecurringDetailPage() {
   const source = item.source_account_id
     ? accountIdToCashSource(item.source_account_id)
     : null;
+  // Paid/pending only makes sense for EXPENSE — debt-payments and income
+  // can't be marked through any UI yet (Levels 1-2 don't cover them).
+  const showPaidState = item.type === "EXPENSE" && item.is_active;
+  const isPaid = (monthState?.count ?? 0) > 0;
 
   return (
     <div className="mx-auto max-w-md px-4 pb-32 space-y-5">
@@ -131,6 +145,43 @@ export function RecurringDetailPage() {
             </div>
           </div>
         </div>
+
+        {showPaidState && (
+          <div
+            className={`flex items-center gap-2 rounded-xl px-3 py-2 ${
+              isPaid
+                ? "bg-positive/10 text-positive-ink"
+                : "bg-surface-2 text-text-secondary"
+            }`}
+          >
+            <span
+              className={`grid place-items-center size-7 rounded-lg ${
+                isPaid ? "bg-positive/20" : "bg-surface"
+              }`}
+              aria-hidden
+            >
+              {isPaid ? (
+                <Check className="size-4" strokeWidth={3} />
+              ) : (
+                <Clock className="size-4" />
+              )}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">
+                {isPaid
+                  ? t("recurring.paidThisMonth")
+                  : t("recurring.pendingThisMonth")}
+              </p>
+              {isPaid && monthState?.lastDate && (
+                <p className="text-[11px] text-text-secondary mt-0.5">
+                  {t("recurring.lastPaidOn", {
+                    date: formatDate(monthState.lastDate, i18n.language),
+                  })}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="pt-2">
           <p className="t-eyebrow">
@@ -295,4 +346,12 @@ function typeKey(t: string): "expense" | "income" | "debt" {
   if (t === "INCOME") return "income";
   if (t === "DEBT_PAYMENT") return "debt";
   return "expense";
+}
+
+function formatDate(iso: string, lang: string): string {
+  const locale = lang?.startsWith("es") ? "es-ES" : "en-US";
+  return new Date(iso + "T00:00:00").toLocaleDateString(locale, {
+    day: "numeric",
+    month: "short",
+  });
 }

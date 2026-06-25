@@ -81,6 +81,12 @@ export interface Transaction {
   amount_in_account_currency: number | null;
   amount_in_debt_currency: number | null;
 
+  // Added in v5. Links a materialized transaction back to the recurring
+  // item it satisfies (Level 2 of the recurring rollout). Always null for
+  // transactions that don't come from a recurring; not auto-populated for
+  // pre-v5 rows (no backfill UI — see decisions log for 0.4.8).
+  recurring_id: string | null;
+
   created_at: string;
   updated_at: string;
 }

@@ -4,6 +4,51 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-06-25 — Version 0.4.8: Recurring Level 2 — paid/pending state per month
+
+Second of three planned levels for the recurring rollout. With 0.4.7 (Level 1) live, the quick-fill CTA now also writes a `recurring_id` foreign key on the created transaction, and the Recurring screens light up with a paid/pending indicator for the current month. Forecast aggregation (`recurringForScope` in `aggregations.ts`) is deliberately untouched — that conversation happens in Level 3.
+
+**Schema (migration v5).** `ALTER TABLE transactions ADD COLUMN recurring_id TEXT NULL REFERENCES recurring_items(id)` + `CREATE INDEX idx_transactions_recurring ON transactions(recurring_id, month_key)`. No FK cascade — historical transactions intentionally outlive a (soft-)deleted recurring so the audit trail survives. The `Transaction` type gained `recurring_id: string | null`. `transactionsRepo.create` accepts and persists the field; `update` deliberately doesn't expose it (same narrowing rationale as `categories.update` in 0.4.6 — relinking via edit is its own feature, not part of the generic update API). No backfill UI for pre-v5 transactions — see "scope decisions" below.
+
+**Decision rescued mid-implementation: append `recurring_id` at the END of the sheet row, not mid-row.** First pass inserted it between `amount_in_debt_currency` and `created_at`, which shifted the index of `created_at` and `updated_at` for the reader. The defensive `row[i] === undefined ? null : str(row[i])` check would have caught only the new sheet shape — on a legacy pre-v5 sheet (19 cells), row[17] would have been the pre-v5 `created_at` (a non-empty string), so the reader would have parsed it as `recurring_id` and then read the legacy `updated_at` as `created_at`. Off-by-one disaster on first pull from an older device. Fix: column goes at index 19 (after `updated_at`); legacy rows have no cell there, `undefined → null`, every other index keeps its meaning. Categories' is_active landed cleanly in 0.4.6 because it was already at the end of the row; the rule is now explicit: **additive sync columns go at the end, period.** Reader, writer, and `tabs.ts` headers updated in lockstep.
+
+**Sync pipeline (4 sites, same pattern as 0.4.6's `is_active`):**
+- `tabs.ts` headers append `"recurring_id"` after `"updated_at"`.
+- `writers.ts/transactionToRow` appends `t.recurring_id` last.
+- `readers.ts/parseTransaction` reads `row[19] === undefined ? null : str(row[19])`.
+- `pull.ts insertTransaction` and `updateTransaction` both write the column. INSERT statement adds `recurring_id` ahead of `created_at` to keep the column groupings readable in SQL; UPDATE adds it to the SET list before `updated_at = ?`.
+
+**Repo queries:**
+- `recurringRepo.isPaidForMonth(id, monthKey): boolean` — scalar `COUNT(*) > 0` against transactions with `recurring_id = ? AND month_key = ? AND is_deleted = 0`. Used by the Detail page.
+- `recurringRepo.paidStateForMonth(monthKey): Map<id, {count, totalAmount, lastDate}>` — single GROUP BY query for the whole list page; absence from the Map means unpaid. The DEV branch emits a `console.warn` when `count > 1` for a given recurring in a month (a deliberate dev-only signal that the user double-tapped the quick-fill — UI still shows a single ✅, see Q2 decision below).
+
+**UI — `RecurringPage`:**
+- Per-row indicator. EXPENSE recurrings get a positive-toned check icon (`Check` from lucide, green-on-green) when paid this month, replacing the type icon background. Pending rows keep the original red `ArrowUp` look. INCOME and DEBT_PAYMENT rows ignore the paid state entirely (see scope below).
+- Totals card grows a paid-progress strip: `t-eyebrow` "Pagado este mes" left-aligned, "X € de Y €" right-aligned, both above a 1.5px bar filling `paidThisMonth / expectedExpenses` × 100 (clamped to 100). The strip only renders when there's at least one EXPENSE recurring — the empty-strip case looked junky on tablets with only income recurrings set up.
+- Month source: `currentMonthKey()` (always real-time-now), not `uiStore.monthKey` from Home. The page has no month picker; we'd be inviting confusion if Home's selected month silently leaked here.
+
+**UI — `RecurringDetailPage`:**
+- New paid-state strip in the hero card, between the header pill row and the amount. Green `Check` + "Pagado este mes" + "Último pago: 15 jun" subtitle when paid; grey `Clock` + "Pendiente este mes" when not. Date formatting uses the same `toLocaleDateString` helper shape as `DebtDetailPage`.
+- Only shown when `type === "EXPENSE" && is_active` — see scope decisions.
+
+**Quick-fill wire-up.** `AddExpensePage` passes `recurring_id: fromRecurringId` to `transactionsRepo.create` whenever the `?fromRecurring` query param is set. Single-line change, but it's the load-bearing link between Level 1 and Level 2 — without it, the new badges never fire even after a save through the quick-fill CTA.
+
+**Aggregations untouched.** `recurringForScope` (the function that feeds Home's "expected outflow") still sums from `recurring_items WHERE is_active = 1 AND auto_include_in_projection = 1`. We do **not** count generated transactions as forecast contributions in Level 2 — the docstring at the top of `aggregations.ts` already warns that flipping to that approach is a Level 3 concern (it kicks in when `auto_generate_transaction = true` actually starts producing transactions, which it doesn't yet). Reference settlement cases A–E still pass without modification.
+
+**Scope decisions captured for the next agent**
+- **Paid/pending applies only to `EXPENSE` recurrings.** Income recurrings have no "mark received" UX (you'd record an income tx via /add → category INCOME, which doesn't pass through any recurring CTA today). DEBT_PAYMENT recurrings *also* have no UX for it because /add is an expense flow and there's no `recurring_id` on `/debts/:id/pay` yet. If we ever want either flow, it's a Level 3-ish addition — a small one for income, a slightly bigger one for debt-payments (needs a `recurring_id` plumbed through `PayDebtPage`).
+- **Duplicate-payment behavior: ≥1 satisfies the badge.** The list and the detail strip both show ✅ when there's at least one tx in the month; a DEV-only `console.warn` fires when the GROUP BY count exceeds 1. We don't visualize the duplicate, don't prevent it, don't ask for confirmation. Rationale: the case "I really did pay twice this month" is a legitimate real-world thing; paternalistic confirms get tired fast in a 2-user app. (Alt path B "counter pill" and C "preflight confirm" both considered; B was visually noisy and C was paternalistic.)
+- **No backfill UI** for pre-v5 transactions. Transactions created before this migration have `recurring_id = NULL`, which means the user's history of past months will show those recurrings as ⨯ in the months they were actually paid. We accept this for two reasons: (1) the badge is most useful for "did I pay *this* month", not retrospective audit; (2) the gap self-corrects within a month of normal use. If a "link this transaction to a recurring" picker becomes valuable later, it lives in `EditExpensePage` and the schema is ready.
+- **Aggregation semantics deliberately unchanged.** The presence of `recurring_id` does NOT shift the forecast math. Read the top docstring of `src/lib/calculations/aggregations.ts` before touching it in Level 3.
+
+**i18n.** Added `recurring.paidThisMonth`, `pendingThisMonth`, `lastPaidOn`, `paidProgress`, `paidOfExpected`. Both `es.json` and `en.json` updated.
+
+**Tests** — `src/lib/db/repositories/__tests__/recurring.test.ts` grows from 3 to 8 cases (the new paid-state queries: never paid → false, paid → true with month-isolation, soft-deleted-only tx → unpaid, GROUP BY aggregate over multiple txs and a multi-recurring month, ignore-transactions-without-recurring_id). `src/lib/sync/__tests__/pull.test.ts` adds two regression tests: legacy pre-v5 row (19 cells) defaults `recurring_id` to null AND preserves the timestamp indices correctly, plus a round-trip with `recurring_id = "rec-1"`. The pre-existing pull/sync transaction fixtures were updated to include `recurring_id` at the end of the literal so the `Transaction` shape stays valid. Full suite: 203/203 green. `pnpm exec tsc -b` clean. `pnpm build` succeeds.
+
+**Files touched**: `src/lib/db/migrations.ts`, `src/lib/db/types.ts`, `src/lib/db/repositories/transactions.ts`, `src/lib/db/repositories/recurring.ts`, `src/lib/sync/tabs.ts`, `src/lib/sync/writers.ts`, `src/lib/sync/readers.ts`, `src/lib/sync/pull.ts`, `src/features/add-expense/AddExpensePage.tsx`, `src/features/recurring/RecurringPage.tsx`, `src/features/recurring/RecurringDetailPage.tsx`, `src/lib/db/repositories/__tests__/recurring.test.ts`, `src/lib/sync/__tests__/pull.test.ts`, `src/lib/sync/__tests__/sync.test.ts`, `src/lib/i18n/{en,es}.json`, `package.json`.
+
+---
+
 ## 2026-06-25 — Version 0.4.7: Recurring Level 1 — quick-fill from a recurring
 
 First of three planned levels for closing the gap between "recurring as forecast" and "recurring as a real workflow". Today: registering this month's payment of a recurring is one tap, with amount/source/owner/category/split prefilled from the recurring's defaults. Levels 2 (paid/pending state per month, with `transactions.recurring_id`) and 3 (auto-instantiation behind the `auto_generate_transaction` flag) are deliberately out of scope.

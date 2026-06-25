@@ -238,6 +238,19 @@ const MIGRATIONS: Migration[] = [
     sql: `
       ALTER TABLE categories ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1;
     `,
+  },
+  {
+    // Level 2 of the recurring rollout: link a transaction back to the
+    // recurring item it materializes. Lets the UI show paid/pending per
+    // month without touching forecast aggregation (see aggregations.ts
+    // top docstring — that warning only fires in Level 3).
+    version: 5,
+    name: "transactions_recurring_id",
+    sql: `
+      ALTER TABLE transactions ADD COLUMN recurring_id TEXT NULL REFERENCES recurring_items(id);
+      CREATE INDEX IF NOT EXISTS idx_transactions_recurring
+        ON transactions(recurring_id, month_key);
+    `,
   }
 ];
 

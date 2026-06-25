@@ -146,6 +146,7 @@ export function AddExpensePage() {
         created_by_user_id: SOURCE_TO_USER[values.source],
         origin: "MANUAL",
         sheet_sync_status: "PENDING",
+        recurring_id: fromRecurringId,
         allocations: allocation.allocations,
       });
       recomputeForTransaction(tx.id);
