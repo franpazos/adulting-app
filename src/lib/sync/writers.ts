@@ -115,6 +115,9 @@ const recurringToRow = (r: RecurringItem): SheetRow => [
   b(r.auto_generate_transaction),
   r.created_at,
   r.updated_at,
+  // Appended in v6. Keep at the end so legacy sheets without the
+  // column simply yield `undefined` (reader → null).
+  r.debt_id,
 ];
 
 const debtToRow = (d: Debt): SheetRow => [

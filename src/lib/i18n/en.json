@@ -288,10 +288,10 @@
     "paidProgress": "Paid this month",
     "paidOfExpected": "{{paid}} of {{total}}",
     "quickFillCta": "Register this month's payment",
-    "debtHint": {
-      "title": "Debt payment",
-      "body": "Record it from its debt so the principal gets reduced.",
-      "cta": "Go to Debts"
+    "debtUnlinked": {
+      "title": "Not linked to a debt",
+      "body": "This recurring isn't linked to a debt. Edit it to link one so the balance is reduced automatically.",
+      "cta": "Link"
     },
     "types": {
       "expense": "Expense",
@@ -317,7 +317,10 @@
       "autoIncludeHint": "Counts toward available money projections.",
       "autoGenerate": "Auto-generate",
       "autoGenerateLabel": "Create a transaction every month",
-      "autoGenerateHint": "We record the transaction automatically each month on app open."
+      "autoGenerateHint": "We record the transaction automatically each month on app open.",
+      "debt": "Debt",
+      "debtChoose": "Pick a debt…",
+      "debtEmpty": "No active same-currency debts. Create one from Debts."
     }
   },
   "feedback": {

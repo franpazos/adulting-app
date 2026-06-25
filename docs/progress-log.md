@@ -4,6 +4,57 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-06-25 — Version 0.5.0: Recurring Level 4 — debt linkage + multi-type auto-gen
+
+Closes the recurring era with a minor bump. Two changes in one cut: (a) recurrings of type `DEBT_PAYMENT` can now be linked to a specific `debts` row, so materialization (auto-gen or manual) decrements the debt's principal; (b) auto-gen is now opt-in for all three recurring types (EXPENSE, INCOME, DEBT_PAYMENT) instead of EXPENSE-only.
+
+**Multi-currency caveat — the rule is same-currency, not EUR-hardcoded.** Both the form's debt picker and the generator's defensive check express the same constraint: `debt.currency_code === recurring.currency_code`. Cross-currency debts (e.g. the seeded USD loan to a relative) must still be paid manually via `/debts/:id/pay` because the FX rate at payment time can't be honestly stashed at boot. Today recurrings are hardcoded to EUR (the form's currency_code literal), so in practice the picker resolves to EUR debts only — but the *rule* is same-currency, not EUR. If recurring ever gains a currency selector (USD recurring for a USD debt, say), both checks automatically follow without code change.
+
+**Schema (migration v6).** `ALTER TABLE recurring_items ADD COLUMN debt_id TEXT NULL REFERENCES debts(id)` + index `idx_recurring_debt`. Nullable because (1) only DEBT_PAYMENT type uses it, and (2) legacy pre-v6 recurrings keep working as informational items. Form gates non-null at save time for new DEBT_PAYMENT rows; existing unlinked ones display a "Sin enlace a deuda → Enlazar" hint card on the Detail page.
+
+**Sync (5 sites, same "column at the end" pattern as v5).** `tabs.ts` appends `"debt_id"` after `"updated_at"`. `writers.ts/recurringToRow` appends `r.debt_id`. `readers.ts/parseRecurring` reads `row[17] === undefined ? null : str(row[17])`. `pull.ts insertRecurring` and `updateRecurring` both include the column in their statements. Same rule as 0.4.8's `recurring_id`: additive columns go at the end, period — mid-row insertion would shift legacy indices and corrupt timestamps on first pull from older sheets.
+
+**`autoGenerate.ts` refactor.** The function no longer filters by `type='EXPENSE'`. Per-type branches:
+- **EXPENSE**: unchanged from Level 3.
+- **INCOME**: tx with `type='INCOME'`, single allocation `{owner=recurring.owner_type, share=100%}`. No `recomputeForTransaction` call (income doesn't drive settlement).
+- **DEBT_PAYMENT**: requires `debt_id`, `debt.is_active`, `debt.current_balance > 0`, **AND `debt.currency_code === recurring.currency_code`**. On success creates the tx, a `debt_payments` row, and calls `debtsRepo.adjustBalance(debt.id, -amount)` (which existing logic auto-deactivates the debt at zero — see 0.4.4). Calls `recomputeForTransaction` so settlements stay consistent if the recurring crosses cash sources (rare in vuestro modelo: hipoteca paga JOINT, no settlement implications, but the codepath is correct).
+
+**Skip rules for DEBT_PAYMENT:** no `debt_id` → skip silently (legacy data). Currency mismatch → skip (defensive, the form prevents this for new rows). Balance ≤ 0 → skip. Debt archived → skip. The recurring stays active throughout — when the user reactivates the debt, generation resumes automatically. We deliberately do **not** flip `auto_generate_transaction = false` programmatically.
+
+**Form (`RecurringFormPage`) — Level 4 UX changes:**
+- New `debtId` state field, loaded from `r.debt_id` on edit.
+- New Section "Deuda" visible only when `type === "DEBT_PAYMENT"`. Renders a `<select>` populated from `debtsRepo.list(true).filter(d => d.currency_code === "EUR")`. Empty state when no EUR debts exist points to /debts.
+- `valid` gate now includes `(type !== "DEBT_PAYMENT" || debtId !== null)`. Required field.
+- Save payload includes `debt_id: type === "DEBT_PAYMENT" ? state.debtId : null` — null-clamps the field for non-debt types so a stale value can't survive a type change.
+- The auto-gen Toggle is no longer gated on `type === "EXPENSE"`. Visible for all three types.
+
+**`RecurringDetailPage` — Level 4 UX changes:**
+- `canQuickFill` now includes DEBT_PAYMENT recurrings that have a `debt_id`. The sticky CTA routes to `/debts/:id/pay` (where the FX/principal flow already lives) for those; routes to `/add?fromRecurring=...` for EXPENSE as before.
+- The paid/pending pill in the hero card no longer restricts to `type === "EXPENSE"`. INCOME and DEBT_PAYMENT recurrings with materialized transactions also show ✅ paid this month.
+- The old "Debt payment → record from Debts" hint card is replaced by a more focused "Sin enlace a deuda → Enlazar" card, visible only when `isDebt && !debt_id`. Tap routes to the edit page with the picker available.
+- Income recurrings still have **no quick-fill CTA** — there's no "mark income received" UX in scope. Their badge updates automatically when auto-gen materializes the tx.
+
+**`RecurringPage` (list) — Level 4 UX changes:**
+- The Row component's `paid` prop is now wired for all three sections (incomes + expenses + debt payments), not just expenses. Auto-gen + materialization → ✅ check icon on the row icon for any type.
+- The "X € pagado de Y € esperado" progress bar in the totals card still only counts EXPENSE recurrings. Extending it to expenses+debt_payments would change the spec for what "outflow paid" means; deferred — the row checks already convey the per-recurring state.
+
+**Scope decisions captured for the next agent**
+- **Same-currency recurring debts.** The form filters the picker by the recurring's own currency; the generator double-checks `debt.currency_code === recurring.currency_code`. Recurring is hardcoded EUR today, so the visible effect is "EUR debts only" — but the *rule* is same-currency. If we ever support cross-currency recurring auto-gen, we'd need to (a) capture/stash an exchange rate per recurring (mentira contable: never matches the real-day rate), or (b) generate as DRAFT and require user confirm with rate. Not worth the complexity for one USD loan today.
+- **Debt-linked recurring's quick-fill routes to PayDebtPage**, not to /add. That's where the FX flow lives. The amount isn't prefilled via query param — PayDebtPage manages its own state. Adding `?amount=` prefill is a 10-line addition if friction emerges.
+- **Income still has no manual quick-fill flow.** If you set up an INCOME recurring with auto_generate=false, you'll never get an "easy register" path. Workaround: enable auto_generate. If a "mark received" UX is wanted later, it lives in this same DetailPage area.
+- **`auto_generate_transaction` for DEBT_PAYMENT without `debt_id` is silently ignored.** The generator's `if (!r.debt_id) continue` handles it. No console warning — legacy data shouldn't shout at the user. The DetailPage's "Sin enlace a deuda" hint is the visible nudge.
+- **Settlements A-E untouched.** The Level 4 changes only added new code paths (DEBT_PAYMENT auto-gen, INCOME auto-gen); existing settlement_ledger logic was not modified. All five reference cases pass without changes.
+
+**i18n.** Added `recurring.fields.debt`, `debtChoose`, `debtEmpty`. Replaced `recurring.debtHint.*` (the old "go to /debts" hint) with `recurring.debtUnlinked.{title,body,cta}` ("Sin enlace a deuda → Enlazar"). Both `es.json` and `en.json` updated.
+
+**Tests** — `src/lib/calculations/__tests__/autoGenerate.test.ts` grows from 11 to 17 cases. Updated cases: "INCOME generates" (was "INCOME skipped" in Level 3), "DEBT_PAYMENT without debt_id skipped" (was conflated with INCOME). New cases: DEBT_PAYMENT materializes + decrements balance, skips on currency mismatch, skips on balance ≤ 0, skips on archived debt, auto-deactivates debt when last payment zeroes balance. Test fixture updated to accept `debt_id` and `currency_code` overrides. Full suite: 220/220 green. `pnpm exec tsc -b` clean. `pnpm build` succeeds.
+
+**Files touched**: `src/lib/db/migrations.ts`, `src/lib/db/types.ts`, `src/lib/db/repositories/recurring.ts`, `src/lib/sync/{tabs,writers,readers,pull}.ts`, `src/lib/sync/__tests__/sync.test.ts`, `src/lib/calculations/autoGenerate.ts`, `src/lib/calculations/__tests__/autoGenerate.test.ts`, `src/features/recurring/RecurringFormPage.tsx`, `src/features/recurring/RecurringDetailPage.tsx`, `src/features/recurring/RecurringPage.tsx`, `src/lib/i18n/{en,es}.json`, `package.json`.
+
+**End of the recurring era (0.4.7 → 0.5.0).** What started as "let me at least prefill the /add form" (Level 1, 0.4.7) ends with three different flows that all converge through one mechanism: a recurring with `auto_generate=true` materializes monthly, the linked debt drops principal, the user sees ✅ in /recurring without lifting a finger. Minor bump to 0.5.0 marks the completion — the recurrings module is now end-to-end coherent, not a forecast-only side feature.
+
+---
+
 ## 2026-06-25 — Version 0.4.9: Recurring Level 3 — auto-instantiation on boot
 
 Third and final level of the recurring rollout. The `auto_generate_transaction` flag — dead code since Phase 4 — finally does something. On every app boot, each active EXPENSE recurring with the flag set materializes a CONFIRMED transaction for the current month if one doesn't already exist. The Recurring page ✅/⨯ badges from Level 2 light up automatically without manual taps.

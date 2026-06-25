@@ -251,6 +251,21 @@ const MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_transactions_recurring
         ON transactions(recurring_id, month_key);
     `,
+  },
+  {
+    // Level 4: link a recurring DEBT_PAYMENT to a specific debt so that
+    // materialization (manual or auto-gen) also decrements the debt's
+    // current_balance via debt_payments. Nullable for backwards-compat
+    // (existing pre-v6 recurrings keep working as informational items);
+    // the form gates the requirement at save time for new DEBT_PAYMENT
+    // rows.
+    version: 6,
+    name: "recurring_items_debt_id",
+    sql: `
+      ALTER TABLE recurring_items ADD COLUMN debt_id TEXT NULL REFERENCES debts(id);
+      CREATE INDEX IF NOT EXISTS idx_recurring_debt
+        ON recurring_items(debt_id);
+    `,
   }
 ];
 

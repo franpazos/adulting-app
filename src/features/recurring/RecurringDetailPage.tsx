@@ -94,13 +94,21 @@ export function RecurringDetailPage() {
 
   const isDebt = item.type === "DEBT_PAYMENT";
   const isIncome = item.type === "INCOME";
-  const canQuickFill = !isDebt && !isIncome && item.is_active;
   const source = item.source_account_id
     ? accountIdToCashSource(item.source_account_id)
     : null;
-  // Paid/pending only makes sense for EXPENSE — debt-payments and income
-  // can't be marked through any UI yet (Levels 1-2 don't cover them).
-  const showPaidState = item.type === "EXPENSE" && item.is_active;
+  // After Level 4, DEBT_PAYMENT recurrings with a debt_id route the CTA
+  // through /debts/:id/pay (so the payment hits the principal). INCOME
+  // recurrings still hide the CTA — no "mark received" flow today.
+  // Unlinked DEBT_PAYMENT recurrings show a hint pointing to /debts
+  // (legacy data; new ones can't save without debt_id).
+  const canQuickFillExpense = item.type === "EXPENSE" && item.is_active;
+  const canQuickFillDebt =
+    isDebt && item.is_active && item.debt_id !== null;
+  const canQuickFill = canQuickFillExpense || canQuickFillDebt;
+  // Paid/pending now applies to all three types (Level 4 added INCOME
+  // and DEBT_PAYMENT auto-gen).
+  const showPaidState = item.is_active;
   const isPaid = (monthState?.count ?? 0) > 0;
 
   return (
@@ -218,26 +226,26 @@ export function RecurringDetailPage() {
         </div>
       </Card>
 
-      {isDebt && (
+      {isDebt && !item.debt_id && (
         <Card
           variant="flat"
           className="flex items-center justify-between gap-3"
         >
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium">
-              {t("recurring.debtHint.title")}
+              {t("recurring.debtUnlinked.title")}
             </p>
             <p className="t-label text-xs mt-0.5">
-              {t("recurring.debtHint.body")}
+              {t("recurring.debtUnlinked.body")}
             </p>
           </div>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate("/debts")}
+            onClick={() => navigate(`/recurring/${item.id}/edit`)}
             className="shrink-0"
           >
-            {t("recurring.debtHint.cta")}
+            {t("recurring.debtUnlinked.cta")}
             <ArrowRight className="size-4" />
           </Button>
         </Card>
@@ -270,7 +278,13 @@ export function RecurringDetailPage() {
             <Button
               block
               size="lg"
-              onClick={() => navigate(`/add?fromRecurring=${item.id}`)}
+              onClick={() =>
+                navigate(
+                  canQuickFillDebt
+                    ? `/debts/${item.debt_id}/pay`
+                    : `/add?fromRecurring=${item.id}`,
+                )
+              }
               className="bg-gradient-to-br from-violet-soft via-violet to-violet-ink text-white shadow-violet-glow"
             >
               {t("recurring.quickFillCta")}

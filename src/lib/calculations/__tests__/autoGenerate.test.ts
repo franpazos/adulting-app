@@ -13,6 +13,7 @@ import {
   initDb,
   runMigrations,
   seedIfEmpty,
+  debtsRepo,
   recurringRepo,
   transactionsRepo,
   SEED_IDS,
@@ -40,12 +41,14 @@ function makeAutoGenRecurring(overrides: Partial<{
   auto_generate_transaction: boolean;
   source_account_id: string | null;
   owner_type: "FRAN" | "SAM" | "HOUSEHOLD";
+  debt_id: string | null;
+  currency_code: string;
 }> = {}) {
   return recurringRepo.create({
     type: overrides.type ?? "EXPENSE",
     name: "Test rent",
     amount: overrides.amount ?? 1200,
-    currency_code: "EUR",
+    currency_code: overrides.currency_code ?? "EUR",
     frequency: "MONTHLY",
     start_date: "2026-01-01",
     end_date: null,
@@ -59,6 +62,7 @@ function makeAutoGenRecurring(overrides: Partial<{
     is_active: overrides.is_active ?? true,
     auto_include_in_projection: true,
     auto_generate_transaction: overrides.auto_generate_transaction ?? true,
+    debt_id: overrides.debt_id ?? null,
   });
 }
 
@@ -117,12 +121,21 @@ describe("autoGenerateForCurrentMonth", () => {
     expect(generated).toEqual([]);
   });
 
-  it("only generates for EXPENSE type (income / debt-payment ignored)", () => {
-    const income = makeAutoGenRecurring({ type: "INCOME" });
+  it("generates for INCOME type (Level 4)", () => {
+    const income = makeAutoGenRecurring({
+      type: "INCOME",
+      owner_type: "FRAN",
+      source_account_id: SEED_IDS.accounts.franPersonal,
+    });
+    const generated = autoGenerateForCurrentMonth();
+    expect(generated).toEqual([income.id]);
+    expect(recurringRepo.isPaidForMonth(income.id, currentMonthKey())).toBe(true);
+  });
+
+  it("skips DEBT_PAYMENT without a debt_id (legacy/unlinked)", () => {
     const debt = makeAutoGenRecurring({ type: "DEBT_PAYMENT" });
     const generated = autoGenerateForCurrentMonth();
     expect(generated).toEqual([]);
-    expect(recurringRepo.isPaidForMonth(income.id, currentMonthKey())).toBe(false);
     expect(recurringRepo.isPaidForMonth(debt.id, currentMonthKey())).toBe(false);
   });
 
@@ -185,5 +198,103 @@ describe("aggregations.recurringForScope NOT-EXISTS guard", () => {
     // "materialized" per the NOT-EXISTS clause → falls back to forecast.
     expect(after.expenses - before.expenses).toBe(0);
     expect(after.recurring - before.recurring).toBe(1000);
+  });
+});
+
+describe("autoGenerateForCurrentMonth — DEBT_PAYMENT (Level 4)", () => {
+  function makeEurDebt(balance = 100_000) {
+    return debtsRepo.create({
+      name: "Test mortgage",
+      owner_type: "HOUSEHOLD",
+      original_amount: 200_000,
+      current_balance: balance,
+      currency_code: "EUR",
+      interest_rate: null,
+      minimum_payment: null,
+      payment_day: 1,
+      strategy_priority: null,
+      notes: null,
+      is_active: true,
+    });
+  }
+
+  it("materializes a DEBT_PAYMENT tx and decrements the linked debt's balance", () => {
+    const debt = makeEurDebt(100_000);
+    const r = makeAutoGenRecurring({
+      type: "DEBT_PAYMENT",
+      amount: 1200,
+      debt_id: debt.id,
+    });
+    const generated = autoGenerateForCurrentMonth();
+    expect(generated).toEqual([r.id]);
+    // Balance dropped by the recurring amount.
+    expect(debtsRepo.getById(debt.id)?.current_balance).toBe(98_800);
+    // Recurring marked paid this month.
+    expect(recurringRepo.isPaidForMonth(r.id, currentMonthKey())).toBe(true);
+  });
+
+  it("skips when the linked debt's currency differs from the recurring's", () => {
+    // Build a USD debt directly (the form would block this, but the
+    // generator's defensive check is what we're testing).
+    const usdDebt = debtsRepo.create({
+      name: "USD loan",
+      owner_type: "FRAN",
+      original_amount: 10_000,
+      current_balance: 10_000,
+      currency_code: "USD",
+      interest_rate: null,
+      minimum_payment: null,
+      payment_day: null,
+      strategy_priority: null,
+      notes: null,
+      is_active: true,
+    });
+    makeAutoGenRecurring({
+      type: "DEBT_PAYMENT",
+      currency_code: "EUR",
+      debt_id: usdDebt.id,
+    });
+    const generated = autoGenerateForCurrentMonth();
+    expect(generated).toEqual([]);
+    // Balance untouched.
+    expect(debtsRepo.getById(usdDebt.id)?.current_balance).toBe(10_000);
+  });
+
+  it("skips when the debt has zero balance (already paid off)", () => {
+    const debt = makeEurDebt(0);
+    const r = makeAutoGenRecurring({
+      type: "DEBT_PAYMENT",
+      amount: 1200,
+      debt_id: debt.id,
+    });
+    const generated = autoGenerateForCurrentMonth();
+    expect(generated).toEqual([]);
+    expect(recurringRepo.isPaidForMonth(r.id, currentMonthKey())).toBe(false);
+  });
+
+  it("skips when the linked debt is archived", () => {
+    const debt = makeEurDebt(100_000);
+    debtsRepo.deactivate(debt.id);
+    makeAutoGenRecurring({
+      type: "DEBT_PAYMENT",
+      debt_id: debt.id,
+    });
+    const generated = autoGenerateForCurrentMonth();
+    expect(generated).toEqual([]);
+  });
+
+  it("auto-deactivates the debt when the last payment zeroes the balance", () => {
+    const debt = makeEurDebt(1200);
+    const rec = makeAutoGenRecurring({
+      type: "DEBT_PAYMENT",
+      amount: 1200,
+      debt_id: debt.id,
+    });
+    autoGenerateForCurrentMonth();
+    const after = debtsRepo.getById(debt.id);
+    expect(after?.current_balance).toBe(0);
+    expect(after?.is_active).toBe(false); // existing auto-deactivate from 0.4.4
+    // The materialized tx is still there for history.
+    expect(recurringRepo.isPaidForMonth(rec.id, currentMonthKey())).toBe(true);
   });
 });

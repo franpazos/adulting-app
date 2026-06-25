@@ -176,6 +176,9 @@ export function parseRecurring(row: SheetRow): RecurringItem {
     auto_generate_transaction: bool(row[14]),
     created_at: reqStr(row[15], "recurring.created_at"),
     updated_at: reqStr(row[16], "recurring.updated_at"),
+    // Appended in v6. Legacy pre-v6 sheets stop at index 16, so a
+    // missing cell at 17 → null (recurring isn't linked to any debt).
+    debt_id: row[17] === undefined ? null : str(row[17]),
   };
 }
 

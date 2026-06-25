@@ -548,8 +548,8 @@ function insertRecurring(r: RecurringItem): void {
        frequency, start_date, end_date, category_id, source_account_id,
        owner_type, default_shared_split_percent, is_active,
        auto_include_in_projection, auto_generate_transaction,
-       created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       debt_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       r.id,
       r.type,
@@ -566,6 +566,7 @@ function insertRecurring(r: RecurringItem): void {
       fromBool(r.is_active),
       fromBool(r.auto_include_in_projection),
       fromBool(r.auto_generate_transaction),
+      r.debt_id,
       r.created_at,
       r.updated_at,
     ],
@@ -578,7 +579,7 @@ function updateRecurring(r: RecurringItem): void {
        category_id = ?, source_account_id = ?, owner_type = ?,
        default_shared_split_percent = ?, is_active = ?,
        auto_include_in_projection = ?, auto_generate_transaction = ?,
-       updated_at = ?
+       debt_id = ?, updated_at = ?
      WHERE id = ?`,
     [
       r.type,
@@ -595,6 +596,7 @@ function updateRecurring(r: RecurringItem): void {
       fromBool(r.is_active),
       fromBool(r.auto_include_in_projection),
       fromBool(r.auto_generate_transaction),
+      r.debt_id,
       r.updated_at,
       r.id,
     ],

@@ -113,6 +113,7 @@ export const RAW_TABS: ReadonlyArray<RawTabSpec> = [
       "auto_generate_transaction",
       "created_at",
       "updated_at",
+      "debt_id",
     ],
   },
   {

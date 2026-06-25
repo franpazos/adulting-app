@@ -118,6 +118,12 @@ export interface RecurringItem {
   is_active: boolean;
   auto_include_in_projection: boolean;
   auto_generate_transaction: boolean;
+  // Added in v6. Only meaningful for type=DEBT_PAYMENT: links this
+  // recurring to a specific debt so materialization decrements the
+  // debt's balance via debt_payments. Form gates non-null at save time
+  // for new DEBT_PAYMENT rows; legacy rows stay null and behave as
+  // informational items (no balance decrement).
+  debt_id: string | null;
   created_at: string;
   updated_at: string;
 }

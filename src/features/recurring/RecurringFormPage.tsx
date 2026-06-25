@@ -20,9 +20,9 @@ import {
   Toggle,
   type SegmentedOption,
 } from "@/components/ui";
-import { categoriesRepo, recurringRepo } from "@/lib/db";
+import { categoriesRepo, debtsRepo, recurringRepo } from "@/lib/db";
 import { autoGenerateForCurrentMonth } from "@/lib/calculations";
-import type { Category, RecurringType, OwnerType, CashSource } from "@/lib/db/types";
+import type { Category, Debt, RecurringType, OwnerType, CashSource } from "@/lib/db/types";
 import { useDbStore } from "@/store/dbStore";
 import {
   SOURCE_TO_ACCOUNT,
@@ -45,6 +45,7 @@ interface RecurringFormState {
   startDate: string;
   autoInclude: boolean;
   autoGenerate: boolean;
+  debtId: string | null;
 }
 
 function defaultState(): RecurringFormState {
@@ -58,6 +59,7 @@ function defaultState(): RecurringFormState {
     startDate: new Date().toISOString().slice(0, 10),
     autoInclude: true,
     autoGenerate: false,
+    debtId: null,
   };
 }
 
@@ -93,6 +95,7 @@ export function RecurringFormPage() {
       startDate: r.start_date,
       autoInclude: r.auto_include_in_projection,
       autoGenerate: r.auto_generate_transaction,
+      debtId: r.debt_id,
     });
     setLoaded(true);
   }, [dbReady, isEdit, id]);
@@ -105,8 +108,25 @@ export function RecurringFormPage() {
     );
   }, [dbReady, state.type]);
 
+  // Active debts that share the recurring's currency. Same-currency is
+  // the only rule that matters at auto-gen time (no FX dance at boot);
+  // cross-currency debts get paid via /debts/:id/pay where the rate is
+  // captured per-payment. Today recurrings are hardcoded EUR so this
+  // resolves to "EUR debts", but the concept is same-currency, not EUR.
+  const recurringCurrency = "EUR";
+  const [debts, setDebts] = useState<Debt[]>([]);
+  useEffect(() => {
+    if (!dbReady || state.type !== "DEBT_PAYMENT") return;
+    setDebts(
+      debtsRepo.list(true).filter((d) => d.currency_code === recurringCurrency),
+    );
+  }, [dbReady, state.type]);
+
   const amount = useMemo(() => parseAmount(state.amountText), [state.amountText]);
-  const valid = state.name.trim().length > 0 && amount > 0;
+  const valid =
+    state.name.trim().length > 0 &&
+    amount > 0 &&
+    (state.type !== "DEBT_PAYMENT" || state.debtId !== null);
 
   const typeOptions: ReadonlyArray<SegmentedOption<RecurringType>> = [
     { value: "EXPENSE", label: t("recurring.types.expense") },
@@ -144,8 +164,8 @@ export function RecurringFormPage() {
           state.owner === "HOUSEHOLD" ? 50 : null,
         is_active: true,
         auto_include_in_projection: state.autoInclude,
-        auto_generate_transaction:
-          state.type === "EXPENSE" ? state.autoGenerate : false,
+        auto_generate_transaction: state.autoGenerate,
+        debt_id: state.type === "DEBT_PAYMENT" ? state.debtId : null,
       };
       if (isEdit && id) {
         recurringRepo.update(id, payload);
@@ -275,6 +295,18 @@ export function RecurringFormPage() {
         />
       </Section>
 
+      {state.type === "DEBT_PAYMENT" && (
+        <Section label={t("recurring.fields.debt")}>
+          <DebtPicker
+            debts={debts}
+            value={state.debtId}
+            onChange={(debtId) => setState((s) => ({ ...s, debtId }))}
+            emptyLabel={t("recurring.fields.debtEmpty")}
+            chooseLabel={t("recurring.fields.debtChoose")}
+          />
+        </Section>
+      )}
+
       <Section label={t("recurring.fields.category")}>
         <CategoryPicker
           categories={categories}
@@ -310,26 +342,24 @@ export function RecurringFormPage() {
         </Card>
       </Section>
 
-      {state.type === "EXPENSE" && (
-        <Section label={t("recurring.fields.autoGenerate")}>
-          <Card variant="flat" className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">
-                {t("recurring.fields.autoGenerateLabel")}
-              </p>
-              <p className="t-label text-xs">
-                {t("recurring.fields.autoGenerateHint")}
-              </p>
-            </div>
-            <Toggle
-              checked={state.autoGenerate}
-              onCheckedChange={(v) =>
-                setState((s) => ({ ...s, autoGenerate: v }))
-              }
-            />
-          </Card>
-        </Section>
-      )}
+      <Section label={t("recurring.fields.autoGenerate")}>
+        <Card variant="flat" className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">
+              {t("recurring.fields.autoGenerateLabel")}
+            </p>
+            <p className="t-label text-xs">
+              {t("recurring.fields.autoGenerateHint")}
+            </p>
+          </div>
+          <Toggle
+            checked={state.autoGenerate}
+            onCheckedChange={(v) =>
+              setState((s) => ({ ...s, autoGenerate: v }))
+            }
+          />
+        </Card>
+      </Section>
 
       {saveError && (
         <p className="mt-3 text-sm text-expense-ink" role="alert">
@@ -419,3 +449,41 @@ function CategoryPicker({
   );
 }
 
+
+function DebtPicker({
+  debts,
+  value,
+  onChange,
+  emptyLabel,
+  chooseLabel,
+}: {
+  debts: Debt[];
+  value: string | null;
+  onChange: (id: string | null) => void;
+  emptyLabel: string;
+  chooseLabel: string;
+}) {
+  if (debts.length === 0) {
+    return (
+      <Card variant="flat" className="text-sm text-text-secondary">
+        {emptyLabel}
+      </Card>
+    );
+  }
+  return (
+    <Card variant="flat" className="p-0">
+      <select
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value || null)}
+        className="w-full bg-transparent border-0 outline-none px-4 py-3 text-sm font-medium text-text-primary"
+      >
+        <option value="">{chooseLabel}</option>
+        {debts.map((d) => (
+          <option key={d.id} value={d.id}>
+            {d.name}
+          </option>
+        ))}
+      </select>
+    </Card>
+  );
+}

@@ -288,10 +288,10 @@
     "paidProgress": "Pagado este mes",
     "paidOfExpected": "{{paid}} de {{total}}",
     "quickFillCta": "Registrar pago de este mes",
-    "debtHint": {
-      "title": "Pago de deuda",
-      "body": "Regístralo desde la deuda correspondiente para que se descuente el principal.",
-      "cta": "Ir a Deudas"
+    "debtUnlinked": {
+      "title": "Sin enlace a deuda",
+      "body": "Este recurrente no está enlazado a una deuda. Edítalo para asociarlo y reducir el saldo automáticamente.",
+      "cta": "Enlazar"
     },
     "types": {
       "expense": "Gasto",
@@ -317,7 +317,10 @@
       "autoIncludeHint": "Cuenta para el dinero disponible estimado.",
       "autoGenerate": "Auto-generar",
       "autoGenerateLabel": "Crear transacción cada mes",
-      "autoGenerateHint": "Cada mes registramos la transacción automáticamente al abrir la app."
+      "autoGenerateHint": "Cada mes registramos la transacción automáticamente al abrir la app.",
+      "debt": "Deuda",
+      "debtChoose": "Selecciona una deuda…",
+      "debtEmpty": "No hay deudas activas en la misma divisa. Crea una desde Deudas."
     }
   },
   "feedback": {

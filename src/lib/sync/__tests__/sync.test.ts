@@ -184,6 +184,7 @@ describe("entity → row mappers", () => {
       is_active: true,
       auto_include_in_projection: true,
       auto_generate_transaction: false,
+      debt_id: null,
       created_at: "x",
       updated_at: "x",
     };

@@ -26,8 +26,10 @@ function map(row: Record<string, unknown>): RecurringItem {
 }
 
 interface CreateRecurringInput
-  extends Omit<RecurringItem, "id" | "created_at" | "updated_at"> {
+  extends Omit<RecurringItem, "id" | "created_at" | "updated_at" | "debt_id"> {
   id?: string;
+  /** Only meaningful for type=DEBT_PAYMENT (Level 4). Defaults to null. */
+  debt_id?: string | null;
 }
 
 export const recurringRepo = {
@@ -58,6 +60,7 @@ export const recurringRepo = {
     const r: RecurringItem = {
       ...input,
       id: input.id ?? newId(),
+      debt_id: input.debt_id ?? null,
       created_at: now,
       updated_at: now,
     };
@@ -65,8 +68,8 @@ export const recurringRepo = {
       `INSERT INTO recurring_items (id, type, name, amount, currency_code, frequency,
         start_date, end_date, category_id, source_account_id, owner_type,
         default_shared_split_percent, is_active, auto_include_in_projection,
-        auto_generate_transaction, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        auto_generate_transaction, debt_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         r.id,
         r.type,
@@ -83,6 +86,7 @@ export const recurringRepo = {
         fromBool(r.is_active),
         fromBool(r.auto_include_in_projection),
         fromBool(r.auto_generate_transaction),
+        r.debt_id,
         r.created_at,
         r.updated_at,
       ],
@@ -100,7 +104,7 @@ export const recurringRepo = {
            start_date = ?, end_date = ?, category_id = ?, source_account_id = ?,
            owner_type = ?, default_shared_split_percent = ?,
            is_active = ?, auto_include_in_projection = ?, auto_generate_transaction = ?,
-           updated_at = ?
+           debt_id = ?, updated_at = ?
          WHERE id = ?`,
         [
           input.type,
@@ -117,6 +121,7 @@ export const recurringRepo = {
           fromBool(input.is_active),
           fromBool(input.auto_include_in_projection),
           fromBool(input.auto_generate_transaction),
+          input.debt_id ?? null,
           now,
           id,
         ],

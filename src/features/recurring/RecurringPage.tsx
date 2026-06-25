@@ -131,7 +131,7 @@ export function RecurringPage() {
       {incomes.length > 0 && (
         <Section title={t("recurring.sections.income")}>
           {incomes.map((it) => (
-            <Row key={it.id} item={it} paid={false} />
+            <Row key={it.id} item={it} paid={paidState.has(it.id)} />
           ))}
         </Section>
       )}
@@ -145,7 +145,7 @@ export function RecurringPage() {
       {debtPayments.length > 0 && (
         <Section title={t("recurring.sections.debt")}>
           {debtPayments.map((it) => (
-            <Row key={it.id} item={it} paid={false} />
+            <Row key={it.id} item={it} paid={paidState.has(it.id)} />
           ))}
         </Section>
       )}
