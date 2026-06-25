@@ -18,7 +18,7 @@ import { TransactionRow } from "./TransactionRow";
 import { categoriesRepo, transactionsRepo } from "@/lib/db";
 import { useUiStore } from "@/store/uiStore";
 import { useDbStore } from "@/store/dbStore";
-import { formatMonthLabel } from "@/lib/date/month";
+// import { formatMonthLabel } from "@/lib/date/month";
 import { accountIdToCashSource } from "@/features/add-expense/sources";
 import type { CashSource, OwnerType, Transaction } from "@/lib/db/types";
 
@@ -45,6 +45,7 @@ const INITIAL: FilterState = {
 export function TransactionsPage() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language?.startsWith("es") ? "es" : "en";
+  console.log("🪵​​ ~ TransactionsPage ~ lang:", lang)
   const dbReady = useDbStore((s) => s.status === "ready");
   const dbVersion = useDbStore((s) => s.dbVersion);
   const monthKey = useUiStore((s) => s.monthKey);
@@ -106,9 +107,9 @@ export function TransactionsPage() {
 
       <div className="flex items-baseline justify-between">
         <h1 className="h-display">{t("transactions.title")}</h1>
-        <span className="t-label">
+        {/* <span className="t-label">
           {formatMonthLabel(monthKey, lang as "en" | "es")}
-        </span>
+        </span> */}
       </div>
 
       <div className="flex items-center gap-2">
