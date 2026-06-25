@@ -21,6 +21,7 @@ import {
   type SegmentedOption,
 } from "@/components/ui";
 import { categoriesRepo, recurringRepo } from "@/lib/db";
+import { autoGenerateForCurrentMonth } from "@/lib/calculations";
 import type { Category, RecurringType, OwnerType, CashSource } from "@/lib/db/types";
 import { useDbStore } from "@/store/dbStore";
 import {
@@ -43,6 +44,7 @@ interface RecurringFormState {
   categoryId: string | null;
   startDate: string;
   autoInclude: boolean;
+  autoGenerate: boolean;
 }
 
 function defaultState(): RecurringFormState {
@@ -55,6 +57,7 @@ function defaultState(): RecurringFormState {
     categoryId: null,
     startDate: new Date().toISOString().slice(0, 10),
     autoInclude: true,
+    autoGenerate: false,
   };
 }
 
@@ -89,6 +92,7 @@ export function RecurringFormPage() {
       categoryId: r.category_id,
       startDate: r.start_date,
       autoInclude: r.auto_include_in_projection,
+      autoGenerate: r.auto_generate_transaction,
     });
     setLoaded(true);
   }, [dbReady, isEdit, id]);
@@ -140,14 +144,25 @@ export function RecurringFormPage() {
           state.owner === "HOUSEHOLD" ? 50 : null,
         is_active: true,
         auto_include_in_projection: state.autoInclude,
-        auto_generate_transaction: false,
+        auto_generate_transaction:
+          state.type === "EXPENSE" ? state.autoGenerate : false,
       };
       if (isEdit && id) {
         recurringRepo.update(id, payload);
+        // Materialize the current month immediately when auto-gen is on,
+        // so the user sees the effect of flipping the toggle without
+        // waiting for the next boot. Idempotent — skips if a tx already
+        // exists for (recurring_id, currentMonth).
+        if (payload.auto_generate_transaction) {
+          autoGenerateForCurrentMonth();
+        }
         bumpVersion();
         navigate(`/recurring/${id}`);
       } else {
         recurringRepo.create(payload);
+        if (payload.auto_generate_transaction) {
+          autoGenerateForCurrentMonth();
+        }
         bumpVersion();
         navigate("/recurring");
       }
@@ -294,6 +309,27 @@ export function RecurringFormPage() {
           />
         </Card>
       </Section>
+
+      {state.type === "EXPENSE" && (
+        <Section label={t("recurring.fields.autoGenerate")}>
+          <Card variant="flat" className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">
+                {t("recurring.fields.autoGenerateLabel")}
+              </p>
+              <p className="t-label text-xs">
+                {t("recurring.fields.autoGenerateHint")}
+              </p>
+            </div>
+            <Toggle
+              checked={state.autoGenerate}
+              onCheckedChange={(v) =>
+                setState((s) => ({ ...s, autoGenerate: v }))
+              }
+            />
+          </Card>
+        </Section>
+      )}
 
       {saveError && (
         <p className="mt-3 text-sm text-expense-ink" role="alert">

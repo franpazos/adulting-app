@@ -314,7 +314,10 @@
       "startDate": "Starts on",
       "autoInclude": "Forecast",
       "autoIncludeLabel": "Include in monthly forecast",
-      "autoIncludeHint": "Counts toward available money projections."
+      "autoIncludeHint": "Counts toward available money projections.",
+      "autoGenerate": "Auto-generate",
+      "autoGenerateLabel": "Create a transaction every month",
+      "autoGenerateHint": "We record the transaction automatically each month on app open."
     }
   },
   "feedback": {

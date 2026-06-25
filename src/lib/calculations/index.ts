@@ -42,3 +42,5 @@ export {
   type MonthlySummary,
   type CategorySliceRow,
 } from "./aggregations";
+
+export { autoGenerateForCurrentMonth } from "./autoGenerate";

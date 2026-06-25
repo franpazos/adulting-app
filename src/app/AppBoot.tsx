@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { initDb, runMigrations, seedIfEmpty } from "@/lib/db";
+import { autoGenerateForCurrentMonth } from "@/lib/calculations";
 import { useDbStore } from "@/store/dbStore";
 import { hasValidToken, useAuthStore } from "@/store/authStore";
 import { silentLogin } from "@/lib/google/auth";
@@ -48,6 +49,15 @@ export function AppBoot({ children }: { children: ReactNode }) {
         const init = await initDb();
         runMigrations();
         const seeded = seedIfEmpty();
+        // Materialize this month's recurring auto-gen items before the
+        // UI renders. Idempotent — re-runs on every boot but only does
+        // work when a recurring is genuinely unmaterialized this month.
+        const generated = autoGenerateForCurrentMonth();
+        if (generated.length > 0) {
+          console.info(
+            `[boot] auto-generated ${generated.length} recurring tx for this month`,
+          );
+        }
         setReady({
           backend: init.backend,
           warning: init.warning,

@@ -13,10 +13,16 @@
  *
  * Available money formula (spec §13.4):
  *   available = income − expenses − recurring_expenses − debt_payments
- * Recurring expenses are NOT auto-instantiated as transactions (spec §6.5),
- * so we count them once via `recurring_items`. If you flip
- * `auto_generate_transaction` to true in the future, drop them from this
- * sum to avoid double-counting.
+ *
+ * Double-counting rule (Level 3, 0.4.9): recurring items with
+ * `auto_generate_transaction = 1` get materialized as actual transactions
+ * each month by `autoGenerate.ts`. Once that transaction exists for the
+ * current month, the recurring's amount is *already* captured in the
+ * `expenses` term — counting it again under `recurring_expenses` would
+ * double-count it. `recurringForScope` therefore excludes those items
+ * when a non-deleted transaction with their `recurring_id` exists for
+ * the requested month. Items with auto_generate=0 keep behaving as a
+ * pure forecast (counted in `recurring_expenses`, never materialized).
  */
 
 import { selectAll, selectScalar } from "@/lib/db/client";
@@ -110,27 +116,47 @@ function expensesForScope(monthKey: MonthKey, scope: Scope): number {
 
 // ── Recurring expenses ───────────────────────────────────────────────────
 
-function recurringForScope(scope: Scope): number {
+/**
+ * Sum of recurring expense items that contribute to the month's forecast.
+ * Items materialized via auto_generate are excluded once their tx exists,
+ * to avoid double-counting against `expensesForScope`. See top docstring.
+ */
+const AUTO_GEN_MATERIALIZED_PREDICATE = `(
+  r.auto_generate_transaction = 1
+  AND EXISTS (
+    SELECT 1 FROM transactions t
+    WHERE t.recurring_id = r.id
+      AND t.month_key = ?
+      AND t.is_deleted = 0
+  )
+)`;
+
+function recurringForScope(monthKey: MonthKey, scope: Scope): number {
   const owner = ownerForPersonal(scope);
   if (owner) {
     return selectScalar(
-      `SELECT COALESCE(SUM(amount), 0) FROM recurring_items
-       WHERE is_active = 1 AND auto_include_in_projection = 1
-         AND type = 'EXPENSE' AND owner_type = ?`,
-      [owner],
+      `SELECT COALESCE(SUM(r.amount), 0) FROM recurring_items r
+       WHERE r.is_active = 1 AND r.auto_include_in_projection = 1
+         AND r.type = 'EXPENSE' AND r.owner_type = ?
+         AND NOT ${AUTO_GEN_MATERIALIZED_PREDICATE}`,
+      [owner, monthKey],
     );
   }
   if (scope === "household") {
     return selectScalar(
-      `SELECT COALESCE(SUM(amount), 0) FROM recurring_items
-       WHERE is_active = 1 AND auto_include_in_projection = 1
-         AND type = 'EXPENSE' AND owner_type = 'HOUSEHOLD'`,
+      `SELECT COALESCE(SUM(r.amount), 0) FROM recurring_items r
+       WHERE r.is_active = 1 AND r.auto_include_in_projection = 1
+         AND r.type = 'EXPENSE' AND r.owner_type = 'HOUSEHOLD'
+         AND NOT ${AUTO_GEN_MATERIALIZED_PREDICATE}`,
+      [monthKey],
     );
   }
   return selectScalar(
-    `SELECT COALESCE(SUM(amount), 0) FROM recurring_items
-     WHERE is_active = 1 AND auto_include_in_projection = 1
-       AND type = 'EXPENSE'`,
+    `SELECT COALESCE(SUM(r.amount), 0) FROM recurring_items r
+     WHERE r.is_active = 1 AND r.auto_include_in_projection = 1
+       AND r.type = 'EXPENSE'
+       AND NOT ${AUTO_GEN_MATERIALIZED_PREDICATE}`,
+    [monthKey],
   );
 }
 
@@ -178,7 +204,7 @@ export function monthlySummary(
 ): MonthlySummary {
   const income = incomeForScope(monthKey, scope);
   const expenses = expensesForScope(monthKey, scope);
-  const recurring = recurringForScope(scope);
+  const recurring = recurringForScope(monthKey, scope);
   const debtPayments = debtPaymentsForScope(monthKey, scope);
   const available = round2(income - expenses - recurring - debtPayments);
   return {

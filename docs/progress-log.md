@@ -4,6 +4,53 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-06-25 — Version 0.4.9: Recurring Level 3 — auto-instantiation on boot
+
+Third and final level of the recurring rollout. The `auto_generate_transaction` flag — dead code since Phase 4 — finally does something. On every app boot, each active EXPENSE recurring with the flag set materializes a CONFIRMED transaction for the current month if one doesn't already exist. The Recurring page ✅/⨯ badges from Level 2 light up automatically without manual taps.
+
+**Decisions cementadas durante la conversación de diseño:**
+1. **CONFIRMED, no DRAFT.** Considered a DRAFT/CONFIRMED state column for safety (auto-confirmed tx with wrong amount would shift settlements before the user reviewed). Rejected on simplicity grounds: this is a 2-user app, the flag is opt-in per recurring, soft-delete cleanly reverses any bad generation. Adding `status` later is a trivial migration if real-world friction shows up. Net: no new column, no UI for "confirm", no filter in aggregations. The materialized tx is indistinguishable from a manual one.
+2. **Date = day 1 of the current month.** `recurring_items` has no `payment_day` column. Considered deriving from `start_date.day` with clamp for short months, considered adding `payment_day`. Punted both — the date isn't load-bearing, and day-1 gives a stable anchor that's trivially explained. If `payment_day` ever materializes as a real UX need, swap `firstOfMonth(monthKey)` for it.
+3. **Current month only, no catch-up.** Considered iterating from last-seen-month to current, generating drafts for missed months. Rejected on two grounds: (a) the algorithm needs a stateful marker (`auto_gen_from`) per recurring to avoid backfilling 24 months when activating the toggle on an old recurring; (b) user confirmed it's unlikely to skip months in real use. The rule "if no tx exists for (recurring_id, currentMonthKey), generate" is stateless and idempotent. If real-world catch-up gaps appear, we add a focused mini-feature with the right marker.
+4. **Toggle activates immediately.** Saving the form with `auto_generate=ON` calls `autoGenerateForCurrentMonth()` right after the repo write. The user sees the materialized tx without waiting for the next boot. Idempotent — the same boot-time call would also handle it.
+5. **Aggregations refactor = one NOT-EXISTS clause, not a full re-architecture.** First-pass design feared a deep refactor of `recurringForScope` interacting with `expensesForScope` and the settlement ledger. Reality is contained: the only double-count risk is a recurring with `auto_generate=1` being summed BOTH from `recurring_items.amount` AND from the materialized transaction's amount. Adding `AND NOT (r.auto_generate_transaction = 1 AND EXISTS(...))` to the three branches of `recurringForScope` solves it. Settlement ledger is untouched — those queries already operate on transactions, and a materialized tx is just a regular tx. The five reference cases (A–E) in `settlements.test.ts` passed without modification.
+
+**New module — `src/lib/calculations/autoGenerate.ts`.**
+- Exposes `autoGenerateForCurrentMonth(): string[]` returning the IDs of recurrings that produced a tx in this run.
+- Pure SQL + repo calls — no React, no async. Runs synchronously inside the boot pipeline.
+- Loops over `is_active=1 AND auto_generate_transaction=1 AND type='EXPENSE'`. For each, checks `EXISTS (SELECT 1 FROM transactions WHERE recurring_id = r.id AND month_key = currentMonthKey)` — **does NOT filter by is_deleted**, on purpose. A user who soft-deleted the auto-gen this month wants it gone permanently for that month; checking only non-deleted would regenerate it next boot.
+- Uses `expenseAllocator` for allocations (so the math is the same as a manual /add) and calls `recomputeForTransaction` so settlement_ledger stays consistent. In Fran+Sam's real usage, recurrings will almost never have source≠owner mismatch (alquiler/hipoteca/gym paid from JOINT with owner=HOUSEHOLD → no settlement effect), but the codepath is correct if they ever do.
+- `origin: "RECURRING_GENERATED"` distinguishes these from manual transactions in /transactions and provides a future hook for filtering.
+- Skips silently on `source_account_id = NULL` or unknown account ID — the recurring is too incomplete to materialize, and throwing would block boot.
+
+**Wired in `AppBoot.tsx`** after `seedIfEmpty()` and before `setReady`. A `console.info` reports the count when work is done (debug-friendly without being noisy on idle boots).
+
+**`recurringForScope` refactor in `aggregations.ts`.** Three branches (personal/household/all) gain `AND NOT (r.auto_generate_transaction = 1 AND EXISTS (SELECT 1 FROM transactions t WHERE t.recurring_id = r.id AND t.month_key = ? AND t.is_deleted = 0))`. The `is_deleted = 0` inside the EXISTS is important and different from the generator's check: in aggregations, a soft-deleted tx must "fall back" the recurring into the forecast bucket (the math says "no real expense, just the forecast"); in the generator, a soft-deleted tx is the user's explicit "skip this month" and shouldn't regenerate. Two different semantic decisions encoded in two different `is_deleted` filters — intentional.
+
+**Signature change: `recurringForScope(scope)` → `recurringForScope(monthKey, scope)`.** Needed because the new clause references the current month. The only caller is `monthlySummary`, which already takes `monthKey`, so the upgrade is local.
+
+**`RecurringFormPage` updates.**
+- New state field `autoGenerate: boolean` (was hardcoded to `false` in the payload). Loaded from `r.auto_generate_transaction` on edit.
+- New Section "Auto-generar" (visible only when `type === "EXPENSE"`) with the same Toggle pattern as `autoInclude`. Hint text explains "Cada mes registramos la transacción automáticamente al abrir la app."
+- The save handler force-defaults `auto_generate_transaction: state.type === "EXPENSE" ? state.autoGenerate : false`. Even if someone toggles the flag and then switches type to INCOME, we don't persist `true` on a non-EXPENSE.
+- After saving with the flag on, `autoGenerateForCurrentMonth()` runs immediately. The form navigation continues to the Detail page (edit) or back to /recurring (new), where the Level 2 ✅ badge appears instantly.
+
+**Scope decisions captured for the next agent**
+- **Type=EXPENSE only.** INCOME and DEBT_PAYMENT recurrings don't auto-generate. Income has no "mark received" UX yet; debt-payment recurrings would need a `recurring_id` plumbed through `debt_payments` and `PayDebtPage`, which is a separate Level (probably Level 4 if we ever do it).
+- **The form's Toggle is hidden for non-EXPENSE.** Even though the schema supports the flag on any type, exposing it for income/debt would invite users to set up flows that don't do anything.
+- **Soft-delete semantics differ by callsite.** Generator: ignores `is_deleted` (any tx-ever = skip). Aggregations: counts `is_deleted=0` only (soft-deleted falls back to forecast). Documented in this entry so future edits don't naively "unify" them.
+- **No `last_auto_gen_month_key` setting.** All state lives in `transactions`. If a future feature needs per-recurring "since when does auto-gen apply" (e.g. backfill control), add `recurring_items.auto_gen_from TEXT NULL` then.
+
+**i18n.** Added `recurring.fields.autoGenerate`, `autoGenerateLabel`, `autoGenerateHint` in both `es.json` and `en.json`.
+
+**Tests** — new `src/lib/calculations/__tests__/autoGenerate.test.ts` (11 cases): generator materializes for active EXPENSE+auto_gen, idempotent on re-run, skips when a tx already exists (even soft-deleted), skips archived recurrings, skips items with auto_generate=0, ignores INCOME and DEBT_PAYMENT types, skips items with `source_account_id=null`, sets date to day-1 with origin=RECURRING_GENERATED, plus the three aggregations-companion cases (forecast counted once when no auto-gen, materialized tx not double-counted, soft-deleted materialized tx falls back to forecast). The seed has pre-existing transactions/recurrings for the current month so the aggregation tests use delta-from-baseline assertions instead of absolute amounts. Full suite: 214/214 green. `pnpm exec tsc -b` clean. `pnpm build` succeeds.
+
+**Files touched**: `src/lib/calculations/autoGenerate.ts` (new), `src/lib/calculations/aggregations.ts`, `src/lib/calculations/index.ts`, `src/lib/calculations/__tests__/autoGenerate.test.ts` (new), `src/app/AppBoot.tsx`, `src/features/recurring/RecurringFormPage.tsx`, `src/lib/i18n/{en,es}.json`, `package.json`.
+
+**Closes the recurring era (0.4.7–0.4.9).** What started in 0.4.7 as "let me at least prefill the form" lands as a real workflow: a domiciled recurring with auto-gen on never needs a tap. The remaining ⨯ in /recurring after this ships will be the recurrings the user explicitly hasn't auto-gen'd — i.e. things they want to confirm month by month.
+
+---
+
 ## 2026-06-25 — Version 0.4.8: Recurring Level 2 — paid/pending state per month
 
 Second of three planned levels for the recurring rollout. With 0.4.7 (Level 1) live, the quick-fill CTA now also writes a `recurring_id` foreign key on the created transaction, and the Recurring screens light up with a paid/pending indicator for the current month. Forecast aggregation (`recurringForScope` in `aggregations.ts`) is deliberately untouched — that conversation happens in Level 3.

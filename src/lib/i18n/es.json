@@ -314,7 +314,10 @@
       "startDate": "Comienza el",
       "autoInclude": "Previsión",
       "autoIncludeLabel": "Incluir en la previsión mensual",
-      "autoIncludeHint": "Cuenta para el dinero disponible estimado."
+      "autoIncludeHint": "Cuenta para el dinero disponible estimado.",
+      "autoGenerate": "Auto-generar",
+      "autoGenerateLabel": "Crear transacción cada mes",
+      "autoGenerateHint": "Cada mes registramos la transacción automáticamente al abrir la app."
     }
   },
   "feedback": {
