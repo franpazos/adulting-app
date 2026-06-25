@@ -24,6 +24,13 @@ import { SettlementChip } from "@/components/SettlementChip";
 import { expenseAllocator } from "@/lib/calculations";
 import { categoriesRepo } from "@/lib/db";
 import type { CashSource, OwnerType, Category } from "@/lib/db/types";
+
+/**
+ * Transaction type for the polymorphic /add flow. Only EXPENSE and
+ * INCOME render through this form today; DEBT_PAYMENT lives in
+ * /debts/:id/pay because of FX semantics.
+ */
+export type TxFormType = "EXPENSE" | "INCOME";
 import { useDbStore } from "@/store/dbStore";
 import { cn } from "@/lib/utils/cn";
 import {
@@ -38,6 +45,7 @@ export const parseAmount = parseAmountFmt;
 export const formatAmountForInput = formatAmountForInputFmt;
 
 export interface TransactionFormValues {
+  type: TxFormType;
   amountText: string;
   source: CashSource;
   owner: OwnerType;
@@ -54,6 +62,7 @@ interface TransactionFormProps {
 
 export function defaultFormValues(): TransactionFormValues {
   return {
+    type: "EXPENSE",
     amountText: "",
     source: "JOINT",
     owner: "HOUSEHOLD",
@@ -68,6 +77,8 @@ export function TransactionForm({ values, onChange }: TransactionFormProps) {
   const { t } = useTranslation();
   const dbReady = useDbStore((s) => s.status === "ready");
 
+  const isIncome = values.type === "INCOME";
+
   const amount = parseAmount(values.amountText);
   const allocation = useMemo(
     () =>
@@ -81,12 +92,20 @@ export function TransactionForm({ values, onChange }: TransactionFormProps) {
   );
   const settlement = allocation.settlements[0] ?? null;
   const isShared =
-    values.owner === "HOUSEHOLD" && values.source !== "JOINT";
+    !isIncome &&
+    values.owner === "HOUSEHOLD" &&
+    values.source !== "JOINT";
 
   const [categories, setCategories] = useState<Category[]>([]);
   useEffect(() => {
-    if (dbReady) setCategories(categoriesRepo.list("EXPENSE"));
-  }, [dbReady]);
+    if (!dbReady) return;
+    setCategories(categoriesRepo.list(isIncome ? "INCOME" : "EXPENSE"));
+  }, [dbReady, isIncome]);
+
+  const typeOptions: ReadonlyArray<SegmentedOption<TxFormType>> = [
+    { value: "EXPENSE", label: t("addExpense.type.expense") },
+    { value: "INCOME", label: t("addExpense.type.income") },
+  ];
 
   const sourceOptions: ReadonlyArray<SegmentedOption<CashSource>> = [
     { value: "FRAN_PERSONAL", label: t("addExpense.who.fran") },
@@ -106,7 +125,15 @@ export function TransactionForm({ values, onChange }: TransactionFormProps) {
 
   return (
     <>
-      <Card className="relative bg-gradient-to-b from-surface to-surface-2 px-4 py-3 space-y-1.5">
+      <SegmentedControl
+        options={typeOptions}
+        value={values.type}
+        onChange={(v) => set("type", v)}
+        className="w-full justify-stretch [&>button]:flex-1 mt-1"
+        ariaLabel={t("addExpense.type.label")}
+      />
+
+      <Card className="relative bg-gradient-to-b from-surface to-surface-2 px-4 py-3 space-y-1.5 mt-3">
         <DateChip
           value={values.date}
           onChange={(v) => set("date", v)}
@@ -127,36 +154,41 @@ export function TransactionForm({ values, onChange }: TransactionFormProps) {
               className={cn(
                 "bg-transparent border-0 outline-none text-center",
                 "font-display text-5xl font-semibold tabular-nums tracking-tight",
-                "text-text-primary placeholder:text-text-muted",
                 "w-[min(70%,260px)]",
+                isIncome ? "text-positive-ink" : "text-text-primary",
+                "placeholder:text-text-muted",
               )}
             />
           </div>
         </div>
 
-        <FlowDiagram source={values.source} owner={values.owner} />
-        <div className="flex justify-center">
-          <SettlementChip settlement={settlement} />
-        </div>
+        {!isIncome && (
+          <>
+            <FlowDiagram source={values.source} owner={values.owner} />
+            <div className="flex justify-center">
+              <SettlementChip settlement={settlement} />
+            </div>
+          </>
+        )}
       </Card>
 
-      <Section label={t("addExpense.paidFrom")}>
+      <Section label={isIncome ? t("addExpense.receivedIn") : t("addExpense.paidFrom")}>
         <SegmentedControl
           options={sourceOptions}
           value={values.source}
           onChange={(v) => set("source", v)}
           className="w-full justify-stretch [&>button]:flex-1"
-          ariaLabel={t("addExpense.paidFrom")}
+          ariaLabel={isIncome ? t("addExpense.receivedIn") : t("addExpense.paidFrom")}
         />
       </Section>
 
-      <Section label={t("addExpense.belongsTo")}>
+      <Section label={isIncome ? t("addExpense.receivedBy") : t("addExpense.belongsTo")}>
         <SegmentedControl
           options={ownerOptions}
           value={values.owner}
           onChange={(v) => set("owner", v)}
           className="w-full justify-stretch [&>button]:flex-1"
-          ariaLabel={t("addExpense.belongsTo")}
+          ariaLabel={isIncome ? t("addExpense.receivedBy") : t("addExpense.belongsTo")}
         />
       </Section>
 

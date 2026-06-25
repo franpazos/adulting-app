@@ -86,8 +86,16 @@
   },
   "addExpense": {
     "title": "Add Expense",
+    "titleIncome": "Add Income",
+    "type": {
+      "label": "Type",
+      "expense": "Expense",
+      "income": "Income"
+    },
     "amount": "Amount",
     "paidFrom": "Paid from",
+    "receivedIn": "Received in",
+    "receivedBy": "For",
     "belongsTo": "Belongs to",
     "split": "Split",
     "splitLabel": "Fran {{fran}}% / Sam {{sam}}%",
@@ -288,6 +296,7 @@
     "paidProgress": "Paid this month",
     "paidOfExpected": "{{paid}} of {{total}}",
     "quickFillCta": "Register this month's payment",
+    "quickFillCtaIncome": "Register this month's income",
     "debtUnlinked": {
       "title": "Not linked to a debt",
       "body": "This recurring isn't linked to a debt. Edit it to link one so the balance is reduced automatically.",

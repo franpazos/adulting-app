@@ -16,9 +16,9 @@ const EditExpensePage = lazyNamed(
   () => import("@/features/transactions/EditExpensePage"),
   "EditExpensePage",
 );
-const AddExpensePage = lazyNamed(
-  () => import("@/features/add-expense/AddExpensePage"),
-  "AddExpensePage",
+const AddTransactionPage = lazyNamed(
+  () => import("@/features/add-expense/AddTransactionPage"),
+  "AddTransactionPage",
 );
 const DebtsPage = lazyNamed(
   () => import("@/features/debts/DebtsPage"),
@@ -118,7 +118,7 @@ export const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: "transactions", element: Lazy(<TransactionsPage />) },
       { path: "transactions/:id", element: Lazy(<EditExpensePage />) },
-      { path: "add", element: Lazy(<AddExpensePage />) },
+      { path: "add", element: Lazy(<AddTransactionPage />) },
       { path: "debts", element: Lazy(<DebtsPage />) },
       { path: "debts/new", element: Lazy(<DebtFormPage />) },
       { path: "debts/:id", element: Lazy(<DebtDetailPage />) },

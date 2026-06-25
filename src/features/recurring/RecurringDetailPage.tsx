@@ -97,15 +97,18 @@ export function RecurringDetailPage() {
   const source = item.source_account_id
     ? accountIdToCashSource(item.source_account_id)
     : null;
-  // After Level 4, DEBT_PAYMENT recurrings with a debt_id route the CTA
-  // through /debts/:id/pay (so the payment hits the principal). INCOME
-  // recurrings still hide the CTA — no "mark received" flow today.
-  // Unlinked DEBT_PAYMENT recurrings show a hint pointing to /debts
-  // (legacy data; new ones can't save without debt_id).
+  // After Level 4 + the income polymorphism (0.5.1), all three types
+  // can be quick-filled. DEBT_PAYMENT with a linked debt routes through
+  // /debts/:id/pay (so the payment hits the principal). EXPENSE and
+  // INCOME route to /add?fromRecurring=<id> where the form auto-detects
+  // the type from the recurring. Unlinked DEBT_PAYMENT recurrings get a
+  // "Sin enlace a deuda" hint instead of the CTA.
   const canQuickFillExpense = item.type === "EXPENSE" && item.is_active;
+  const canQuickFillIncome = isIncome && item.is_active;
   const canQuickFillDebt =
     isDebt && item.is_active && item.debt_id !== null;
-  const canQuickFill = canQuickFillExpense || canQuickFillDebt;
+  const canQuickFill =
+    canQuickFillExpense || canQuickFillIncome || canQuickFillDebt;
   // Paid/pending now applies to all three types (Level 4 added INCOME
   // and DEBT_PAYMENT auto-gen).
   const showPaidState = item.is_active;
@@ -287,7 +290,9 @@ export function RecurringDetailPage() {
               }
               className="bg-gradient-to-br from-violet-soft via-violet to-violet-ink text-white shadow-violet-glow"
             >
-              {t("recurring.quickFillCta")}
+              {isIncome
+                ? t("recurring.quickFillCtaIncome")
+                : t("recurring.quickFillCta")}
             </Button>
           </div>
         </div>

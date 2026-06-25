@@ -57,6 +57,10 @@ export function EditExpensePage() {
     }
     const allocations = transactionsRepo.allocationsFor(tx.id);
     setValues({
+      // Edit flow today only handles EXPENSE-shape txs (the original
+      // /add target). INCOME txs created via 0.5.1 can be edited too —
+      // they pass through the same form, type-aware.
+      type: tx.type === "INCOME" ? "INCOME" : "EXPENSE",
       amountText: formatAmountForInput(tx.amount),
       source: accountIdToCashSource(tx.source_account_id),
       owner: inferOwnerFromAllocations(allocations),

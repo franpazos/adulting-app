@@ -43,7 +43,7 @@ import {
   recordLastUsed,
 } from "./lastUsed";
 
-export function AddExpensePage() {
+export function AddTransactionPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -80,6 +80,13 @@ export function AddExpensePage() {
     if (next.categoryId !== values.categoryId) {
       userTouchedCategoryRef.current = true;
     }
+    // Switching type changes the available categories — clear the
+    // selection so an EXPENSE category doesn't survive into INCOME
+    // (and vice versa).
+    if (next.type !== values.type) {
+      next.categoryId = null;
+      userTouchedCategoryRef.current = false;
+    }
     setValues(next);
   };
 
@@ -94,6 +101,7 @@ export function AddExpensePage() {
     userTouchedCategoryRef.current = true;
     setValues((prev) => ({
       ...prev,
+      type: r.type === "INCOME" ? "INCOME" : "EXPENSE",
       amountText: formatAmountForInput(r.amount),
       source: r.source_account_id
         ? accountIdToCashSource(r.source_account_id)
@@ -108,9 +116,11 @@ export function AddExpensePage() {
   }, [dbReady, fromRecurringId]);
 
   // When the pattern (source/owner/split) changes and the user hasn't
-  // touched the category, refresh the suggestion from memory.
+  // touched the category, refresh the suggestion from memory. Only runs
+  // for EXPENSE — INCOME has no smart-default memory yet.
   useEffect(() => {
     if (userTouchedCategoryRef.current) return;
+    if (values.type !== "EXPENSE") return;
     const memo = lookupLastUsed(
       buildPatternKey(values.source, values.owner, values.splitFranPercent),
     );
@@ -120,7 +130,7 @@ export function AddExpensePage() {
     }
     // Only react to pattern changes — categoryId in deps would loop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [values.source, values.owner, values.splitFranPercent]);
+  }, [values.type, values.source, values.owner, values.splitFranPercent]);
 
   const amount = parseAmount(values.amountText);
 
@@ -129,14 +139,26 @@ export function AddExpensePage() {
     setSaving(true);
     setSaveError(null);
     try {
-      const allocation = expenseAllocator({
-        amount,
-        source: values.source,
-        owner: values.owner,
-        splitFranPercent: values.splitFranPercent,
-      });
+      const isIncome = values.type === "INCOME";
+      // INCOME: single allocation to the chosen owner at 100%, no
+      // settlement implications. EXPENSE: use the canonical allocator
+      // that handles split + cash-source settlements.
+      const allocations = isIncome
+        ? [
+            {
+              owner_type: values.owner,
+              share_percent: 100,
+              share_amount: amount,
+            },
+          ]
+        : expenseAllocator({
+            amount,
+            source: values.source,
+            owner: values.owner,
+            splitFranPercent: values.splitFranPercent,
+          }).allocations;
       const tx = transactionsRepo.create({
-        type: "EXPENSE",
+        type: isIncome ? "INCOME" : "EXPENSE",
         date: values.date,
         amount,
         currency_code: "EUR",
@@ -147,17 +169,21 @@ export function AddExpensePage() {
         origin: "MANUAL",
         sheet_sync_status: "PENDING",
         recurring_id: fromRecurringId,
-        allocations: allocation.allocations,
+        allocations,
       });
-      recomputeForTransaction(tx.id);
+      // Income has no settlement effect — skip the recompute. Saves a
+      // pointless ledger pass on the common nómina case.
+      if (!isIncome) recomputeForTransaction(tx.id);
       bumpVersion();
       setMonthKey(tx.month_key);
-      // Remember this pattern's category so the next save with the same
-      // source/owner/split combo pre-fills it.
-      recordLastUsed(
-        buildPatternKey(values.source, values.owner, values.splitFranPercent),
-        { categoryId: values.categoryId },
-      );
+      // Smart-default memory is keyed by the expense pattern; recording
+      // it for income would pollute the next expense suggestion.
+      if (!isIncome) {
+        recordLastUsed(
+          buildPatternKey(values.source, values.owner, values.splitFranPercent),
+          { categoryId: values.categoryId },
+        );
+      }
       navigate(fromRecurringId ? `/recurring/${fromRecurringId}` : "/");
     } catch (err) {
       console.error("[add-expense] save failed", err);
@@ -176,7 +202,9 @@ export function AddExpensePage() {
           <X className="size-5" />
         </IconButton>
         <h1 className="font-display text-base font-semibold">
-          {t("addExpense.title")}
+          {values.type === "INCOME"
+            ? t("addExpense.titleIncome")
+            : t("addExpense.title")}
         </h1>
         <span className="size-10" aria-hidden />
       </div>

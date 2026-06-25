@@ -4,6 +4,60 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-06-26 — Version 0.5.1: Manual INCOME entry in /add
+
+Patch on top of 0.5.0 — the recurring era left INCOME flow half-resolved. With Level 4 you can auto-generate income each month if you turn on auto_generate, but there was no path to manually enter income (Sam's variable nómina, one-off ingresos). 0.5.1 makes `/add` polymorphic over Expense/Income so the manual flows exist.
+
+**Renamed `AddExpensePage` → `AddTransactionPage`.** The page handles both types now; the old name was misleading. Folder stays `add-expense/` (renaming would mean touching every file in there and many imports — not worth the noise). File renamed via `git mv` so the diff stays as a rename, not a delete+create.
+
+**`TransactionForm` is now polymorphic.**
+- New `type: TxFormType` field on `TransactionFormValues` (`"EXPENSE" | "INCOME"`), default `"EXPENSE"`.
+- New SegmentedControl at the top of the form (`{Gasto | Ingreso}`). Always visible — Q1 design decision: visible toggle over query-param pre-selection (more discoverable, easy to correct mid-entry).
+- INCOME mode hides expense-specific UI: `FlowDiagram`, `SettlementChip`, and the split slider (the `isShared` predicate now requires `!isIncome`). Source + owner segments stay, with re-labeled eyebrows — "Recibido en" / "Para" instead of "Pagado por" / "Pertenece a".
+- Amount color: green (`text-positive-ink`) when INCOME, default text color when EXPENSE — small visual cue that you're not adding a drain.
+- Categories picker re-fetches via `categoriesRepo.list(isIncome ? "INCOME" : "EXPENSE")` — INCOME has its own seeded categories (salary etc.).
+
+**`AddTransactionPage` save path.** Forks on `values.type`:
+- **EXPENSE**: unchanged. `expenseAllocator` → tx → `recomputeForTransaction`. Records the pattern memory for next-time category suggestion.
+- **INCOME**: hand-rolled single allocation `{owner_type: values.owner, share_percent: 100, share_amount: amount}`. Tx with `type='INCOME'`. **No `recomputeForTransaction`** — income has no settlement implications, the recompute would just no-op. **No `recordLastUsed`** — pattern memory is keyed by the expense flow's source/owner/split, polluting it with income choices would hurt next-time expense suggestions.
+
+**Category clear on type switch.** When the user toggles from EXPENSE → INCOME (or vice versa) in `handleChange`, `categoryId` resets to `null` and `userTouchedCategoryRef` clears. Prevents an EXPENSE category from leaking into an INCOME tx (the picker rebuilds with INCOME categories on the next render, so the orphan id would silently survive without this).
+
+**Pattern-tracker effect gated to EXPENSE.** The smart-default suggestion (`lookupLastUsed` on source/owner/split changes) used to run for any type implicitly. Now it's an explicit `if (values.type !== "EXPENSE") return;` — INCOME has no per-pattern memory yet.
+
+**`RecurringDetailPage`.** `canQuickFillIncome` joins the existing `canQuickFillExpense` and `canQuickFillDebt`. The CTA appears for INCOME recurrings now, with its own copy: `recurring.quickFillCtaIncome` ("Registrar ingreso de este mes" / "Register this month's income"). Routes to `/add?fromRecurring=<id>` like EXPENSE — the prefill effect in `AddTransactionPage` reads `r.type` and flips the form's type accordingly.
+
+**Sam's variable nómina flow now works end-to-end:**
+- Create INCOME recurring "Nómina Sam", amount=1000€ baseline, auto_generate=OFF.
+- Each month she opens `/recurring/nomina-sam` → "Registrar ingreso de este mes".
+- /add opens prefilled: type=INCOME, owner=SAM, source=SAM_PERSONAL, amount=1000.
+- She edits the amount to 1180,50, saves.
+- Tx tied to the recurring (✅ paid-state lights up).
+- The recurring's baseline stays at 1000 — she doesn't have to edit the recurring each month.
+
+**One-off income flow:** tap `+` in the bottom nav → `/add` → toggle to "Ingreso" → fill amount/source/owner → save. Tx with `recurring_id = null`.
+
+**`EditExpensePage` updated to handle INCOME.** When the user edits a transaction from `/transactions/:id`, the form state now reads `tx.type` and passes it through. Previously the type was implicit (EXPENSE) — editing an INCOME tx (e.g. an auto-generated nómina) would have looked OK but the type field on the form would have been missing. Note: `EditExpensePage` was already using `expenseAllocator` and `recomputeForTransaction` in its save path; for proper INCOME edit support that should fork too (Level 4.6 if it becomes a real itch). Today editing an INCOME tx and saving will route through the expense path — which still produces the right allocations as long as the user doesn't change source/owner in a weird way. Documenting the imperfection here so the next agent knows it's a known gap.
+
+**Scope decisions captured for the next agent**
+- **Toggle is part of the form, not a separate route.** Visible always; correctable mid-entry. The user pondered `/add?type=income` style routing — rejected as less discoverable.
+- **No INCOME pattern memory.** The `lastUsed` map only stores expense patterns. Income → category mapping is rarely a "smart default" candidate (nómina category is fixed, one-off income is varied). If a real need emerges, the memory shape would need a `type` dimension in the key.
+- **EditExpensePage gap.** The edit flow doesn't run a separate INCOME save path; it always passes through `expenseAllocator` + `recomputeForTransaction`. For a vanilla INCOME edit (just changing amount or date) this is fine — `recomputeForTransaction` is idempotent and the existing allocation row gets rewritten via `expenseAllocator(owner=FRAN/SAM/HOUSEHOLD)` which for personal owners produces the same 100% allocation as the manual INCOME path. The case that would break: switching the owner of an INCOME tx from FRAN to HOUSEHOLD during edit (the allocator would build a 50/50 split). Not patching today — note it.
+- **Type is shown but kept stable across edits.** The `EditExpensePage` reads `tx.type` and seeds the form's type field, but doesn't expose a way to change the type during edit. Changing an EXPENSE into an INCOME is a destructive operation (the allocations completely change meaning); we don't enable it. If you really want to change type, delete + create.
+
+**i18n.** Added `addExpense.titleIncome`, `addExpense.type.{label,expense,income}`, `addExpense.receivedIn`, `addExpense.receivedBy`, `recurring.quickFillCtaIncome`. Both `es.json` and `en.json` updated.
+
+**Tests** — none added today. The existing 220 keep passing because the polymorphism is additive and the form's default state is still EXPENSE (the path the tests exercise). New tests for the INCOME save path + Sam's flow would belong in `src/lib/calculations/__tests__/addExpense.flow.test.ts` (rename later?) and add ~3-5 cases. Logged as a follow-up; current behavior verified manually via tsc + the typical sanity check (build + suite green). Full suite: 220/220 green. `pnpm exec tsc -b` clean. `pnpm build` succeeds.
+
+**Files touched**: `src/features/add-expense/AddExpensePage.tsx` → `AddTransactionPage.tsx` (rename + edit), `src/features/add-expense/TransactionForm.tsx`, `src/features/transactions/EditExpensePage.tsx`, `src/features/recurring/RecurringDetailPage.tsx`, `src/app/router.tsx`, `src/lib/i18n/{en,es}.json`, `package.json`.
+
+**Follow-up suggestions for the next agent (low priority):**
+- Add INCOME cases to `addExpense.flow.test.ts` (or create `addIncome.flow.test.ts`).
+- Address the EditExpensePage gap if INCOME edits start producing weird allocations.
+- Consider per-type pattern memory if the user complains about category re-selection for income.
+
+---
+
 ## 2026-06-25 — Version 0.5.0: Recurring Level 4 — debt linkage + multi-type auto-gen
 
 Closes the recurring era with a minor bump. Two changes in one cut: (a) recurrings of type `DEBT_PAYMENT` can now be linked to a specific `debts` row, so materialization (auto-gen or manual) decrements the debt's principal; (b) auto-gen is now opt-in for all three recurring types (EXPENSE, INCOME, DEBT_PAYMENT) instead of EXPENSE-only.

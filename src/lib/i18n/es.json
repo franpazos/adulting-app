@@ -86,8 +86,16 @@
   },
   "addExpense": {
     "title": "Añadir gasto",
+    "titleIncome": "Añadir ingreso",
+    "type": {
+      "label": "Tipo",
+      "expense": "Gasto",
+      "income": "Ingreso"
+    },
     "amount": "Importe",
     "paidFrom": "Pagado por",
+    "receivedIn": "Recibido en",
+    "receivedBy": "Para",
     "belongsTo": "Pertenece a",
     "split": "Reparto",
     "splitLabel": "Fran {{fran}}% / Sam {{sam}}%",
@@ -288,6 +296,7 @@
     "paidProgress": "Pagado este mes",
     "paidOfExpected": "{{paid}} de {{total}}",
     "quickFillCta": "Registrar pago de este mes",
+    "quickFillCtaIncome": "Registrar ingreso de este mes",
     "debtUnlinked": {
       "title": "Sin enlace a deuda",
       "body": "Este recurrente no está enlazado a una deuda. Edítalo para asociarlo y reducir el saldo automáticamente.",
