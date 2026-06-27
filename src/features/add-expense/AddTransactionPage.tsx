@@ -222,6 +222,11 @@ export function AddTransactionPage() {
         disabled={amount <= 0 || saving}
         loading={saving}
         onClick={handleSave}
+        labelKey={
+          values.type === "INCOME"
+            ? "addExpense.saveLabelIncome"
+            : "addExpense.saveLabel"
+        }
       />
     </div>
   );

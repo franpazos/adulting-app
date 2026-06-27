@@ -275,23 +275,43 @@ export function RecurringFormPage() {
         </Card>
       </Section>
 
-      <Section label={t("recurring.fields.paidFrom")}>
+      <Section
+        label={
+          state.type === "INCOME"
+            ? t("recurring.fields.receivedIn")
+            : t("recurring.fields.paidFrom")
+        }
+      >
         <SegmentedControl
           options={sourceOptions}
           value={state.source}
           onChange={(v) => setState((s) => ({ ...s, source: v }))}
           className="w-full justify-stretch [&>button]:flex-1"
-          ariaLabel={t("recurring.fields.paidFrom")}
+          ariaLabel={
+            state.type === "INCOME"
+              ? t("recurring.fields.receivedIn")
+              : t("recurring.fields.paidFrom")
+          }
         />
       </Section>
 
-      <Section label={t("recurring.fields.owner")}>
+      <Section
+        label={
+          state.type === "INCOME"
+            ? t("recurring.fields.receivedBy")
+            : t("recurring.fields.owner")
+        }
+      >
         <SegmentedControl
           options={ownerOptions}
           value={state.owner}
           onChange={(v) => setState((s) => ({ ...s, owner: v }))}
           className="w-full justify-stretch [&>button]:flex-1"
-          ariaLabel={t("recurring.fields.owner")}
+          ariaLabel={
+            state.type === "INCOME"
+              ? t("recurring.fields.receivedBy")
+              : t("recurring.fields.owner")
+          }
         />
       </Section>
 

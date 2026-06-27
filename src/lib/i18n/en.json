@@ -106,6 +106,7 @@
     "date": "Date",
     "today": "Today",
     "saveLabel": "Save expense · {{amount}}",
+    "saveLabelIncome": "Save income · {{amount}}",
     "saving": "Saving…",
     "savedToast": "Saved",
     "who": {
@@ -318,6 +319,8 @@
       "namePlaceholder": "e.g. Rent, Salary, Loan…",
       "amount": "Amount",
       "paidFrom": "Paid from",
+      "receivedIn": "Received in",
+      "receivedBy": "For",
       "owner": "Owner",
       "category": "Category",
       "startDate": "Starts on",

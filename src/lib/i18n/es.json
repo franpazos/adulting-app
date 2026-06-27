@@ -106,6 +106,7 @@
     "date": "Fecha",
     "today": "Hoy",
     "saveLabel": "Guardar gasto · {{amount}}",
+    "saveLabelIncome": "Guardar ingreso · {{amount}}",
     "saving": "Guardando…",
     "savedToast": "Guardado",
     "who": {
@@ -318,6 +319,8 @@
       "namePlaceholder": "p. ej. Alquiler, Nómina, Préstamo…",
       "amount": "Importe",
       "paidFrom": "Pagado por",
+      "receivedIn": "Recibido en",
+      "receivedBy": "Para",
       "owner": "Pertenece a",
       "category": "Categoría",
       "startDate": "Comienza el",

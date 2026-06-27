@@ -4,6 +4,27 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-06-26 — Version 0.5.4: INCOME-aware labels in recurring form + SaveFab
+
+Fran spotted two small inconsistencies left over from the 0.5.1 income polymorphism:
+
+1. **Recurring form was stuck on "Paid from" / "Owner" labels** regardless of type. For an INCOME recurring (e.g. "Nómina Sam") this reads wrong — your employer isn't a CashSource. The /add page already switched to "Received in" / "For" in 0.5.1 (those labels apply equally to recurring), but `RecurringFormPage.tsx` was missed.
+2. **SaveFab still said "Save expense · X €"** when the user was on /add in INCOME mode. The page header was already "Add Income" (correct from 0.5.1), so the button text was the last hold-out.
+
+**Fixes:**
+
+- `RecurringFormPage`: Section labels and ariaLabels for source + owner are now conditional on `state.type`. INCOME → "Received in" + "For". EXPENSE/DEBT_PAYMENT → "Paid from" + "Owner" (existing). Used the same shape as `TransactionForm.tsx` already had — pure render-side change, no state shape changes.
+- `SaveFab` already accepted a `labelKey` prop. `AddTransactionPage` now passes `"addExpense.saveLabelIncome"` when `values.type === "INCOME"`, falling back to the default `"addExpense.saveLabel"` for EXPENSE.
+- New i18n keys: `addExpense.saveLabelIncome` ("Guardar ingreso · {{amount}}" / "Save income · {{amount}}"), `recurring.fields.receivedIn`, `recurring.fields.receivedBy`. Both locales.
+
+**No semantics changes.** The two fields (source + owner) still exist for INCOME, and the same allocation logic runs — only the labels change to match how the user reads them. The "edge case" where Received in ≠ For (e.g. parents transfer money to your personal account but it's for the household) still works mechanically; it just doesn't auto-trigger a settlement entry — that's a deliberate scope limit since INCOME txs don't call `recomputeForTransaction`. Documented in the prior 0.5.1 entry.
+
+**Tests** — no new tests. The change is pure label conditionals; the underlying form state shape, save path, and aggregation behavior are unchanged. The 220 + 1 (debts) existing tests cover the data path. Full suite: 221/221 green. `pnpm exec tsc -b` clean. `pnpm build` succeeds.
+
+**Files touched**: `src/features/recurring/RecurringFormPage.tsx`, `src/features/add-expense/AddTransactionPage.tsx`, `src/lib/i18n/{en,es}.json`, `package.json`.
+
+---
+
 ## 2026-06-26 — Version 0.5.3: PayDebt prefill from recurring quick-fill
 
 Closing the follow-up I flagged at the end of Level 4 ("Adding `?amount=` prefill is a 10-line addition if friction emerges"). Fran tested the recurring DEBT_PAYMENT flow and the friction was: tap "Registrar pago de este mes" on a debt-linked recurring → PayDebtPage opens with `0,00 €`, no amount prefilled, and the resulting transaction wouldn't link back to the recurring so the ✅ badge on /recurring never fired even after paying. Both gaps fixed in one cut.
