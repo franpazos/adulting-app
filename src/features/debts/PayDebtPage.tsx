@@ -15,7 +15,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, RefreshCw, Zap } from "lucide-react";
 
@@ -62,8 +62,16 @@ export function PayDebtPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const dbReady = useDbStore((s) => s.status === "ready");
   const bumpVersion = useDbStore((s) => s.bumpVersion);
+
+  // Prefill hooks from a recurring quick-fill (Level 4 / 0.5.3). When
+  // present, `amount` seeds the debt-side amount input and
+  // `fromRecurring` flows into transactionsRepo.create so /recurring
+  // shows the row as paid this month.
+  const prefillAmountParam = searchParams.get("amount");
+  const fromRecurringId = searchParams.get("fromRecurring");
 
   const [debt, setDebt] = useState<Debt | null>(null);
   const [debtAmount, setDebtAmount] = useState(0);
@@ -86,7 +94,17 @@ export function PayDebtPage() {
     if (d.owner_type === "FRAN") setSource("FRAN_PERSONAL");
     else if (d.owner_type === "SAM") setSource("SAM_PERSONAL");
     else setSource("JOINT");
-  }, [dbReady, id]);
+    // Prefill the amount if we arrived from a recurring quick-fill. Done
+    // here (alongside the debt load) so the input pops with the right
+    // number from the first render that has data.
+    if (prefillAmountParam) {
+      const parsed = Number(prefillAmountParam);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        setDebtAmount(parsed);
+        setDebtAmountText(formatForInput(parsed));
+      }
+    }
+  }, [dbReady, id, prefillAmountParam]);
 
   const isFx = debt
     ? !isSameCurrency(debt.currency_code, ACCOUNT_CURRENCY)
@@ -163,6 +181,7 @@ export function PayDebtPage() {
         exchange_rate: isFx ? rate : null,
         amount_in_account_currency: accountAmount,
         amount_in_debt_currency: debtAmount,
+        recurring_id: fromRecurringId,
         allocations: allocation.allocations,
       });
 
@@ -181,7 +200,11 @@ export function PayDebtPage() {
       debtsRepo.adjustBalance(debt.id, -debtAmount);
       recomputeForTransaction(tx.id);
       bumpVersion();
-      navigate(`/debts/${debt.id}`);
+      // Return to the originating recurring detail when we came from a
+      // quick-fill — that's where the user will look for the ✅ badge.
+      navigate(
+        fromRecurringId ? `/recurring/${fromRecurringId}` : `/debts/${debt.id}`,
+      );
     } catch (err) {
       console.error("[pay-debt] save failed", err);
       setSaveError(err instanceof Error ? err.message : String(err));

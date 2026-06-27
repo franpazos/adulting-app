@@ -284,7 +284,7 @@ export function RecurringDetailPage() {
               onClick={() =>
                 navigate(
                   canQuickFillDebt
-                    ? `/debts/${item.debt_id}/pay`
+                    ? `/debts/${item.debt_id}/pay?amount=${item.amount}&fromRecurring=${item.id}`
                     : `/add?fromRecurring=${item.id}`,
                 )
               }

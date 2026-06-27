@@ -4,6 +4,30 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-06-26 — Version 0.5.3: PayDebt prefill from recurring quick-fill
+
+Closing the follow-up I flagged at the end of Level 4 ("Adding `?amount=` prefill is a 10-line addition if friction emerges"). Fran tested the recurring DEBT_PAYMENT flow and the friction was: tap "Registrar pago de este mes" on a debt-linked recurring → PayDebtPage opens with `0,00 €`, no amount prefilled, and the resulting transaction wouldn't link back to the recurring so the ✅ badge on /recurring never fired even after paying. Both gaps fixed in one cut.
+
+**`RecurringDetailPage` — pass amount + fromRecurring as query params:**
+
+```ts
+navigate(`/debts/${item.debt_id}/pay?amount=${item.amount}&fromRecurring=${item.id}`)
+```
+
+The non-debt branch is unchanged (it already passed `fromRecurring` to `/add`). Same pattern, two extra characters.
+
+**`PayDebtPage` — read the query params:**
+- `useSearchParams()` picks up `amount` and `fromRecurring`.
+- The init effect (after loading the debt) sets `debtAmount` + `debtAmountText` to the parsed `amount` when present and valid. Uses `formatForInput` so the input shows the localized format (1.200,00 in es-ES).
+- `transactionsRepo.create` gets `recurring_id: fromRecurringId` — Level 2's paid-state queries pick it up and ✅ lights on /recurring after save.
+- Save navigation: when `fromRecurring` is set, route back to `/recurring/${fromRecurringId}` (where the user came from). Otherwise the original `/debts/${debt.id}` behavior. Mirrors the EXPENSE quick-fill's "save returns you to the page that launched it" pattern from Level 1.
+
+**Tests** — no new dedicated tests for the UI prefill. The data path (DEBT_PAYMENT tx with `recurring_id` flips `isPaidForMonth` to true) is already covered by `autoGenerate.test.ts > materializes a DEBT_PAYMENT tx and decrements the linked debt's balance` (the auto-gen path is structurally identical to this manual one — both call `transactionsRepo.create({type: "DEBT_PAYMENT", ..., recurring_id, ...})`). Adding a PayDebtPage component test would gain little. Full suite: 221/221 green. `pnpm exec tsc -b` clean. `pnpm build` succeeds.
+
+**Files touched**: `src/features/debts/PayDebtPage.tsx`, `src/features/recurring/RecurringDetailPage.tsx`, `package.json`.
+
+---
+
 ## 2026-06-26 — Version 0.5.2: debt delete becomes soft-delete (sync resurrection fix)
 
 Bugfix. Fran reported that hard-deleting a debt made it disappear briefly and then reappear seconds later. Root cause was a latent bug since 0.4.4 (when debts hard-delete shipped): the pull reconciler in `src/lib/sync/pull.ts:210-243` treats "row exists on the Sheet but not locally" as a remote INSERT and re-creates the row. Hard-deleted debts leave no tombstone for the reconciler to respect, so any pull between local-delete and the snapshot-push to Sheets resurrects them.
