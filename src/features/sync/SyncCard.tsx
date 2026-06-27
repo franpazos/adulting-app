@@ -300,8 +300,8 @@ function ConnectedBlock({
   onDisconnect,
   manualOnly,
   onToggleManualOnly,
-  monthTemplateTitle,
-  onChangeMonthTemplate,
+  // monthTemplateTitle,
+  // onChangeMonthTemplate,
 }: {
   email: string | null;
   sheetTitle: string;
@@ -409,7 +409,9 @@ function ConnectedBlock({
         <Toggle checked={manualOnly} onCheckedChange={onToggleManualOnly} />
       </div>
 
-      <div className="space-y-1.5 pt-1">
+      {/* I leave this commented out for now in case we want to add it back in later */}
+      
+      {/* <div className="space-y-1.5 pt-1">
         <p className="text-xs font-medium text-text-primary">
           {t("sync.monthTemplate.label")}
         </p>
@@ -423,7 +425,7 @@ function ConnectedBlock({
           placeholder={t("sync.monthTemplate.placeholder")}
           aria-label={t("sync.monthTemplate.label")}
         />
-      </div>
+      </div> */}
 
       <div className="flex gap-2 pt-1">
         <Button variant="ghost" size="sm" onClick={onUnlinkSheet}>
