@@ -26,11 +26,27 @@ import { categoriesRepo } from "@/lib/db";
 import type { CashSource, OwnerType, Category } from "@/lib/db/types";
 
 /**
- * Transaction type for the polymorphic /add flow. Only EXPENSE and
- * INCOME render through this form today; DEBT_PAYMENT lives in
+ * Transaction type for the polymorphic /add flow. EXPENSE, INCOME and
+ * TRANSFER all render through this form. DEBT_PAYMENT lives in
  * /debts/:id/pay because of FX semantics.
  */
-export type TxFormType = "EXPENSE" | "INCOME";
+export type TxFormType = "EXPENSE" | "INCOME" | "TRANSFER";
+
+/** Returns the invalid-pair reason, or null when the from→to combo is allowed. */
+export function transferValidationError(
+  from: CashSource,
+  to: CashSource,
+): "same" | "personal_to_personal" | null {
+  if (from === to) return "same";
+  // Fran personal ↔ Sam personal: blocked. SettleUp is the right tool
+  // for clearing internal debt between Fran and Sam (the TRANSFER would
+  // move cash but bypass the settlement_ledger flow).
+  if (from === "FRAN_PERSONAL" && to === "SAM_PERSONAL")
+    return "personal_to_personal";
+  if (from === "SAM_PERSONAL" && to === "FRAN_PERSONAL")
+    return "personal_to_personal";
+  return null;
+}
 import { useDbStore } from "@/store/dbStore";
 import { cn } from "@/lib/utils/cn";
 import {
@@ -48,6 +64,8 @@ export interface TransactionFormValues {
   type: TxFormType;
   amountText: string;
   source: CashSource;
+  /** Only meaningful when type='TRANSFER'. */
+  destination: CashSource;
   owner: OwnerType;
   splitFranPercent: number;
   date: string;
@@ -65,6 +83,7 @@ export function defaultFormValues(): TransactionFormValues {
     type: "EXPENSE",
     amountText: "",
     source: "JOINT",
+    destination: "JOINT",
     owner: "HOUSEHOLD",
     splitFranPercent: 50,
     date: new Date().toISOString().slice(0, 10),
@@ -78,6 +97,7 @@ export function TransactionForm({ values, onChange }: TransactionFormProps) {
   const dbReady = useDbStore((s) => s.status === "ready");
 
   const isIncome = values.type === "INCOME";
+  const isTransfer = values.type === "TRANSFER";
 
   const amount = parseAmount(values.amountText);
   const allocation = useMemo(
@@ -93,18 +113,28 @@ export function TransactionForm({ values, onChange }: TransactionFormProps) {
   const settlement = allocation.settlements[0] ?? null;
   const isShared =
     !isIncome &&
+    !isTransfer &&
     values.owner === "HOUSEHOLD" &&
     values.source !== "JOINT";
+
+  const transferError = isTransfer
+    ? transferValidationError(values.source, values.destination)
+    : null;
 
   const [categories, setCategories] = useState<Category[]>([]);
   useEffect(() => {
     if (!dbReady) return;
+    if (isTransfer) {
+      setCategories([]);
+      return;
+    }
     setCategories(categoriesRepo.list(isIncome ? "INCOME" : "EXPENSE"));
-  }, [dbReady, isIncome]);
+  }, [dbReady, isIncome, isTransfer]);
 
   const typeOptions: ReadonlyArray<SegmentedOption<TxFormType>> = [
     { value: "EXPENSE", label: t("addExpense.type.expense") },
     { value: "INCOME", label: t("addExpense.type.income") },
+    { value: "TRANSFER", label: t("addExpense.type.transfer") },
   ];
 
   const sourceOptions: ReadonlyArray<SegmentedOption<CashSource>> = [
@@ -162,7 +192,7 @@ export function TransactionForm({ values, onChange }: TransactionFormProps) {
           </div>
         </div>
 
-        {!isIncome && (
+        {!isIncome && !isTransfer && (
           <>
             <FlowDiagram source={values.source} owner={values.owner} />
             <div className="flex justify-center">
@@ -172,25 +202,64 @@ export function TransactionForm({ values, onChange }: TransactionFormProps) {
         )}
       </Card>
 
-      <Section label={isIncome ? t("addExpense.receivedIn") : t("addExpense.paidFrom")}>
+      <Section
+        label={
+          isTransfer
+            ? t("addExpense.transferFrom")
+            : isIncome
+              ? t("addExpense.receivedIn")
+              : t("addExpense.paidFrom")
+        }
+      >
         <SegmentedControl
           options={sourceOptions}
           value={values.source}
           onChange={(v) => set("source", v)}
           className="w-full justify-stretch [&>button]:flex-1"
-          ariaLabel={isIncome ? t("addExpense.receivedIn") : t("addExpense.paidFrom")}
+          ariaLabel={
+            isTransfer
+              ? t("addExpense.transferFrom")
+              : isIncome
+                ? t("addExpense.receivedIn")
+                : t("addExpense.paidFrom")
+          }
         />
       </Section>
 
-      <Section label={isIncome ? t("addExpense.receivedBy") : t("addExpense.belongsTo")}>
-        <SegmentedControl
-          options={ownerOptions}
-          value={values.owner}
-          onChange={(v) => set("owner", v)}
-          className="w-full justify-stretch [&>button]:flex-1"
-          ariaLabel={isIncome ? t("addExpense.receivedBy") : t("addExpense.belongsTo")}
-        />
-      </Section>
+      {isTransfer && (
+        <Section label={t("addExpense.transferTo")}>
+          <SegmentedControl
+            options={sourceOptions}
+            value={values.destination}
+            onChange={(v) => set("destination", v)}
+            className="w-full justify-stretch [&>button]:flex-1"
+            ariaLabel={t("addExpense.transferTo")}
+          />
+          {transferError && (
+            <p className="t-label text-xs text-expense-ink mt-1.5">
+              {transferError === "same"
+                ? t("addExpense.transferErrorSame")
+                : t("addExpense.transferErrorPersonalToPersonal")}
+            </p>
+          )}
+        </Section>
+      )}
+
+      {!isTransfer && (
+        <Section
+          label={isIncome ? t("addExpense.receivedBy") : t("addExpense.belongsTo")}
+        >
+          <SegmentedControl
+            options={ownerOptions}
+            value={values.owner}
+            onChange={(v) => set("owner", v)}
+            className="w-full justify-stretch [&>button]:flex-1"
+            ariaLabel={
+              isIncome ? t("addExpense.receivedBy") : t("addExpense.belongsTo")
+            }
+          />
+        </Section>
+      )}
 
       {isShared && (
         <Section
@@ -207,13 +276,15 @@ export function TransactionForm({ values, onChange }: TransactionFormProps) {
         </Section>
       )}
 
-      <Section label={t("addExpense.category")}>
-        <CategoryPicker
-          categories={categories}
-          value={values.categoryId}
-          onChange={(id) => set("categoryId", id)}
-        />
-      </Section>
+      {!isTransfer && (
+        <Section label={t("addExpense.category")}>
+          <CategoryPicker
+            categories={categories}
+            value={values.categoryId}
+            onChange={(id) => set("categoryId", id)}
+          />
+        </Section>
+      )}
 
       <Section label={t("addExpense.description")}>
         <Input

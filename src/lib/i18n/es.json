@@ -43,6 +43,8 @@
     "statExpenses": "Gastos",
     "statRecurring": "Recurrentes",
     "statAvailable": "Disponible",
+    "statBalance": "Saldo actual",
+    "statNet": "Neto del mes",
     "openTransactions": "Abrir movimientos",
     "openSettlements": "Abrir ajustes",
     "openDebts": "Abrir deudas",
@@ -87,15 +89,22 @@
   "addExpense": {
     "title": "Añadir gasto",
     "titleIncome": "Añadir ingreso",
+    "titleTransfer": "Nueva transferencia",
     "type": {
       "label": "Tipo",
       "expense": "Gasto",
-      "income": "Ingreso"
+      "income": "Ingreso",
+      "transfer": "Transferencia"
     },
     "amount": "Importe",
     "paidFrom": "Pagado por",
     "receivedIn": "Recibido en",
     "receivedBy": "Para",
+    "transferFrom": "Desde",
+    "transferTo": "Hacia",
+    "transferErrorSame": "El origen y el destino deben ser distintos.",
+    "transferErrorPersonalToPersonal": "Para mover dinero entre Fran y Sam, usa Saldar (Settle Up).",
+    "saveLabelTransfer": "Guardar transferencia · {{amount}}",
     "belongsTo": "Pertenece a",
     "split": "Reparto",
     "splitLabel": "Fran {{fran}}% / Sam {{sam}}%",
@@ -298,6 +307,7 @@
     "paidOfExpected": "{{paid}} de {{total}}",
     "quickFillCta": "Registrar pago de este mes",
     "quickFillCtaIncome": "Registrar ingreso de este mes",
+    "quickFillCtaTransfer": "Registrar transferencia de este mes",
     "debtUnlinked": {
       "title": "Sin enlace a deuda",
       "body": "Este recurrente no está enlazado a una deuda. Edítalo para asociarlo y reducir el saldo automáticamente.",
@@ -306,12 +316,14 @@
     "types": {
       "expense": "Gasto",
       "income": "Ingreso",
-      "debt": "Pago deuda"
+      "debt": "Pago deuda",
+      "transfer": "Transferencia"
     },
     "sections": {
       "income": "Ingresos",
       "expense": "Gastos",
-      "debt": "Pagos de deuda"
+      "debt": "Pagos de deuda",
+      "transfer": "Transferencias"
     },
     "fields": {
       "type": "Tipo",

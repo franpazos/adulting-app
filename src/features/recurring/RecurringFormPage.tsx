@@ -23,6 +23,7 @@ import {
 import { categoriesRepo, debtsRepo, recurringRepo } from "@/lib/db";
 import { autoGenerateForCurrentMonth } from "@/lib/calculations";
 import type { Category, Debt, RecurringType, OwnerType, CashSource } from "@/lib/db/types";
+import { transferValidationError } from "@/features/add-expense/TransactionForm";
 import { useDbStore } from "@/store/dbStore";
 import {
   SOURCE_TO_ACCOUNT,
@@ -40,6 +41,8 @@ interface RecurringFormState {
   name: string;
   amountText: string;
   source: CashSource;
+  /** Only meaningful when type='TRANSFER'. */
+  destination: CashSource;
   owner: OwnerType;
   categoryId: string | null;
   startDate: string;
@@ -54,6 +57,7 @@ function defaultState(): RecurringFormState {
     name: "",
     amountText: "",
     source: "JOINT",
+    destination: "JOINT",
     owner: "HOUSEHOLD",
     categoryId: null,
     startDate: new Date().toISOString().slice(0, 10),
@@ -90,6 +94,9 @@ export function RecurringFormPage() {
       source: r.source_account_id
         ? accountIdToCashSource(r.source_account_id)
         : "JOINT",
+      destination: r.destination_account_id
+        ? accountIdToCashSource(r.destination_account_id)
+        : "JOINT",
       owner: r.owner_type,
       categoryId: r.category_id,
       startDate: r.start_date,
@@ -103,6 +110,10 @@ export function RecurringFormPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   useEffect(() => {
     if (!dbReady) return;
+    if (state.type === "TRANSFER") {
+      setCategories([]);
+      return;
+    }
     setCategories(
       categoriesRepo.list(state.type === "INCOME" ? "INCOME" : "EXPENSE", true),
     );
@@ -123,15 +134,21 @@ export function RecurringFormPage() {
   }, [dbReady, state.type]);
 
   const amount = useMemo(() => parseAmount(state.amountText), [state.amountText]);
+  const transferError =
+    state.type === "TRANSFER"
+      ? transferValidationError(state.source, state.destination)
+      : null;
   const valid =
     state.name.trim().length > 0 &&
     amount > 0 &&
-    (state.type !== "DEBT_PAYMENT" || state.debtId !== null);
+    (state.type !== "DEBT_PAYMENT" || state.debtId !== null) &&
+    (state.type !== "TRANSFER" || transferError === null);
 
   const typeOptions: ReadonlyArray<SegmentedOption<RecurringType>> = [
     { value: "EXPENSE", label: t("recurring.types.expense") },
     { value: "INCOME", label: t("recurring.types.income") },
     { value: "DEBT_PAYMENT", label: t("recurring.types.debt") },
+    { value: "TRANSFER", label: t("recurring.types.transfer") },
   ];
   const sourceOptions: ReadonlyArray<SegmentedOption<CashSource>> = [
     { value: "FRAN_PERSONAL", label: t("addExpense.who.fran") },
@@ -149,6 +166,7 @@ export function RecurringFormPage() {
     setSaving(true);
     setSaveError(null);
     try {
+      const isTransferType = state.type === "TRANSFER";
       const payload = {
         type: state.type,
         name: state.name.trim(),
@@ -157,15 +175,22 @@ export function RecurringFormPage() {
         frequency: "MONTHLY" as const,
         start_date: state.startDate,
         end_date: null,
-        category_id: state.categoryId,
+        category_id: isTransferType ? null : state.categoryId,
         source_account_id: SOURCE_TO_ACCOUNT[state.source],
-        owner_type: state.owner,
+        // Transfers don't have an "owner" in the allocations sense —
+        // they're inter-account movements. Default to HOUSEHOLD so the
+        // row satisfies the schema's NOT NULL constraint, but it's
+        // never consumed by allocation/settlement logic for TRANSFER.
+        owner_type: isTransferType ? ("HOUSEHOLD" as OwnerType) : state.owner,
         default_shared_split_percent:
-          state.owner === "HOUSEHOLD" ? 50 : null,
+          !isTransferType && state.owner === "HOUSEHOLD" ? 50 : null,
         is_active: true,
         auto_include_in_projection: state.autoInclude,
         auto_generate_transaction: state.autoGenerate,
         debt_id: state.type === "DEBT_PAYMENT" ? state.debtId : null,
+        destination_account_id: isTransferType
+          ? SOURCE_TO_ACCOUNT[state.destination]
+          : null,
       };
       if (isEdit && id) {
         recurringRepo.update(id, payload);
@@ -277,9 +302,11 @@ export function RecurringFormPage() {
 
       <Section
         label={
-          state.type === "INCOME"
-            ? t("recurring.fields.receivedIn")
-            : t("recurring.fields.paidFrom")
+          state.type === "TRANSFER"
+            ? t("addExpense.transferFrom")
+            : state.type === "INCOME"
+              ? t("recurring.fields.receivedIn")
+              : t("recurring.fields.paidFrom")
         }
       >
         <SegmentedControl
@@ -288,32 +315,55 @@ export function RecurringFormPage() {
           onChange={(v) => setState((s) => ({ ...s, source: v }))}
           className="w-full justify-stretch [&>button]:flex-1"
           ariaLabel={
-            state.type === "INCOME"
-              ? t("recurring.fields.receivedIn")
-              : t("recurring.fields.paidFrom")
+            state.type === "TRANSFER"
+              ? t("addExpense.transferFrom")
+              : state.type === "INCOME"
+                ? t("recurring.fields.receivedIn")
+                : t("recurring.fields.paidFrom")
           }
         />
       </Section>
 
-      <Section
-        label={
-          state.type === "INCOME"
-            ? t("recurring.fields.receivedBy")
-            : t("recurring.fields.owner")
-        }
-      >
-        <SegmentedControl
-          options={ownerOptions}
-          value={state.owner}
-          onChange={(v) => setState((s) => ({ ...s, owner: v }))}
-          className="w-full justify-stretch [&>button]:flex-1"
-          ariaLabel={
+      {state.type === "TRANSFER" && (
+        <Section label={t("addExpense.transferTo")}>
+          <SegmentedControl
+            options={sourceOptions}
+            value={state.destination}
+            onChange={(v) => setState((s) => ({ ...s, destination: v }))}
+            className="w-full justify-stretch [&>button]:flex-1"
+            ariaLabel={t("addExpense.transferTo")}
+          />
+          {transferError && (
+            <p className="t-label text-xs text-expense-ink mt-1.5">
+              {transferError === "same"
+                ? t("addExpense.transferErrorSame")
+                : t("addExpense.transferErrorPersonalToPersonal")}
+            </p>
+          )}
+        </Section>
+      )}
+
+      {state.type !== "TRANSFER" && (
+        <Section
+          label={
             state.type === "INCOME"
               ? t("recurring.fields.receivedBy")
               : t("recurring.fields.owner")
           }
-        />
-      </Section>
+        >
+          <SegmentedControl
+            options={ownerOptions}
+            value={state.owner}
+            onChange={(v) => setState((s) => ({ ...s, owner: v }))}
+            className="w-full justify-stretch [&>button]:flex-1"
+            ariaLabel={
+              state.type === "INCOME"
+                ? t("recurring.fields.receivedBy")
+                : t("recurring.fields.owner")
+            }
+          />
+        </Section>
+      )}
 
       {state.type === "DEBT_PAYMENT" && (
         <Section label={t("recurring.fields.debt")}>
@@ -327,13 +377,15 @@ export function RecurringFormPage() {
         </Section>
       )}
 
-      <Section label={t("recurring.fields.category")}>
-        <CategoryPicker
-          categories={categories}
-          value={state.categoryId}
-          onChange={(id) => setState((s) => ({ ...s, categoryId: id }))}
-        />
-      </Section>
+      {state.type !== "TRANSFER" && (
+        <Section label={t("recurring.fields.category")}>
+          <CategoryPicker
+            categories={categories}
+            value={state.categoryId}
+            onChange={(id) => setState((s) => ({ ...s, categoryId: id }))}
+          />
+        </Section>
+      )}
 
       <Section label={t("recurring.fields.startDate")}>
         <Input

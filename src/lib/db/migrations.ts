@@ -280,6 +280,63 @@ const MIGRATIONS: Migration[] = [
     sql: `
       ALTER TABLE debts ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0;
     `,
+  },
+  {
+    // Transfer feature (0.6.0). Transactions and recurrings of type
+    // TRANSFER move money between two accounts; destination_account_id
+    // captures the receiving side. Always null for non-TRANSFER rows.
+    // No FK cascade — historic transfers should outlive any future
+    // account-archive flow.
+    //
+    // transactions.type already includes 'TRANSFER' in its v1 CHECK, so
+    // a simple ALTER suffices there. recurring_items.type was created
+    // without 'TRANSFER' in v1, so SQLite forces us to rebuild the
+    // table to widen the CHECK constraint. Data is copied verbatim;
+    // destination_account_id seeds to NULL on existing rows.
+    version: 8,
+    name: "transfer_destination_account_id",
+    sql: `
+      ALTER TABLE transactions ADD COLUMN destination_account_id TEXT NULL REFERENCES accounts(id);
+      CREATE INDEX IF NOT EXISTS idx_transactions_destination
+        ON transactions(destination_account_id, month_key);
+
+      CREATE TABLE recurring_items_v8 (
+        id TEXT PRIMARY KEY,
+        type TEXT NOT NULL CHECK (type IN ('EXPENSE', 'INCOME', 'DEBT_PAYMENT', 'TRANSFER')),
+        name TEXT NOT NULL,
+        amount REAL NOT NULL,
+        currency_code TEXT NOT NULL,
+        frequency TEXT NOT NULL CHECK (frequency IN ('MONTHLY')),
+        start_date TEXT NOT NULL,
+        end_date TEXT NULL,
+        category_id TEXT NULL REFERENCES categories(id),
+        source_account_id TEXT NULL REFERENCES accounts(id),
+        owner_type TEXT NOT NULL CHECK (owner_type IN ('FRAN', 'SAM', 'HOUSEHOLD')),
+        default_shared_split_percent REAL NULL,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        auto_include_in_projection INTEGER NOT NULL DEFAULT 1,
+        auto_generate_transaction INTEGER NOT NULL DEFAULT 0,
+        debt_id TEXT NULL REFERENCES debts(id),
+        destination_account_id TEXT NULL REFERENCES accounts(id),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
+      INSERT INTO recurring_items_v8
+      SELECT
+        id, type, name, amount, currency_code, frequency, start_date, end_date,
+        category_id, source_account_id, owner_type, default_shared_split_percent,
+        is_active, auto_include_in_projection, auto_generate_transaction,
+        debt_id, NULL AS destination_account_id, created_at, updated_at
+      FROM recurring_items;
+
+      DROP TABLE recurring_items;
+      ALTER TABLE recurring_items_v8 RENAME TO recurring_items;
+
+      CREATE INDEX IF NOT EXISTS idx_recurring_debt ON recurring_items(debt_id);
+      CREATE INDEX IF NOT EXISTS idx_recurring_destination
+        ON recurring_items(destination_account_id);
+    `,
   }
 ];
 

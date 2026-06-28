@@ -6,9 +6,18 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { initDb, runMigrations, seedIfEmpty } from "@/lib/db";
+import {
+  initDb,
+  runMigrations,
+  seedIfEmpty,
+  SEED_IDS,
+  accountsRepo,
+  transactionsRepo,
+} from "@/lib/db";
 import { _resetDbForTests } from "@/lib/db/client";
 import {
+  accountBalance,
+  accountMonthlyFlow,
   categoryBreakdown,
   monthlySummary,
 } from "@/lib/calculations/aggregations";
@@ -124,5 +133,74 @@ describe("categoryBreakdown", () => {
     const sum = slices.reduce((s, r) => s + r.amount, 0);
     // Should equal the shared expenses total (275)
     expect(sum).toBeCloseTo(275, 2);
+  });
+});
+
+describe("TRANSFER tx and account flows (0.6.0)", () => {
+  function makeTransfer(
+    from: string,
+    to: string,
+    amount: number,
+    monthOffset = 0,
+  ) {
+    const m = new Date();
+    m.setDate(15);
+    if (monthOffset) m.setMonth(m.getMonth() + monthOffset);
+    const date = m.toISOString().slice(0, 10);
+    return transactionsRepo.create({
+      type: "TRANSFER",
+      date,
+      amount,
+      currency_code: "EUR",
+      source_account_id: from,
+      origin: "MANUAL",
+      sheet_sync_status: "PENDING",
+      destination_account_id: to,
+      allocations: [],
+    });
+  }
+
+  it("a TRANSFER moves money: outflow at source, inflow at destination", () => {
+    const fran = SEED_IDS.accounts.franPersonal;
+    const joint = SEED_IDS.accounts.joint;
+    const franInitial = accountsRepo.list().find((a) => a.id === fran)!.initial_balance;
+    const jointInitial = accountsRepo.list().find((a) => a.id === joint)!.initial_balance;
+    const franBefore = accountBalance(fran, franInitial);
+    const jointBefore = accountBalance(joint, jointInitial);
+    makeTransfer(fran, joint, 500);
+    expect(accountBalance(fran, franInitial)).toBeCloseTo(franBefore - 500, 2);
+    expect(accountBalance(joint, jointInitial)).toBeCloseTo(jointBefore + 500, 2);
+  });
+
+  it("accountMonthlyFlow counts TRANSFER as inflow at destination", () => {
+    const fran = SEED_IDS.accounts.franPersonal;
+    const joint = SEED_IDS.accounts.joint;
+    const before = accountMonthlyFlow(joint, M());
+    makeTransfer(fran, joint, 500);
+    const after = accountMonthlyFlow(joint, M());
+    expect(after.inflow - before.inflow).toBeCloseTo(500, 2);
+    expect(after.outflow - before.outflow).toBeCloseTo(0, 2);
+  });
+
+  it("accountMonthlyFlow counts TRANSFER as outflow at source", () => {
+    const fran = SEED_IDS.accounts.franPersonal;
+    const joint = SEED_IDS.accounts.joint;
+    const before = accountMonthlyFlow(fran, M());
+    makeTransfer(fran, joint, 500);
+    const after = accountMonthlyFlow(fran, M());
+    expect(after.outflow - before.outflow).toBeCloseTo(500, 2);
+    expect(after.inflow - before.inflow).toBeCloseTo(0, 2);
+  });
+
+  it("a TRANSFER does NOT enter the monthlySummary income or expense buckets", () => {
+    const fran = SEED_IDS.accounts.franPersonal;
+    const joint = SEED_IDS.accounts.joint;
+    const before = monthlySummary(M(), "household");
+    makeTransfer(fran, joint, 500);
+    const after = monthlySummary(M(), "household");
+    expect(after.income - before.income).toBe(0);
+    expect(after.expenses - before.expenses).toBe(0);
+    expect(after.recurring - before.recurring).toBe(0);
+    expect(after.available - before.available).toBe(0);
   });
 });

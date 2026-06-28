@@ -43,35 +43,41 @@ export function HomePage() {
   const dbVersion = useDbStore((s) => s.dbVersion);
   const ready = dbStatus === "ready";
 
-  // Joint account snapshot (spec §6.1.1)
-  const joint = useMemo(() => {
+  // Per-account snapshot + this-month flow. After 0.6.0 we display the
+  // forecast strictly per ACCOUNT (not per scope). Transfers flow
+  // symmetrically (outflow on source, inflow on destination), so the
+  // Joint account's "inflow" finally reflects monthly contributions
+  // from Fran/Sam personal accounts.
+  const accountsView = useMemo(() => {
     if (!ready) return null;
     const accounts = accountsRepo.list();
-    const jointAccount = accounts.find((a) => a.type === "JOINT");
-    if (!jointAccount) return null;
-    const balance = accountBalance(
-      jointAccount.id,
-      jointAccount.initial_balance,
+    const make = (acc: ReturnType<typeof accountsRepo.list>[number]) => {
+      const balance = accountBalance(acc.id, acc.initial_balance);
+      const flow = accountMonthlyFlow(acc.id, monthKey);
+      return {
+        account: acc,
+        balance,
+        inflow: flow.inflow,
+        outflow: flow.outflow,
+        net: flow.inflow - flow.outflow,
+      };
+    };
+    const joint = accounts.find((a) => a.type === "JOINT");
+    const franPersonal = accounts.find(
+      (a) => a.type === "PERSONAL" && a.name.toLowerCase().includes("fran"),
     );
-    const flow = accountMonthlyFlow(jointAccount.id, monthKey);
+    const samPersonal = accounts.find(
+      (a) => a.type === "PERSONAL" && a.name.toLowerCase().includes("sam"),
+    );
     return {
-      account: jointAccount,
-      balance,
-      inflow: flow.inflow,
-      outflow: flow.outflow,
+      joint: joint ? make(joint) : null,
+      fran: franPersonal ? make(franPersonal) : null,
+      sam: samPersonal ? make(samPersonal) : null,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, dbVersion, monthKey]);
 
-  // Personal summaries (spec §6.1.3)
-  const franSummary = useMemo(
-    () => (ready ? monthlySummary(monthKey, "fran") : EMPTY_SUMMARY),
-    [ready, dbVersion, monthKey],
-  );
-  const samSummary = useMemo(
-    () => (ready ? monthlySummary(monthKey, "sam") : EMPTY_SUMMARY),
-    [ready, dbVersion, monthKey],
-  );
+  const joint = accountsView?.joint ?? null;
 
   // Active scope summary — used by the optional context panel.
   const scopeSummary = useMemo(
@@ -131,7 +137,7 @@ export function HomePage() {
     <div className="mx-auto max-w-md px-4 pt-4 pb-8 space-y-5">
       <AppHeader />
 
-      {/* §6.1.1 Joint snapshot */}
+      {/* §6.1.1 Joint snapshot — kept as the headline card. */}
       {joint && (
         <JointSnapshotCard
           balance={joint.balance}
@@ -142,18 +148,31 @@ export function HomePage() {
         />
       )}
 
-      {/* §6.1.3 Personal summaries side by side */}
+      {/* §6.1.3 — replaced (0.6.0) with per-account forecast cards.
+          Each card mirrors the underlying bank account's cash flow for
+          the month: inflow = INCOME + TRANSFER in, outflow = EXPENSE +
+          DEBT_PAYMENT + SETTLEMENT_PAYMENT + TRANSFER out. */}
       <div className="grid grid-cols-2 gap-3">
-        <PersonalCard
-          who="FRAN"
-          name={t("addExpense.who.fran")}
-          summary={franSummary}
-        />
-        <PersonalCard
-          who="SAM"
-          name={t("addExpense.who.sam")}
-          summary={samSummary}
-        />
+        {accountsView?.fran && (
+          <PerAccountCard
+            who="FRAN"
+            name={t("addExpense.who.fran")}
+            balance={accountsView.fran.balance}
+            inflow={accountsView.fran.inflow}
+            outflow={accountsView.fran.outflow}
+            currency={accountsView.fran.account.currency_code}
+          />
+        )}
+        {accountsView?.sam && (
+          <PerAccountCard
+            who="SAM"
+            name={t("addExpense.who.sam")}
+            balance={accountsView.sam.balance}
+            inflow={accountsView.sam.inflow}
+            outflow={accountsView.sam.outflow}
+            currency={accountsView.sam.account.currency_code}
+          />
+        )}
       </div>
 
       <SegmentedControl
@@ -386,28 +405,31 @@ function JointSnapshotCard({
   );
 }
 
-function PersonalCard({
+function PerAccountCard({
   who,
   name,
-  summary,
+  balance,
+  inflow,
+  outflow,
+  currency,
 }: {
   who: "FRAN" | "SAM";
   name: string;
-  summary: MonthlySummary;
+  balance: number;
+  inflow: number;
+  outflow: number;
+  currency: string;
 }) {
   const { t } = useTranslation();
-  const route = who === "FRAN" ? "/transactions" : "/transactions";
-  const specialName = samLikesGreen(name)
-
-  function samLikesGreen(name: string) {
-    const firstLetter = name.charAt(0)
-    const rest = name.slice(1)
-    return { firstLetter, rest }
-  }
-  
+  const net = inflow - outflow;
+  const fmt = (n: number) => formatMoney(n, currency);
+  // Sam's name gets a tiny green accent on the first letter — design
+  // detail carried over from the prior PersonalCard.
+  const firstLetter = name.charAt(0);
+  const rest = name.slice(1);
   return (
     <Link
-      to={route}
+      to="/transactions"
       aria-label={t("home.openPersonal", { name })}
       className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet/60"
     >
@@ -415,29 +437,33 @@ function PersonalCard({
         <div className="flex items-center gap-2">
           <Avatar who={who} size={28} />
           <h3 className="text-sm font-semibold">
-            <span className={who === "SAM" ? "text-positive-ink" : ""}>{specialName.firstLetter}</span>
-            {specialName.rest}
+            <span className={who === "SAM" ? "text-positive-ink" : ""}>
+              {firstLetter}
+            </span>
+            {rest}
           </h3>
         </div>
+        <div>
+          <p className="t-label text-xs">{t("home.statBalance")}</p>
+          <p className="font-display text-lg font-semibold tabular-nums">
+            {fmt(balance)}
+          </p>
+        </div>
         <MiniStat
-          label={t("home.statIncome")}
-          value={summary.income}
+          label={t("home.inflowMonth")}
+          value={inflow}
           tone="positive"
         />
         <MiniStat
-          label={t("home.statExpenses")}
-          value={summary.expenses}
+          label={t("home.outflowMonth")}
+          value={outflow}
           tone="expense"
-        />
-        <MiniStat
-          label={t("home.statRecurring")}
-          value={summary.recurring}
         />
         <div className="pt-1 border-t border-border/60">
           <MiniStat
-            label={t("home.statAvailable")}
-            value={summary.available}
-            tone="violet"
+            label={t("home.statNet")}
+            value={net}
+            tone={net >= 0 ? "positive" : "expense"}
             big
           />
         </div>

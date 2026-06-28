@@ -14,6 +14,7 @@ import {
   defaultFormValues,
   formatAmountForInput,
   parseAmount,
+  transferValidationError,
   type TransactionFormValues,
 } from "@/features/add-expense/TransactionForm";
 import { SaveFab } from "@/features/add-expense/SaveFab";
@@ -56,13 +57,22 @@ export function EditExpensePage() {
       return;
     }
     const allocations = transactionsRepo.allocationsFor(tx.id);
+    const txType: "EXPENSE" | "INCOME" | "TRANSFER" =
+      tx.type === "INCOME"
+        ? "INCOME"
+        : tx.type === "TRANSFER"
+          ? "TRANSFER"
+          : "EXPENSE";
     setValues({
-      // Edit flow today only handles EXPENSE-shape txs (the original
-      // /add target). INCOME txs created via 0.5.1 can be edited too —
-      // they pass through the same form, type-aware.
-      type: tx.type === "INCOME" ? "INCOME" : "EXPENSE",
+      type: txType,
       amountText: formatAmountForInput(tx.amount),
       source: accountIdToCashSource(tx.source_account_id),
+      // For TRANSFER, the destination is what matters and allocations
+      // are empty. For EXPENSE/INCOME, destination is unused — default
+      // to JOINT to keep the form shape valid.
+      destination: tx.destination_account_id
+        ? accountIdToCashSource(tx.destination_account_id)
+        : "JOINT",
       owner: inferOwnerFromAllocations(allocations),
       splitFranPercent: inferSplitFranPercent(allocations),
       date: tx.date,
@@ -76,29 +86,49 @@ export function EditExpensePage() {
 
   function handleSave() {
     if (!dbReady || !id || amount <= 0 || saving) return;
+    if (values.type === "TRANSFER" && transferValidationError(values.source, values.destination))
+      return;
     setSaving(true);
     setSaveError(null);
     try {
-      const allocation = expenseAllocator({
-        amount,
-        source: values.source,
-        owner: values.owner,
-        splitFranPercent: values.splitFranPercent,
-      });
+      const isIncome = values.type === "INCOME";
+      const isTransfer = values.type === "TRANSFER";
+      // INCOME: single 100% allocation. EXPENSE: allocator. TRANSFER:
+      // no allocations (and no recompute) — pure money movement.
+      const allocations = isTransfer
+        ? []
+        : isIncome
+          ? [
+              {
+                owner_type: values.owner,
+                share_percent: 100,
+                share_amount: amount,
+              },
+            ]
+          : expenseAllocator({
+              amount,
+              source: values.source,
+              owner: values.owner,
+              splitFranPercent: values.splitFranPercent,
+            }).allocations;
       transactionsRepo.update(id, {
-        type: "EXPENSE",
+        type: isTransfer ? "TRANSFER" : isIncome ? "INCOME" : "EXPENSE",
         date: values.date,
         amount,
         currency_code: "EUR",
         source_account_id: SOURCE_TO_ACCOUNT[values.source],
         description: values.description.trim() || null,
-        category_id: values.categoryId,
+        category_id: isTransfer ? null : values.categoryId,
         created_by_user_id: SOURCE_TO_USER[values.source],
         origin: "MANUAL",
         sheet_sync_status: "PENDING",
-        allocations: allocation.allocations,
+        destination_account_id: isTransfer
+          ? SOURCE_TO_ACCOUNT[values.destination]
+          : null,
+        allocations,
       });
-      recomputeForTransaction(id);
+      // Income and Transfer don't drive settlement; expense edits still do.
+      if (!isIncome && !isTransfer) recomputeForTransaction(id);
       bumpVersion();
       navigate(-1);
     } catch (err) {

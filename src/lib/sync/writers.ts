@@ -84,6 +84,8 @@ const transactionToRow = (t: Transaction): SheetRow => [
   // Appended in v5. Keep at the end so legacy sheets without the column
   // simply yield `undefined` at this index (reader → null).
   t.recurring_id,
+  // Appended in v8. Only populated for type='TRANSFER'.
+  t.destination_account_id,
 ];
 
 const allocationToRow = (a: TransactionAllocation): SheetRow => [
@@ -118,6 +120,8 @@ const recurringToRow = (r: RecurringItem): SheetRow => [
   // Appended in v6. Keep at the end so legacy sheets without the
   // column simply yield `undefined` (reader → null).
   r.debt_id,
+  // Appended in v8. Only populated for type='TRANSFER'.
+  r.destination_account_id,
 ];
 
 const debtToRow = (d: Debt): SheetRow => [

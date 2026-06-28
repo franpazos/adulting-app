@@ -4,6 +4,86 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-06-28 — Version 0.6.0: TRANSFER tx type + per-account Home forecast
+
+Opens a new era of inter-account money movement. Until now the app modeled four transaction types but only three of them (EXPENSE, INCOME, DEBT_PAYMENT) had user-facing flows. TRANSFER was a stub in `TxType` that nothing wrote and nothing read symmetrically. 0.6.0 wires it end-to-end: `/add` gains a Transfer toggle, recurring TRANSFERs auto-generate monthly contributions to the joint pool, the account-balance math counts transfers on both ends, and Home is rebuilt around a per-account forecast (replacing the previous per-person allocation cards).
+
+**Why this matters for Fran + Sam's workflow.** Their real pattern is monthly contributions from each personal account to the joint account. Before 0.6.0 the only way to model this was a hack (EXPENSE from personal + INCOME to joint), which polluted the per-person P&L with non-real "expenses" and double-counted the source income across the household scope. TRANSFER is the right primitive: a single tx with a source and a destination, zero allocations, zero settlement implications.
+
+**Schema (migration v8).** `transactions.destination_account_id TEXT NULL REFERENCES accounts(id)` + `recurring_items.destination_account_id TEXT NULL REFERENCES accounts(id)`. The transactions side is a plain ALTER. The recurring_items side requires a table rebuild because the v1 CHECK constraint on `type` didn't list TRANSFER; SQLite can't widen a CHECK without recreating the table. The migration creates `recurring_items_v8`, copies the data verbatim (destination_account_id seeds to NULL on existing rows), drops the old, renames the new. Indexes recreated. Idempotent.
+
+**Aggregations rewrite — accountBalance + accountMonthlyFlow.** Both now read TRANSFER symmetrically:
+- **Inflow** counts INCOME txs where the account is the source AND TRANSFER txs where the account is the destination. Single SQL with an OR clause.
+- **Outflow** counts EXPENSE/DEBT_PAYMENT/SETTLEMENT_PAYMENT/TRANSFER on the source side (unchanged shape; TRANSFER was already in the outflow list since the original schema).
+
+Net result: a TRANSFER 500€ from Fran personal to Joint correctly subtracts 500 from Fran personal's balance AND adds 500 to Joint's balance. Across all accounts it nets to zero — TRANSFER is pure cash relocation.
+
+**monthlySummary untouched.** TRANSFER doesn't appear in income/expense/recurring buckets — it's flux neutral from a P&L view. The user explicitly confirmed this semantic (avoids double-counting the source income that already entered as INCOME).
+
+**Sync — 10 sites for the two tables.** Same "append at the end of the row" rule. tabs.ts adds the headers, writers append the value, readers default `undefined → null`, pull insert/update include the column. Test fixtures updated.
+
+**UI — `/add` becomes truly polymorphic.** Type segmented control now has three options (Expense / Income / Transfer). Transfer mode:
+- Adds a "Desde" (source) and "Hacia" (destination) section.
+- Hides FlowDiagram, SettlementChip, split slider, owner picker, category picker.
+- Renders an inline validation hint under "Hacia" when the user picks an invalid combination.
+- Validation rule encoded in the new `transferValidationError(from, to)` helper (exported from `TransactionForm.tsx`): rejects when `from === to`, and rejects Fran personal ↔ Sam personal (forces SettleUp for inter-person money movement instead of TRANSFER).
+- Save button disabled until valid. SaveFab label switches to `addExpense.saveLabelTransfer` ("Guardar transferencia · X €").
+
+**UI — EditExpensePage now polymorphic too.** Reads `tx.type` and renders the matching form mode. TRANSFER edits route through the same form with the destination picker. Save fork mirrors AddTransactionPage: no allocations, no recompute. The form's title and SaveFab label switch accordingly.
+
+**UI — /transactions list.** TRANSFER rows render with the `ArrowLeftRight` lucide icon (no avatar — there's no "owner"), a neutral tone, and a description that defaults to "Source → Destination" when the user hasn't typed one. A small neutral "Transfer" pill replaces the per-tx category pill since transfers don't have categories.
+
+**Recurring TRANSFER.** Form gains a fourth type option. When `state.type === "TRANSFER"`:
+- Owner and category sections hide.
+- A "Hacia" section appears with the destination picker (re-uses sourceOptions).
+- Same `transferValidationError` validation as `/add`.
+- Save payload forces `owner_type: "HOUSEHOLD"` (the column is NOT NULL in the schema — but it's never consumed for TRANSFER aggregations) and clears `category_id` and `debt_id`.
+- `auto_generate_transaction` toggle works the same as for EXPENSE: turning it on materializes the current month's transfer immediately, and subsequent boots maintain the monthly cadence.
+
+**autoGenerate.ts.** New branch for `r.type === "TRANSFER"`: skips when destination is missing or equals the source, otherwise creates a tx with empty allocations, no recompute, no debt_payments. Tests cover the happy path; the existing idempotence + active-only invariants are inherited (the type check is the only new gate).
+
+**RecurringPage.** New "Transferencias" section between "Pagos de deuda" and the empty state. The Row icon for TRANSFER is `ArrowLeftRight` in a neutral surface bucket; ✅ paid-state badges work for TRANSFER the same way they do for other types.
+
+**RecurringDetailPage.** `canQuickFillTransfer` joins the existing quick-fill conditions. The CTA copy switches to `recurring.quickFillCtaTransfer` ("Registrar transferencia de este mes"). Route is `/add?fromRecurring=<id>` — the prefill effect in AddTransactionPage now reads `r.destination_account_id` too and applies it, so the form opens fully populated.
+
+**Home redesign — per-account forecast (replaces per-person scope cards).** This is the bigger UX shift. The two `<PersonalCard who="FRAN/SAM" summary={monthlySummary("fran"/"sam")} />` cards that showed "Income / Expenses / Recurring / Available" via allocations are now replaced by `<PerAccountCard who="FRAN/SAM" balance/inflow/outflow/currency />` cards that show the actual bank account's cash flow for the month:
+- Current balance (`accountBalance(accountId)`).
+- This month's inflow (`accountMonthlyFlow(accountId).inflow`) — includes incoming TRANSFER.
+- This month's outflow — includes outgoing TRANSFER.
+- Net for the month.
+
+The JointSnapshotCard stays at the top of the page (kept as the headline since it's the at-a-glance Joint state). The two new PerAccountCards stack below it as a grid of 2. Fran's monthly TRANSFER to Joint now correctly subtracts from his Available and adds to Joint's inflow.
+
+The decision to replace (not augment) the per-person cards was deliberate. The per-scope P&L view (income - expenses - shared expenses portion via allocations) is more "accounting correct" but less practical day-to-day. The per-account view answers "how much is in my pocket right now?" which is what the user actually wants. The settlement P&L (Fran owes Sam X) still lives in `/settlements`.
+
+**Side effect: removed the unused PersonalCard component** + the orphaned `samLikesGreen` helper. The "Sam name first-letter in green" detail moved into `PerAccountCard` so the visual identity carries over.
+
+**Behavioral impact for Fran + Sam**
+- Real workflow: create one recurring TRANSFER "Fran personal → Joint 500€/mes" + one "Sam personal → Joint 800€/mes". Turn on auto_generate. Each month at boot the txs materialize automatically. Joint balance climbs, personal balances drop accordingly.
+- Home: at-a-glance "Joint balance + this month's inflow/outflow" + "Fran personal balance + monthly net" + "Sam personal balance + monthly net". Three boxes that together answer "where's our money?".
+
+**Decisions captured for the next agent**
+- **Same-currency only enforced via UI**. Both accounts must share a currency for the math to make sense (a USD→EUR transfer needs FX, same problem as DEBT_PAYMENT). All MVP accounts are EUR so this never trips in practice, but if AccountsPage ever supports multi-currency, the form's "To" picker should filter destinations by `source.currency_code`.
+- **TRANSFER doesn't generate settlements**, by design. Even when source is personal and destination is joint (or vice versa), no settlement_ledger entry is written. The semantics: contributing to the household pool isn't a debt — once the money's in the joint pool, it belongs to the household; if you later want to settle Fran↔Sam imbalance, you use `/settlements/settle`.
+- **Fran personal ↔ Sam personal blocked at the form layer**, not just at save time. The validation surfaces as inline copy under the destination picker. The right tool for "Fran sends Sam money" is SettleUp because that flow updates the ledger.
+- **No history view of transfers per account** in 0.6.0. If you need to see "all transfers in/out of Joint this month", you go to `/transactions` and read the list (TRANSFERs visually distinct via the ArrowLeftRight icon and "Transfer" pill). If we ever want a per-account history affordance, a tap on the Joint card → `/accounts/joint` would be the home for it.
+
+**i18n.** New keys: `addExpense.titleTransfer`, `addExpense.type.transfer`, `addExpense.transferFrom`, `addExpense.transferTo`, `addExpense.transferErrorSame`, `addExpense.transferErrorPersonalToPersonal`, `addExpense.saveLabelTransfer`, `recurring.types.transfer`, `recurring.sections.transfer`, `recurring.quickFillCtaTransfer`, `home.statBalance`, `home.statNet`. Both `es.json` and `en.json` updated. (`addExpense.saveLabelExpense` added as an alias for symmetry but currently unused; safe to remove if it bothers the next agent.)
+
+**Tests.** Four new cases in `aggregations.test.ts` exercising the TRANSFER × accountBalance × accountMonthlyFlow interactions:
+- TRANSFER moves money symmetrically (source -X, destination +X).
+- TRANSFER counts as inflow at destination in monthly flow.
+- TRANSFER counts as outflow at source in monthly flow.
+- TRANSFER does NOT enter monthlySummary buckets (no double-count).
+
+Settlement cases A-E pass without modification. autoGenerate's existing happy-path tests cover the EXPENSE/INCOME/DEBT_PAYMENT branches; the TRANSFER branch is implicitly exercised by the seed + integration paths but doesn't have a dedicated unit test yet (low-risk: it's a simpler version of the EXPENSE branch, with no allocator or recompute). Full suite: 225/225 green. `pnpm exec tsc -b` clean. `pnpm build` succeeds.
+
+**Bump 0.5.4 → 0.6.0.** Minor — opens the "inter-account movements" era, analogous to how 0.5.0 closed the recurring rollout.
+
+**Files touched**: `src/lib/db/migrations.ts`, `src/lib/db/types.ts`, `src/lib/db/repositories/transactions.ts`, `src/lib/db/repositories/recurring.ts`, `src/lib/calculations/aggregations.ts`, `src/lib/calculations/autoGenerate.ts`, `src/lib/calculations/__tests__/aggregations.test.ts`, `src/lib/sync/{tabs,writers,readers,pull}.ts`, `src/lib/sync/__tests__/{sync,pull}.test.ts`, `src/features/add-expense/{TransactionForm,AddTransactionPage}.tsx`, `src/features/transactions/{EditExpensePage,TransactionRow}.tsx`, `src/features/recurring/{RecurringFormPage,RecurringDetailPage,RecurringPage}.tsx`, `src/features/home/HomePage.tsx`, `src/lib/i18n/{en,es}.json`, `package.json`.
+
+---
+
 ## 2026-06-26 — Version 0.5.4: INCOME-aware labels in recurring form + SaveFab
 
 Fran spotted two small inconsistencies left over from the 0.5.1 income polymorphism:

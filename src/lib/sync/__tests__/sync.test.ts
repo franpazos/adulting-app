@@ -113,6 +113,7 @@ describe("entity → row mappers", () => {
       created_at: "2026-05-04T00:00:00Z",
       updated_at: "2026-05-04T00:00:00Z",
       recurring_id: null,
+      destination_account_id: null,
     };
     const row = _mappers.transactionToRow(t);
     expect(row[12]).toBe(0); // is_deleted
@@ -185,6 +186,7 @@ describe("entity → row mappers", () => {
       auto_include_in_projection: true,
       auto_generate_transaction: false,
       debt_id: null,
+      destination_account_id: null,
       created_at: "x",
       updated_at: "x",
     };

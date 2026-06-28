@@ -14,6 +14,7 @@ import {
   ArrowUp,
   Percent,
   Check,
+  ArrowLeftRight,
 } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { Card, IconButton, Pill } from "@/components/ui";
@@ -48,6 +49,7 @@ export function RecurringPage() {
   const incomes = items.filter((i) => i.type === "INCOME");
   const expenses = items.filter((i) => i.type === "EXPENSE");
   const debtPayments = items.filter((i) => i.type === "DEBT_PAYMENT");
+  const transfers = items.filter((i) => i.type === "TRANSFER");
 
   const totalIn = incomes.reduce((s, i) => s + i.amount, 0);
   const totalOut =
@@ -145,6 +147,13 @@ export function RecurringPage() {
       {debtPayments.length > 0 && (
         <Section title={t("recurring.sections.debt")}>
           {debtPayments.map((it) => (
+            <Row key={it.id} item={it} paid={paidState.has(it.id)} />
+          ))}
+        </Section>
+      )}
+      {transfers.length > 0 && (
+        <Section title={t("recurring.sections.transfer")}>
+          {transfers.map((it) => (
             <Row key={it.id} item={it} paid={paidState.has(it.id)} />
           ))}
         </Section>
@@ -252,6 +261,13 @@ function toneFor(type: RecurringType): {
       bg: "bg-info/10",
       fg: "text-info-ink",
       icon: <Percent className="size-4" />,
+    };
+  }
+  if (type === "TRANSFER") {
+    return {
+      bg: "bg-surface-2",
+      fg: "text-text-secondary",
+      icon: <ArrowLeftRight className="size-4" />,
     };
   }
   return {

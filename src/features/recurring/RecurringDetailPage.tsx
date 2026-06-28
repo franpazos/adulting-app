@@ -94,21 +94,24 @@ export function RecurringDetailPage() {
 
   const isDebt = item.type === "DEBT_PAYMENT";
   const isIncome = item.type === "INCOME";
+  const isTransfer = item.type === "TRANSFER";
   const source = item.source_account_id
     ? accountIdToCashSource(item.source_account_id)
     : null;
-  // After Level 4 + the income polymorphism (0.5.1), all three types
-  // can be quick-filled. DEBT_PAYMENT with a linked debt routes through
-  // /debts/:id/pay (so the payment hits the principal). EXPENSE and
-  // INCOME route to /add?fromRecurring=<id> where the form auto-detects
-  // the type from the recurring. Unlinked DEBT_PAYMENT recurrings get a
-  // "Sin enlace a deuda" hint instead of the CTA.
+  // All four types can be quick-filled. DEBT_PAYMENT with a linked debt
+  // routes to /debts/:id/pay (so the principal is hit). EXPENSE, INCOME
+  // and TRANSFER route to /add?fromRecurring=<id> where the form
+  // auto-detects the type from the recurring.
   const canQuickFillExpense = item.type === "EXPENSE" && item.is_active;
   const canQuickFillIncome = isIncome && item.is_active;
+  const canQuickFillTransfer = isTransfer && item.is_active;
   const canQuickFillDebt =
     isDebt && item.is_active && item.debt_id !== null;
   const canQuickFill =
-    canQuickFillExpense || canQuickFillIncome || canQuickFillDebt;
+    canQuickFillExpense ||
+    canQuickFillIncome ||
+    canQuickFillTransfer ||
+    canQuickFillDebt;
   // Paid/pending now applies to all three types (Level 4 added INCOME
   // and DEBT_PAYMENT auto-gen).
   const showPaidState = item.is_active;
@@ -292,7 +295,9 @@ export function RecurringDetailPage() {
             >
               {isIncome
                 ? t("recurring.quickFillCtaIncome")
-                : t("recurring.quickFillCta")}
+                : isTransfer
+                  ? t("recurring.quickFillCtaTransfer")
+                  : t("recurring.quickFillCta")}
             </Button>
           </div>
         </div>

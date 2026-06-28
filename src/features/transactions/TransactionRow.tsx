@@ -1,11 +1,18 @@
 import { useNavigate } from "react-router-dom";
+import { ArrowLeftRight } from "lucide-react";
 import { Avatar, whoFromCashSource } from "@/components/Avatar";
 import { Pill } from "@/components/ui";
-import type { Transaction } from "@/lib/db/types";
+import type { Transaction, CashSource } from "@/lib/db/types";
 import { categoriesRepo } from "@/lib/db";
 import { accountIdToCashSource } from "@/features/add-expense/sources";
 import { cn } from "@/lib/utils/cn";
 import { formatMoney } from "@/lib/utils/format";
+
+function cashSourceLabel(source: CashSource): string {
+  if (source === "FRAN_PERSONAL") return "Fran";
+  if (source === "SAM_PERSONAL") return "Sam";
+  return "Joint";
+}
 
 interface TransactionRowProps {
   tx: Transaction;
@@ -29,8 +36,21 @@ export function TransactionRow({
   const who = whoFromCashSource(source);
   const cat = tx.category_id ? categoriesRepo.getById(tx.category_id) : null;
   const isExpense = tx.type === "EXPENSE";
-  const sign = isExpense ? -1 : 1;
-  const tone = isExpense ? "text-text-primary" : "text-positive-ink";
+  const isTransfer = tx.type === "TRANSFER";
+  const sign = isExpense ? -1 : isTransfer ? 0 : 1;
+  const tone = isTransfer
+    ? "text-text-secondary"
+    : isExpense
+      ? "text-text-primary"
+      : "text-positive-ink";
+
+  const destination = tx.destination_account_id
+    ? accountIdToCashSource(tx.destination_account_id)
+    : null;
+  const transferLabel =
+    isTransfer && destination
+      ? `${cashSourceLabel(source)} → ${cashSourceLabel(destination)}`
+      : null;
 
   return (
     <button
@@ -43,10 +63,19 @@ export function TransactionRow({
         className,
       )}
     >
-      <Avatar who={who} size={36} />
+      {isTransfer ? (
+        <span
+          className="grid place-items-center size-9 rounded-xl bg-surface-2 text-text-secondary"
+          aria-hidden
+        >
+          <ArrowLeftRight className="size-4" />
+        </span>
+      ) : (
+        <Avatar who={who} size={36} />
+      )}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold truncate">
-          {tx.description || tx.merchant || cat?.name || "—"}
+          {tx.description || transferLabel || tx.merchant || cat?.name || "—"}
         </p>
         <div className="flex items-center gap-2 mt-0.5">
           {cat && (
@@ -70,6 +99,11 @@ export function TransactionRow({
               Debt
             </Pill>
           )}
+          {isTransfer && (
+            <Pill tone="neutral" className="h-5 px-2 text-[10px]">
+              Transfer
+            </Pill>
+          )}
         </div>
       </div>
       <span
@@ -78,7 +112,9 @@ export function TransactionRow({
           tone,
         )}
       >
-        {formatSigned(sign * tx.amount, tx.currency_code)}
+        {isTransfer
+          ? formatMoney(tx.amount, tx.currency_code)
+          : formatSigned(sign * tx.amount, tx.currency_code)}
       </span>
     </button>
   );

@@ -45,6 +45,7 @@ export interface CreateTransactionInput {
   amount_in_account_currency?: number | null;
   amount_in_debt_currency?: number | null;
   recurring_id?: string | null;
+  destination_account_id?: string | null;
   allocations: AllocationInput[];
 }
 
@@ -77,6 +78,7 @@ export const transactionsRepo = {
       amount_in_account_currency: input.amount_in_account_currency ?? null,
       amount_in_debt_currency: input.amount_in_debt_currency ?? null,
       recurring_id: input.recurring_id ?? null,
+      destination_account_id: input.destination_account_id ?? null,
       created_at: now,
       updated_at: now,
     };
@@ -87,8 +89,8 @@ export const transactionsRepo = {
           description, notes, category_id, source_account_id, created_by_user_id,
           merchant, is_deleted, origin, sheet_sync_status, sheet_row_ref,
           exchange_rate, amount_in_account_currency, amount_in_debt_currency,
-          recurring_id, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          recurring_id, destination_account_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           tx.id,
           tx.type,
@@ -110,6 +112,7 @@ export const transactionsRepo = {
           tx.amount_in_account_currency,
           tx.amount_in_debt_currency,
           tx.recurring_id,
+          tx.destination_account_id,
           tx.created_at,
           tx.updated_at,
         ],
@@ -191,7 +194,7 @@ export const transactionsRepo = {
            description = ?, notes = ?, category_id = ?,
            source_account_id = ?, created_by_user_id = ?, merchant = ?,
            exchange_rate = ?, amount_in_account_currency = ?, amount_in_debt_currency = ?,
-           updated_at = ?
+           destination_account_id = ?, updated_at = ?
          WHERE id = ?`,
         [
           input.type ?? null,
@@ -208,6 +211,7 @@ export const transactionsRepo = {
           input.exchange_rate ?? null,
           input.amount_in_account_currency ?? null,
           input.amount_in_debt_currency ?? null,
+          input.destination_account_id ?? null,
           now,
           id,
         ],

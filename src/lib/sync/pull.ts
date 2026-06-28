@@ -445,8 +445,8 @@ function insertTransaction(t: Transaction): void {
        description, notes, category_id, source_account_id, created_by_user_id,
        merchant, is_deleted, origin, sheet_sync_status, sheet_row_ref,
        exchange_rate, amount_in_account_currency, amount_in_debt_currency,
-       recurring_id, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       recurring_id, destination_account_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       t.id,
       t.type,
@@ -468,6 +468,7 @@ function insertTransaction(t: Transaction): void {
       t.amount_in_account_currency,
       t.amount_in_debt_currency,
       t.recurring_id,
+      t.destination_account_id,
       t.created_at,
       t.updated_at,
     ],
@@ -480,7 +481,8 @@ function updateTransaction(t: Transaction): void {
        source_account_id = ?, created_by_user_id = ?, merchant = ?,
        is_deleted = ?, origin = ?, sheet_sync_status = ?,
        exchange_rate = ?, amount_in_account_currency = ?,
-       amount_in_debt_currency = ?, recurring_id = ?, updated_at = ?
+       amount_in_debt_currency = ?, recurring_id = ?,
+       destination_account_id = ?, updated_at = ?
      WHERE id = ?`,
     [
       t.type,
@@ -501,6 +503,7 @@ function updateTransaction(t: Transaction): void {
       t.amount_in_account_currency,
       t.amount_in_debt_currency,
       t.recurring_id,
+      t.destination_account_id,
       t.updated_at,
       t.id,
     ],
@@ -548,8 +551,8 @@ function insertRecurring(r: RecurringItem): void {
        frequency, start_date, end_date, category_id, source_account_id,
        owner_type, default_shared_split_percent, is_active,
        auto_include_in_projection, auto_generate_transaction,
-       debt_id, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       debt_id, destination_account_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       r.id,
       r.type,
@@ -567,6 +570,7 @@ function insertRecurring(r: RecurringItem): void {
       fromBool(r.auto_include_in_projection),
       fromBool(r.auto_generate_transaction),
       r.debt_id,
+      r.destination_account_id,
       r.created_at,
       r.updated_at,
     ],
@@ -579,7 +583,7 @@ function updateRecurring(r: RecurringItem): void {
        category_id = ?, source_account_id = ?, owner_type = ?,
        default_shared_split_percent = ?, is_active = ?,
        auto_include_in_projection = ?, auto_generate_transaction = ?,
-       debt_id = ?, updated_at = ?
+       debt_id = ?, destination_account_id = ?, updated_at = ?
      WHERE id = ?`,
     [
       r.type,
@@ -597,6 +601,7 @@ function updateRecurring(r: RecurringItem): void {
       fromBool(r.auto_include_in_projection),
       fromBool(r.auto_generate_transaction),
       r.debt_id,
+      r.destination_account_id,
       r.updated_at,
       r.id,
     ],

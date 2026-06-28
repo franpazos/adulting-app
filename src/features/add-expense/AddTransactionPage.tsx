@@ -20,6 +20,7 @@ import {
   defaultFormValues,
   formatAmountForInput,
   parseAmount,
+  transferValidationError,
   type TransactionFormValues,
 } from "./TransactionForm";
 import { SaveFab } from "./SaveFab";
@@ -99,19 +100,28 @@ export function AddTransactionPage() {
     const r = recurringRepo.getById(fromRecurringId);
     if (!r || r.type === "DEBT_PAYMENT") return;
     userTouchedCategoryRef.current = true;
+    const nextType: "EXPENSE" | "INCOME" | "TRANSFER" =
+      r.type === "INCOME"
+        ? "INCOME"
+        : r.type === "TRANSFER"
+          ? "TRANSFER"
+          : "EXPENSE";
     setValues((prev) => ({
       ...prev,
-      type: r.type === "INCOME" ? "INCOME" : "EXPENSE",
+      type: nextType,
       amountText: formatAmountForInput(r.amount),
       source: r.source_account_id
         ? accountIdToCashSource(r.source_account_id)
         : prev.source,
+      destination: r.destination_account_id
+        ? accountIdToCashSource(r.destination_account_id)
+        : prev.destination,
       owner: r.owner_type,
       splitFranPercent:
         r.owner_type === "HOUSEHOLD"
           ? r.default_shared_split_percent ?? prev.splitFranPercent
           : prev.splitFranPercent,
-      categoryId: r.category_id ?? prev.categoryId,
+      categoryId: nextType === "TRANSFER" ? null : r.category_id ?? prev.categoryId,
     }));
   }, [dbReady, fromRecurringId]);
 
@@ -133,52 +143,60 @@ export function AddTransactionPage() {
   }, [values.type, values.source, values.owner, values.splitFranPercent]);
 
   const amount = parseAmount(values.amountText);
+  const transferError =
+    values.type === "TRANSFER"
+      ? transferValidationError(values.source, values.destination)
+      : null;
+  const saveDisabled = amount <= 0 || saving || transferError !== null;
 
   function handleSave() {
-    if (!dbReady || amount <= 0 || saving) return;
+    if (!dbReady || saveDisabled) return;
     setSaving(true);
     setSaveError(null);
     try {
       const isIncome = values.type === "INCOME";
-      // INCOME: single allocation to the chosen owner at 100%, no
-      // settlement implications. EXPENSE: use the canonical allocator
-      // that handles split + cash-source settlements.
-      const allocations = isIncome
-        ? [
-            {
-              owner_type: values.owner,
-              share_percent: 100,
-              share_amount: amount,
-            },
-          ]
-        : expenseAllocator({
-            amount,
-            source: values.source,
-            owner: values.owner,
-            splitFranPercent: values.splitFranPercent,
-          }).allocations;
+      const isTransfer = values.type === "TRANSFER";
+      // TRANSFER: zero allocations, no recompute, no pattern memory.
+      // INCOME: single 100% allocation. EXPENSE: canonical allocator.
+      const allocations = isTransfer
+        ? []
+        : isIncome
+          ? [
+              {
+                owner_type: values.owner,
+                share_percent: 100,
+                share_amount: amount,
+              },
+            ]
+          : expenseAllocator({
+              amount,
+              source: values.source,
+              owner: values.owner,
+              splitFranPercent: values.splitFranPercent,
+            }).allocations;
       const tx = transactionsRepo.create({
-        type: isIncome ? "INCOME" : "EXPENSE",
+        type: isTransfer ? "TRANSFER" : isIncome ? "INCOME" : "EXPENSE",
         date: values.date,
         amount,
         currency_code: "EUR",
         source_account_id: SOURCE_TO_ACCOUNT[values.source],
         description: values.description.trim() || null,
-        category_id: values.categoryId,
+        category_id: isTransfer ? null : values.categoryId,
         created_by_user_id: SOURCE_TO_USER[values.source],
         origin: "MANUAL",
         sheet_sync_status: "PENDING",
         recurring_id: fromRecurringId,
+        destination_account_id: isTransfer
+          ? SOURCE_TO_ACCOUNT[values.destination]
+          : null,
         allocations,
       });
-      // Income has no settlement effect — skip the recompute. Saves a
-      // pointless ledger pass on the common nómina case.
-      if (!isIncome) recomputeForTransaction(tx.id);
+      // Income and Transfer have no settlement effect — skip recompute.
+      if (!isIncome && !isTransfer) recomputeForTransaction(tx.id);
       bumpVersion();
       setMonthKey(tx.month_key);
-      // Smart-default memory is keyed by the expense pattern; recording
-      // it for income would pollute the next expense suggestion.
-      if (!isIncome) {
+      // Smart-default memory is the expense pattern only.
+      if (!isIncome && !isTransfer) {
         recordLastUsed(
           buildPatternKey(values.source, values.owner, values.splitFranPercent),
           { categoryId: values.categoryId },
@@ -204,7 +222,9 @@ export function AddTransactionPage() {
         <h1 className="font-display text-base font-semibold">
           {values.type === "INCOME"
             ? t("addExpense.titleIncome")
-            : t("addExpense.title")}
+            : values.type === "TRANSFER"
+              ? t("addExpense.titleTransfer")
+              : t("addExpense.title")}
         </h1>
         <span className="size-10" aria-hidden />
       </div>
@@ -219,13 +239,15 @@ export function AddTransactionPage() {
 
       <SaveFab
         amount={amount}
-        disabled={amount <= 0 || saving}
+        disabled={saveDisabled}
         loading={saving}
         onClick={handleSave}
         labelKey={
           values.type === "INCOME"
             ? "addExpense.saveLabelIncome"
-            : "addExpense.saveLabel"
+            : values.type === "TRANSFER"
+              ? "addExpense.saveLabelTransfer"
+              : "addExpense.saveLabel"
         }
       />
     </div>

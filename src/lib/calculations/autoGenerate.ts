@@ -196,6 +196,34 @@ export function autoGenerateForCurrentMonth(): string[] {
       generated.push(r.id);
       continue;
     }
+
+    if (r.type === "TRANSFER") {
+      // Skip when the recurring is incomplete (no destination set) or
+      // when the destination would form an invalid pair (defensive — the
+      // form already blocks it).
+      if (!r.destination_account_id) continue;
+      if (r.destination_account_id === r.source_account_id) continue;
+      transactionsRepo.create({
+        type: "TRANSFER",
+        date: firstOfMonth(monthKey),
+        amount: r.amount,
+        currency_code: r.currency_code,
+        source_account_id: r.source_account_id,
+        description: r.name,
+        // Transfers don't have a category — the recurring's category_id
+        // is intentionally ignored here.
+        category_id: null,
+        origin: "RECURRING_GENERATED",
+        sheet_sync_status: "PENDING",
+        recurring_id: r.id,
+        destination_account_id: r.destination_account_id,
+        // No allocations, no recompute — TRANSFER is pure inter-account
+        // movement, doesn't touch settlement_ledger.
+        allocations: [],
+      });
+      generated.push(r.id);
+      continue;
+    }
   }
 
   return generated;

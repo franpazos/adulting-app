@@ -43,6 +43,8 @@
     "statExpenses": "Expenses",
     "statRecurring": "Recurring",
     "statAvailable": "Available",
+    "statBalance": "Current balance",
+    "statNet": "Monthly net",
     "openTransactions": "Open transactions",
     "openSettlements": "Open settlements",
     "openDebts": "Open debts",
@@ -87,15 +89,22 @@
   "addExpense": {
     "title": "Add Expense",
     "titleIncome": "Add Income",
+    "titleTransfer": "New Transfer",
     "type": {
       "label": "Type",
       "expense": "Expense",
-      "income": "Income"
+      "income": "Income",
+      "transfer": "Transfer"
     },
     "amount": "Amount",
     "paidFrom": "Paid from",
     "receivedIn": "Received in",
     "receivedBy": "For",
+    "transferFrom": "From",
+    "transferTo": "To",
+    "transferErrorSame": "Source and destination must be different.",
+    "transferErrorPersonalToPersonal": "To move money between Fran and Sam, use Settle Up.",
+    "saveLabelTransfer": "Save transfer · {{amount}}",
     "belongsTo": "Belongs to",
     "split": "Split",
     "splitLabel": "Fran {{fran}}% / Sam {{sam}}%",
@@ -107,6 +116,7 @@
     "today": "Today",
     "saveLabel": "Save expense · {{amount}}",
     "saveLabelIncome": "Save income · {{amount}}",
+    "saveLabelExpense": "Save expense · {{amount}}",
     "saving": "Saving…",
     "savedToast": "Saved",
     "who": {
@@ -298,6 +308,7 @@
     "paidOfExpected": "{{paid}} of {{total}}",
     "quickFillCta": "Register this month's payment",
     "quickFillCtaIncome": "Register this month's income",
+    "quickFillCtaTransfer": "Register this month's transfer",
     "debtUnlinked": {
       "title": "Not linked to a debt",
       "body": "This recurring isn't linked to a debt. Edit it to link one so the balance is reduced automatically.",
@@ -306,12 +317,14 @@
     "types": {
       "expense": "Expense",
       "income": "Income",
-      "debt": "Debt payment"
+      "debt": "Debt payment",
+      "transfer": "Transfer"
     },
     "sections": {
       "income": "Incomes",
       "expense": "Expenses",
-      "debt": "Debt payments"
+      "debt": "Debt payments",
+      "transfer": "Transfers"
     },
     "fields": {
       "type": "Type",

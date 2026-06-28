@@ -141,6 +141,9 @@ export function parseTransaction(row: SheetRow): Transaction {
     // recurring item). Mid-row insertion would shift the timestamp
     // indices and break legacy pull.
     recurring_id: row[19] === undefined ? null : str(row[19]),
+    // Appended in v8 — only populated for type='TRANSFER'. Pre-v8 sheets
+    // have no cell at this index → null.
+    destination_account_id: row[20] === undefined ? null : str(row[20]),
   };
 }
 
@@ -179,6 +182,8 @@ export function parseRecurring(row: SheetRow): RecurringItem {
     // Appended in v6. Legacy pre-v6 sheets stop at index 16, so a
     // missing cell at 17 → null (recurring isn't linked to any debt).
     debt_id: row[17] === undefined ? null : str(row[17]),
+    // Appended in v8. Only populated for type='TRANSFER'. Pre-v8 → null.
+    destination_account_id: row[18] === undefined ? null : str(row[18]),
   };
 }
 

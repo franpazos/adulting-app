@@ -290,7 +290,14 @@ function round2(n: number): number {
 /**
  * Estimated balance for an account = initial_balance
  *   + Σ INCOME amounts hitting the account
- *   − Σ (EXPENSE | DEBT_PAYMENT | SETTLEMENT_PAYMENT | TRANSFER) leaving it.
+ *   + Σ TRANSFER amounts landing in the account (destination_account_id)
+ *   − Σ (EXPENSE | DEBT_PAYMENT | SETTLEMENT_PAYMENT | TRANSFER) leaving it
+ *     (source_account_id).
+ *
+ * TRANSFER is the only tx type that's symmetrically counted on both
+ * sides of an account move (added in 0.6.0). It appears as outflow on
+ * the source and inflow on the destination — net zero across all
+ * accounts, but each account's balance reflects the movement correctly.
  *
  * Mirrors the AccountsPage formula. Currency-agnostic — the caller knows
  * which currency the account is denominated in.
@@ -301,8 +308,12 @@ export function accountBalance(
 ): number {
   const inflow = selectScalar(
     `SELECT COALESCE(SUM(amount), 0) FROM transactions
-     WHERE source_account_id = ? AND type = 'INCOME' AND is_deleted = 0`,
-    [accountId],
+     WHERE is_deleted = 0
+       AND (
+         (source_account_id = ? AND type = 'INCOME')
+         OR (destination_account_id = ? AND type = 'TRANSFER')
+       )`,
+    [accountId, accountId],
   );
   const outflow = selectScalar(
     `SELECT COALESCE(SUM(amount), 0) FROM transactions
@@ -318,6 +329,11 @@ export function accountBalance(
  * Net flow for an account during a month: incomes hitting it minus
  * outflows charged against it. Used by the Joint snapshot card to show
  * "+€X / −€Y this month".
+ *
+ * Inflow counts INCOME txs landing in this account AND TRANSFER txs
+ * with this account as their destination. Outflow counts EXPENSE,
+ * DEBT_PAYMENT, SETTLEMENT_PAYMENT, and TRANSFER (where this account
+ * is the source).
  */
 export function accountMonthlyFlow(
   accountId: string,
@@ -325,9 +341,12 @@ export function accountMonthlyFlow(
 ): { inflow: number; outflow: number } {
   const inflow = selectScalar(
     `SELECT COALESCE(SUM(amount), 0) FROM transactions
-     WHERE source_account_id = ? AND month_key = ?
-       AND type = 'INCOME' AND is_deleted = 0`,
-    [accountId, monthKey],
+     WHERE month_key = ? AND is_deleted = 0
+       AND (
+         (source_account_id = ? AND type = 'INCOME')
+         OR (destination_account_id = ? AND type = 'TRANSFER')
+       )`,
+    [monthKey, accountId, accountId],
   );
   const outflow = selectScalar(
     `SELECT COALESCE(SUM(amount), 0) FROM transactions

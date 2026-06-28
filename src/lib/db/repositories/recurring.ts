@@ -26,10 +26,15 @@ function map(row: Record<string, unknown>): RecurringItem {
 }
 
 interface CreateRecurringInput
-  extends Omit<RecurringItem, "id" | "created_at" | "updated_at" | "debt_id"> {
+  extends Omit<
+    RecurringItem,
+    "id" | "created_at" | "updated_at" | "debt_id" | "destination_account_id"
+  > {
   id?: string;
   /** Only meaningful for type=DEBT_PAYMENT (Level 4). Defaults to null. */
   debt_id?: string | null;
+  /** Only meaningful for type=TRANSFER (0.6.0). Defaults to null. */
+  destination_account_id?: string | null;
 }
 
 export const recurringRepo = {
@@ -61,6 +66,7 @@ export const recurringRepo = {
       ...input,
       id: input.id ?? newId(),
       debt_id: input.debt_id ?? null,
+      destination_account_id: input.destination_account_id ?? null,
       created_at: now,
       updated_at: now,
     };
@@ -68,8 +74,8 @@ export const recurringRepo = {
       `INSERT INTO recurring_items (id, type, name, amount, currency_code, frequency,
         start_date, end_date, category_id, source_account_id, owner_type,
         default_shared_split_percent, is_active, auto_include_in_projection,
-        auto_generate_transaction, debt_id, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        auto_generate_transaction, debt_id, destination_account_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         r.id,
         r.type,
@@ -87,6 +93,7 @@ export const recurringRepo = {
         fromBool(r.auto_include_in_projection),
         fromBool(r.auto_generate_transaction),
         r.debt_id,
+        r.destination_account_id,
         r.created_at,
         r.updated_at,
       ],
@@ -104,7 +111,7 @@ export const recurringRepo = {
            start_date = ?, end_date = ?, category_id = ?, source_account_id = ?,
            owner_type = ?, default_shared_split_percent = ?,
            is_active = ?, auto_include_in_projection = ?, auto_generate_transaction = ?,
-           debt_id = ?, updated_at = ?
+           debt_id = ?, destination_account_id = ?, updated_at = ?
          WHERE id = ?`,
         [
           input.type,
@@ -122,6 +129,7 @@ export const recurringRepo = {
           fromBool(input.auto_include_in_projection),
           fromBool(input.auto_generate_transaction),
           input.debt_id ?? null,
+          input.destination_account_id ?? null,
           now,
           id,
         ],

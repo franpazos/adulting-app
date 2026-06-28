@@ -125,6 +125,7 @@ describe("readers round-trip with writers", () => {
       created_at: "2026-05-04T00:00:00Z",
       updated_at: "2026-05-04T00:00:00Z",
       recurring_id: null,
+      destination_account_id: null,
     });
     const parsed = parseTransaction(row as SheetRow);
     expect(parsed.exchange_rate).toBe(1.08);
@@ -189,6 +190,7 @@ describe("readers round-trip with writers", () => {
       created_at: "2026-06-15T00:00:00Z",
       updated_at: "2026-06-15T00:00:00Z",
       recurring_id: "rec-1",
+      destination_account_id: null,
     });
     const parsed = parseTransaction(row as SheetRow);
     expect(parsed.recurring_id).toBe("rec-1");
@@ -233,6 +235,7 @@ describe("applyTab reconciler", () => {
       created_at: "2026-06-01T00:00:00Z",
       updated_at: "2026-06-01T00:00:00Z",
       recurring_id: null,
+      destination_account_id: null,
     };
     const row = _mappers.transactionToRow(remoteTx) as SheetRow;
     const stats = _pull.applyTab("raw_transactions", [row]);
@@ -321,6 +324,7 @@ describe("applyTab reconciler", () => {
       created_at: "2026-06-02T00:00:00Z",
       updated_at: "2026-06-02T00:00:00Z",
       recurring_id: null,
+      destination_account_id: null,
     };
     const bad: SheetRow = ["", "EXPENSE", "2026-06-02"];
     const good = _mappers.transactionToRow(valid) as SheetRow;

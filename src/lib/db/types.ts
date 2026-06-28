@@ -16,7 +16,7 @@ export type TransactionType =
   | "TRANSFER"
   | "SETTLEMENT_PAYMENT"
   | "DEBT_PAYMENT";
-export type RecurringType = "EXPENSE" | "INCOME" | "DEBT_PAYMENT";
+export type RecurringType = "EXPENSE" | "INCOME" | "DEBT_PAYMENT" | "TRANSFER";
 export type Frequency = "MONTHLY";
 export type TransactionOrigin =
   | "MANUAL"
@@ -87,6 +87,11 @@ export interface Transaction {
   // pre-v5 rows (no backfill UI — see decisions log for 0.4.8).
   recurring_id: string | null;
 
+  // Added in v8 (0.6.0). Only populated when type='TRANSFER': the account
+  // receiving the money. accountBalance/accountMonthlyFlow count TRANSFER
+  // as outflow on source_account_id AND inflow on destination_account_id.
+  destination_account_id: string | null;
+
   created_at: string;
   updated_at: string;
 }
@@ -124,6 +129,10 @@ export interface RecurringItem {
   // for new DEBT_PAYMENT rows; legacy rows stay null and behave as
   // informational items (no balance decrement).
   debt_id: string | null;
+  // Added in v8 (0.6.0). Only meaningful for type='TRANSFER': the
+  // receiving account when this recurring auto-materializes. Form gates
+  // non-null at save time for new TRANSFER rows.
+  destination_account_id: string | null;
   created_at: string;
   updated_at: string;
 }

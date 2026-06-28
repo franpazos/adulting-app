@@ -78,6 +78,7 @@ export const RAW_TABS: ReadonlyArray<RawTabSpec> = [
       "created_at",
       "updated_at",
       "recurring_id",
+      "destination_account_id",
     ],
   },
   {
@@ -114,6 +115,7 @@ export const RAW_TABS: ReadonlyArray<RawTabSpec> = [
       "created_at",
       "updated_at",
       "debt_id",
+      "destination_account_id",
     ],
   },
   {
