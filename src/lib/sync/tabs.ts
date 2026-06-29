@@ -156,6 +156,20 @@ export const RAW_TABS: ReadonlyArray<RawTabSpec> = [
     ],
   },
   {
+    title: "raw_account_adjustments",
+    headers: [
+      "id",
+      "account_id",
+      "date",
+      "target_balance",
+      "delta",
+      "notes",
+      "is_deleted",
+      "created_at",
+      "updated_at",
+    ],
+  },
+  {
     title: "raw_settlement_ledger",
     headers: [
       "id",

@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ListChecks, Search, SlidersHorizontal, X } from "lucide-react";
 
@@ -52,6 +53,31 @@ export function TransactionsPage() {
 
   const [filters, setFilters] = useState<FilterState>(INITIAL);
   const [showFilters, setShowFilters] = useState(false);
+
+  // Allow other pages (e.g. /accounts/:id "Ver movimientos →") to
+  // deep-link a pre-applied Source filter via `?source=<account_id>`.
+  // We accept the account id (stable across renames) and translate it
+  // into the CashSource enum the filter uses internally. Open the
+  // filter panel on hit so the user sees the active filter at a glance.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const sourceParam = searchParams.get("source");
+    if (!sourceParam) return;
+    try {
+      const cashSource = accountIdToCashSource(sourceParam);
+      setFilters((f) => ({ ...f, source: cashSource }));
+      setShowFilters(true);
+    } catch {
+      // Unknown account id — silently ignore.
+    } finally {
+      // Strip the param so reloading the page doesn't re-apply it on
+      // top of whatever the user has chosen since.
+      const next = new URLSearchParams(searchParams);
+      next.delete("source");
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const allTxs = useMemo(
     () => (dbReady ? transactionsRepo.listByMonth(monthKey) : []),

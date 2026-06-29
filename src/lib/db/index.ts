@@ -17,6 +17,10 @@ export {
 } from "./repositories/transactions";
 export { recurringRepo } from "./repositories/recurring";
 export { debtsRepo, debtPaymentsRepo } from "./repositories/debts";
+export {
+  accountAdjustmentsRepo,
+  type CreateAccountAdjustmentInput,
+} from "./repositories/accountAdjustments";
 export { settlementsRepo } from "./repositories/settlements";
 export {
   feedbackRepo,

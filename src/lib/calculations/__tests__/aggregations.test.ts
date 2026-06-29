@@ -12,6 +12,7 @@ import {
   seedIfEmpty,
   SEED_IDS,
   accountsRepo,
+  accountAdjustmentsRepo,
   transactionsRepo,
 } from "@/lib/db";
 import { _resetDbForTests } from "@/lib/db/client";
@@ -202,5 +203,119 @@ describe("TRANSFER tx and account flows (0.6.0)", () => {
     expect(after.expenses - before.expenses).toBe(0);
     expect(after.recurring - before.recurring).toBe(0);
     expect(after.available - before.available).toBe(0);
+  });
+});
+
+describe("Account adjustments (0.7.0)", () => {
+  function initial(accountId: string): number {
+    return accountsRepo.list().find((a) => a.id === accountId)!.initial_balance;
+  }
+
+  it("a positive delta increases the running balance", () => {
+    const fran = SEED_IDS.accounts.franPersonal;
+    const before = accountBalance(fran, initial(fran));
+    accountAdjustmentsRepo.create({
+      account_id: fran,
+      date: "2026-06-28",
+      target_balance: before + 50,
+      delta: 50,
+      notes: null,
+    });
+    expect(accountBalance(fran, initial(fran))).toBeCloseTo(before + 50, 2);
+  });
+
+  it("a negative delta decreases the running balance", () => {
+    const sam = SEED_IDS.accounts.samPersonal;
+    const before = accountBalance(sam, initial(sam));
+    accountAdjustmentsRepo.create({
+      account_id: sam,
+      date: "2026-06-28",
+      target_balance: before - 120,
+      delta: -120,
+      notes: "bank fee I forgot to log",
+    });
+    expect(accountBalance(sam, initial(sam))).toBeCloseTo(before - 120, 2);
+  });
+
+  it("soft-deleting an adjustment removes its effect from the balance", () => {
+    const joint = SEED_IDS.accounts.joint;
+    const before = accountBalance(joint, initial(joint));
+    const adj = accountAdjustmentsRepo.create({
+      account_id: joint,
+      date: "2026-06-28",
+      target_balance: before + 200,
+      delta: 200,
+      notes: null,
+    });
+    expect(accountBalance(joint, initial(joint))).toBeCloseTo(before + 200, 2);
+    accountAdjustmentsRepo.softDelete(adj.id);
+    expect(accountBalance(joint, initial(joint))).toBeCloseTo(before, 2);
+  });
+
+  it("multiple adjustments stack (later wins by accumulation, not replacement)", () => {
+    const fran = SEED_IDS.accounts.franPersonal;
+    const start = accountBalance(fran, initial(fran));
+    accountAdjustmentsRepo.create({
+      account_id: fran,
+      date: "2026-06-20",
+      target_balance: start + 30,
+      delta: 30,
+      notes: null,
+    });
+    // Second adjustment is computed against the post-first-adjust balance.
+    accountAdjustmentsRepo.create({
+      account_id: fran,
+      date: "2026-06-25",
+      target_balance: start + 30 + 12,
+      delta: 12,
+      notes: null,
+    });
+    expect(accountBalance(fran, initial(fran))).toBeCloseTo(start + 42, 2);
+  });
+
+  it("an adjustment on account A does not move account B's balance", () => {
+    const fran = SEED_IDS.accounts.franPersonal;
+    const sam = SEED_IDS.accounts.samPersonal;
+    const samBefore = accountBalance(sam, initial(sam));
+    accountAdjustmentsRepo.create({
+      account_id: fran,
+      date: "2026-06-28",
+      target_balance: 1,
+      delta: 999,
+      notes: null,
+    });
+    expect(accountBalance(sam, initial(sam))).toBeCloseTo(samBefore, 2);
+  });
+
+  it("an adjustment does NOT enter monthlySummary income/expense buckets", () => {
+    const fran = SEED_IDS.accounts.franPersonal;
+    const before = monthlySummary(M(), "fran");
+    accountAdjustmentsRepo.create({
+      account_id: fran,
+      date: new Date().toISOString().slice(0, 10),
+      target_balance: 1000,
+      delta: 250,
+      notes: null,
+    });
+    const after = monthlySummary(M(), "fran");
+    expect(after.income).toBeCloseTo(before.income, 2);
+    expect(after.expenses).toBeCloseTo(before.expenses, 2);
+    expect(after.recurring).toBeCloseTo(before.recurring, 2);
+    expect(after.available).toBeCloseTo(before.available, 2);
+  });
+
+  it("an adjustment does NOT enter accountMonthlyFlow", () => {
+    const joint = SEED_IDS.accounts.joint;
+    const before = accountMonthlyFlow(joint, M());
+    accountAdjustmentsRepo.create({
+      account_id: joint,
+      date: new Date().toISOString().slice(0, 10),
+      target_balance: 9999,
+      delta: 75,
+      notes: null,
+    });
+    const after = accountMonthlyFlow(joint, M());
+    expect(after.inflow).toBeCloseTo(before.inflow, 2);
+    expect(after.outflow).toBeCloseTo(before.outflow, 2);
   });
 });

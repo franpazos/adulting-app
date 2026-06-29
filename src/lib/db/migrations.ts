@@ -337,6 +337,42 @@ const MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_recurring_destination
         ON recurring_items(destination_account_id);
     `,
+  },
+  {
+    // Account adjustments (0.7.0). Lets the user calibrate the running
+    // balance of an account against the real-world bank balance without
+    // creating a fake transaction. An adjustment carries a signed `delta`
+    // (target_balance − computed_balance at the moment of save); the
+    // accountBalance aggregator sums `delta` of non-deleted rows so the
+    // calibration sticks across reloads and devices.
+    //
+    // Lives in its own table so the calibration concept is honest: it's
+    // not a tx, has no allocations, no settlement effect, and never
+    // contaminates monthlySummary / categoryBreakdown — those queries
+    // touch `transactions` only and there is no path for an adjustment
+    // to leak into the P&L.
+    //
+    // Soft-delete model (is_deleted) mirrors debts (v7): a hard DELETE
+    // would let the pull reconciler re-insert the row on the next sync.
+    version: 9,
+    name: "account_adjustments",
+    sql: `
+      CREATE TABLE IF NOT EXISTS account_adjustments (
+        id TEXT PRIMARY KEY,
+        account_id TEXT NOT NULL REFERENCES accounts(id),
+        date TEXT NOT NULL,
+        target_balance REAL NOT NULL,
+        delta REAL NOT NULL,
+        notes TEXT NULL,
+        is_deleted INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_account_adjustments_account
+        ON account_adjustments(account_id, is_deleted);
+      CREATE INDEX IF NOT EXISTS idx_account_adjustments_account_date
+        ON account_adjustments(account_id, date);
+    `,
   }
 ];
 

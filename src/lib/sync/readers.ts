@@ -18,6 +18,7 @@
 import type { CellValue, SheetRow } from "@/lib/google/sheets-api";
 import type {
   Account,
+  AccountAdjustment,
   AccountType,
   CategoryKind,
   Category,
@@ -224,6 +225,20 @@ export function parseDebtPayment(row: SheetRow): DebtPayment {
     amount_in_debt_currency: num(row[9]),
     created_at: reqStr(row[10], "debt_payment.created_at"),
     updated_at: reqStr(row[11], "debt_payment.updated_at"),
+  };
+}
+
+export function parseAccountAdjustment(row: SheetRow): AccountAdjustment {
+  return {
+    id: reqStr(row[0], "account_adjustment.id"),
+    account_id: reqStr(row[1], "account_adjustment.account_id"),
+    date: reqStr(row[2], "account_adjustment.date"),
+    target_balance: reqNum(row[3], "account_adjustment.target_balance"),
+    delta: reqNum(row[4], "account_adjustment.delta"),
+    notes: str(row[5]),
+    is_deleted: bool(row[6]),
+    created_at: reqStr(row[7], "account_adjustment.created_at"),
+    updated_at: reqStr(row[8], "account_adjustment.updated_at"),
   };
 }
 

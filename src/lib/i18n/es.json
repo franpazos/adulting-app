@@ -255,7 +255,36 @@
     "title": "Cuentas",
     "totals": "Totales por moneda",
     "estimatedBalance": "Saldo estimado",
-    "balanceNote": "Calculado a partir del saldo inicial más los movimientos registrados."
+    "balanceNote": "Calculado a partir del saldo inicial más los movimientos registrados.",
+    "detail": {
+      "back": "Volver",
+      "notFound": "Cuenta no encontrada.",
+      "backToList": "Volver a Cuentas",
+      "inflow": "Entradas",
+      "outflow": "Salidas",
+      "net": "Neto",
+      "calibrateCta": "Calibrar saldo",
+      "viewTransactions": "Ver movimientos",
+      "adjustmentsTitle": "Calibraciones manuales",
+      "adjustmentsEmpty": "Aún no has calibrado el saldo de esta cuenta.",
+      "targetedLabel": "Saldo objetivo: {{value}}",
+      "deleteAria": "Eliminar calibración",
+      "deleteConfirmTitle": "Eliminar calibración",
+      "deleteConfirmDescription": "Se revertirá el ajuste aplicado al saldo. Esta acción puede deshacerse desde otro dispositivo si el ajuste sigue en el Sheet.",
+      "deleteConfirmAction": "Eliminar"
+    },
+    "adjust": {
+      "title": "Calibrar saldo",
+      "description": "Ajusta el saldo de esta cuenta para que coincida con el banco. Se guarda como un ajuste auditable, sin tocar tus movimientos.",
+      "currentLabel": "Saldo actual",
+      "targetLabel": "Saldo correcto",
+      "notesLabel": "Notas (opcional)",
+      "notesPlaceholder": "Por ejemplo: cargo bancario que no había registrado.",
+      "previewNoChange": "Sin cambios. El saldo ya coincide.",
+      "previewPositive": "Se sumará {{delta}} al saldo calculado.",
+      "previewNegative": "Se restará {{delta}} del saldo calculado.",
+      "saveCta": "Guardar calibración"
+    }
   },
   "settlements": {
     "title": "Ajustes / Settlements",

@@ -73,6 +73,7 @@ export function AccountsPage() {
             <AccountCard
               account={a}
               balance={data.balances.get(a.id) ?? 0}
+              onClick={() => navigate(`/accounts/${a.id}`)}
             />
           </li>
         ))}
@@ -84,38 +85,46 @@ export function AccountsPage() {
 function AccountCard({
   account,
   balance,
+  onClick,
 }: {
   account: Account;
   balance: number;
+  onClick: () => void;
 }) {
   const { t } = useTranslation();
   const who: AvatarWho = whoFromAccount(account);
   return (
-    <Card>
-      <div className="flex items-center gap-3">
-        <Avatar who={who} size={40} />
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold truncate">{account.name}</p>
-          <div className="flex items-center gap-2 mt-0.5">
-            <Pill tone="neutral" className="h-5 px-2 text-[10px]">
-              {account.type}
-            </Pill>
-            <Pill
-              tone={account.currency_code === "EUR" ? "neutral" : "info"}
-              className="h-5 px-2 text-[10px]"
-            >
-              {account.currency_code}
-            </Pill>
+    <button
+      type="button"
+      onClick={onClick}
+      className="block w-full text-left"
+    >
+      <Card className="tap-card">
+        <div className="flex items-center gap-3">
+          <Avatar who={who} size={40} />
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold truncate">{account.name}</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <Pill tone="neutral" className="h-5 px-2 text-[10px]">
+                {account.type}
+              </Pill>
+              <Pill
+                tone={account.currency_code === "EUR" ? "neutral" : "info"}
+                className="h-5 px-2 text-[10px]"
+              >
+                {account.currency_code}
+              </Pill>
+            </div>
           </div>
         </div>
-      </div>
-      <div className="mt-3 pt-3 border-t border-border flex items-baseline justify-between">
-        <span className="t-label">{t("accounts.estimatedBalance")}</span>
-        <span className="font-display text-lg font-semibold tabular-nums">
-          {formatAmount(balance, account.currency_code)}
-        </span>
-      </div>
-    </Card>
+        <div className="mt-3 pt-3 border-t border-border flex items-baseline justify-between">
+          <span className="t-label">{t("accounts.estimatedBalance")}</span>
+          <span className="font-display text-lg font-semibold tabular-nums">
+            {formatAmount(balance, account.currency_code)}
+          </span>
+        </div>
+      </Card>
+    </button>
   );
 }
 

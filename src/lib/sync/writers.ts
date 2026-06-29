@@ -14,6 +14,7 @@ import type { SheetRow } from "@/lib/google/sheets-api";
 import { selectAll } from "@/lib/db/client";
 import type {
   Account,
+  AccountAdjustment,
   Category,
   Debt,
   DebtPayment,
@@ -143,6 +144,18 @@ const debtToRow = (d: Debt): SheetRow => [
   b(d.is_deleted),
 ];
 
+const accountAdjustmentToRow = (a: AccountAdjustment): SheetRow => [
+  a.id,
+  a.account_id,
+  a.date,
+  a.target_balance,
+  a.delta,
+  a.notes,
+  b(a.is_deleted),
+  a.created_at,
+  a.updated_at,
+];
+
 const debtPaymentToRow = (p: DebtPayment): SheetRow => [
   p.id,
   p.debt_id,
@@ -192,6 +205,7 @@ export interface SnapshotData {
   recurring: SheetRow[];
   debts: SheetRow[];
   debt_payments: SheetRow[];
+  account_adjustments: SheetRow[];
   settlements: SheetRow[];
   feedback: SheetRow[];
 }
@@ -224,6 +238,9 @@ export function buildSnapshot(): SnapshotData {
     debt_payments: selectAll<DebtPayment>("SELECT * FROM debt_payments").map(
       debtPaymentToRow,
     ),
+    account_adjustments: selectAll<AccountAdjustment>(
+      "SELECT * FROM account_adjustments",
+    ).map(accountAdjustmentToRow),
     settlements: selectAll<SettlementLedgerEntry>(
       "SELECT * FROM settlement_ledger",
     ).map(settlementToRow),
@@ -241,6 +258,7 @@ export const _mappers = {
   recurringToRow,
   debtToRow,
   debtPaymentToRow,
+  accountAdjustmentToRow,
   settlementToRow,
   feedbackToRow,
 };

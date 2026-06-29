@@ -4,6 +4,105 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-06-29 — Version 0.7.0: Account balance calibration + `/accounts/:id` detail page
+
+Opens the "honest accounting" era. After a few weeks of real use, the running balance shown in `/accounts` drifts from what the bank actually shows — small unrecorded fees, FX rounding on USD debt payments, mistyped amounts on past txs. Until 0.7.0 the only ways to reconcile were (a) hunt the discrepancy down across months of history or (b) mutate `accounts.initial_balance` directly. Both are unappealing: (a) is unbounded work; (b) loses provenance and is unsafe under multi-device sync (last-writer-wins on a scalar column silently drops one of two parallel corrections).
+
+0.7.0 adds **manual calibration** as a first-class concept: a dedicated `account_adjustments` table holds signed delta rows, `accountBalance` sums them alongside transactions, and a new `/accounts/:id` page surfaces both the calibration trigger and the audit trail.
+
+**The "this is not a transaction" insight.** The first instinct (and what the previous agent had on the table as option B) was to materialize each correction as a synthetic INCOME or EXPENSE with an `is_adjustment` flag, filtered out of `monthlySummary` and `categoryBreakdown`. The user pushed back: *"esto no es una transacción, es coger la account y cambiarle el número de dinero disponible"*. They wanted audit trail without contaminating `/transactions` or the P&L. The right answer once you accept that framing is option **C**: a dedicated table whose rows can't ever leak into transaction aggregations by construction — there's no path. Every future aggregation of `transactions` is automatically safe, no defensive `WHERE is_adjustment = 0` to forget.
+
+**Schema (migration v9).**
+
+```sql
+CREATE TABLE account_adjustments (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL REFERENCES accounts(id),
+  date TEXT NOT NULL,                  -- YYYY-MM-DD
+  target_balance REAL NOT NULL,        -- what the user said the balance should be
+  delta REAL NOT NULL,                 -- signed: target − balance at save time
+  notes TEXT NULL,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX idx_account_adjustments_account
+  ON account_adjustments(account_id, is_deleted);
+CREATE INDEX idx_account_adjustments_account_date
+  ON account_adjustments(account_id, date);
+```
+
+Both `target_balance` and `delta` are stored. `delta` is what the aggregator uses (cheap sum); `target_balance` is preserved so the audit trail rows can say *"saldo objetivo: 1.234,56 €"* without re-deriving from the balance at save time (which would shift as later txs land).
+
+Soft-delete mirrors debts v7: `is_deleted = 1` on `softDelete`, sync action emitted as `UPDATE` (never `DELETE`) so snapshot push keeps the row as a tombstone the other device can see.
+
+**`accountBalance` aggregator — one new clause.**
+
+```ts
+const adjustments = selectScalar(
+  `SELECT COALESCE(SUM(delta), 0) FROM account_adjustments
+   WHERE account_id = ? AND is_deleted = 0`,
+  [accountId],
+);
+return round2(initialBalance + inflow - outflow + adjustments);
+```
+
+`accountMonthlyFlow` is deliberately NOT touched. A calibration is not money flowing into or out of the account this month — it's a one-off correction. Mixing it into "this month's inflow / outflow" would erode the at-a-glance signal those numbers carry on the detail page. `monthlySummary` and `categoryBreakdown` aren't touched either, by construction (they only `SELECT FROM transactions`).
+
+**Sync — new entity end-to-end.** Same pattern the project has done four times now (categories.is_active in v4, recurring_id in v5, debt_id in v6, debts.is_deleted in v7, destination_account_id in v8): new `RAW_TABS` entry `raw_account_adjustments` with 9 headers, `accountAdjustmentToRow` writer + `parseAccountAdjustment` reader, `reconcileAccountAdjustments` + `insertAccountAdjustment`/`updateAccountAdjustment` in pull, `TAB_KEY_BY_TITLE` entry in push, `applyRemoteToLocal` switch case, `SnapshotData.account_adjustments` field. `RAW_TABS.length` test bumped 10 → 11.
+
+**`/accounts/:id` — new lazy-loaded route.** The previous "tap a card → ???" affordance now lands here. Layout:
+
+- Header card: avatar + name + type/currency pills + big balance + 3-column monthly flow (in / out / net).
+- Primary CTA "Calibrar saldo" → opens `AccountAdjustSheet`.
+- Secondary CTA "Ver movimientos →" → navigates `/transactions?source=<account_id>`.
+- "Calibraciones manuales" section: empty-state card when no adjustments, otherwise a list of rows with signed delta as headline, target balance + date, optional notes, trash icon for soft-delete.
+
+`AccountsPage` cards become tappable buttons wrapped in `tap-card` press feedback. No inline calibrate trigger on the index — one entry point keeps the flow focused: "tap card → review balance + month flow + history → calibrate if needed."
+
+**`AccountAdjustSheet` — live delta preview.** The big risk in a calibration flow is the user mistyping a digit and confidently confirming a 1.234 → 12.345 calibration. The sheet prevents that by showing a colored preview tile under the input:
+
+- No change → neutral surface, "Sin cambios."
+- Positive → `bg-positive/10`, "Se sumará 50,00 € al saldo calculado."
+- Negative → `bg-expense/10`, "Se restará 120,00 €…"
+
+Reusing `formatMoney` + `parseAmount` + `sanitizeAmountInput` from the existing format module keeps the input behavior identical to AmountInput (es-ES grouping, decimal comma). Save button disabled when delta is effectively zero (< 0.005).
+
+**`/transactions?source=<account_id>` — deep-link pattern.** The transactions filter panel already had a Source segmented control (FRAN_PERSONAL / SAM_PERSONAL / JOINT). Adding a `useSearchParams` effect that reads `?source=<id>`, translates via `accountIdToCashSource`, applies the filter, opens the panel, and then strips the param from the URL (`setSearchParams(..., { replace: true })`) — 16 lines. Reload doesn't re-apply. Unknown id is silently ignored.
+
+**Owner — not applicable.** The agent-before-me's option B needed to nominate an owner for each fake tx; option C side-steps the question entirely. There's no allocation row, no settlement effect, no owner concept. Adjustments are about the *account*, not about who owes whom.
+
+**Tests (11 new, total 236/236).**
+
+In `aggregations.test.ts`:
+- positive delta increases `accountBalance`
+- negative delta decreases it
+- soft-delete removes the effect (balance reverts)
+- multiple adjustments stack additively
+- an adjustment on account A leaves account B untouched
+- an adjustment does NOT enter `monthlySummary` (income/expenses/recurring/available all unchanged)
+- an adjustment does NOT enter `accountMonthlyFlow`
+
+In `pull.test.ts`:
+- writer ↔ reader round-trip preserves the signed delta + notes
+- null notes survive
+- `applyTab` inserts a brand-new remote adjustment and `accountBalance` picks it up
+- `applyTab` propagates a remote soft-delete and the balance reverts
+
+Settlement cases A-E pass without modification. `pnpm exec tsc -b` clean. `pnpm build` succeeds — `AccountDetailPage` becomes its own 10.4 kB chunk (3.4 kB gzip).
+
+**Decisions captured for the next agent**
+- **No edit, only create + soft-delete.** To change an adjustment's amount, the user soft-deletes and creates a new one. Editing in place would require recomputing `delta` against a moving target (the balance has changed since save), and the audit trail loses precision. Two simple ops preserve a clearer history.
+- **No surface for soft-deleted adjustments.** Unlike debts where Archive is reversible UI-side, soft-delete on adjustments is one-way from the user's perspective. The row persists for sync round-trip only. If we ever want undelete, it's a one-line repo method away.
+- **Adjustment notes are free-text, max 500 chars.** No tagging or category. Free text is what users actually write when they're calibrating in the moment ("Bizum that didn't sync", "ATM fee from May").
+- **Multi-currency: the sheet assumes the account's `currency_code` throughout.** All 3 seed accounts are EUR, so this never trips. If a future USD account ever lands, the input + preview formatters already pass `account.currency_code` to `formatMoney`, so the only thing to add would be currency hint copy in the sheet ("Saldo correcto en USD") — but the data path is currency-agnostic.
+
+**Bump 0.6.0 → 0.7.0.** Minor — new schema entity, new page, new operational concept.
+
+**Files touched**: `src/lib/db/migrations.ts`, `src/lib/db/types.ts`, `src/lib/db/index.ts`, `src/lib/db/repositories/accountAdjustments.ts` (new), `src/lib/calculations/aggregations.ts`, `src/lib/sync/{tabs,writers,readers,pull,push}.ts`, `src/features/accounts/{AccountsPage,AccountDetailPage,AccountAdjustSheet}.tsx`, `src/features/transactions/TransactionsPage.tsx`, `src/app/router.tsx`, `src/lib/i18n/{en,es}.json`, `src/lib/calculations/__tests__/aggregations.test.ts`, `src/lib/sync/__tests__/{sync,pull}.test.ts`, `package.json`.
+
+---
+
 ## 2026-06-28 — Version 0.6.0: TRANSFER tx type + per-account Home forecast
 
 Opens a new era of inter-account money movement. Until now the app modeled four transaction types but only three of them (EXPENSE, INCOME, DEBT_PAYMENT) had user-facing flows. TRANSFER was a stub in `TxType` that nothing wrote and nothing read symmetrically. 0.6.0 wires it end-to-end: `/add` gains a Transfer toggle, recurring TRANSFERs auto-generate monthly contributions to the joint pool, the account-balance math counts transfers on both ends, and Home is rebuilt around a per-account forecast (replacing the previous per-person allocation cards).

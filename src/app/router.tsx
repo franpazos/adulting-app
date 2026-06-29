@@ -76,6 +76,10 @@ const AccountsPage = lazyNamed(
   () => import("@/features/accounts/AccountsPage"),
   "AccountsPage",
 );
+const AccountDetailPage = lazyNamed(
+  () => import("@/features/accounts/AccountDetailPage"),
+  "AccountDetailPage",
+);
 const ConflictsPage = lazyNamed(
   () => import("@/features/sync/ConflictsPage"),
   "ConflictsPage",
@@ -136,6 +140,7 @@ export const router = createBrowserRouter([
       { path: "categories/new", element: Lazy(<CategoryFormPage />) },
       { path: "categories/:id", element: Lazy(<CategoryFormPage />) },
       { path: "accounts", element: Lazy(<AccountsPage />) },
+      { path: "accounts/:id", element: Lazy(<AccountDetailPage />) },
       { path: "sync/conflicts", element: Lazy(<ConflictsPage />) },
       { path: "feedback", element: Lazy(<FeedbackPage />) },
     ],

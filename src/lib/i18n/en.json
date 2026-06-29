@@ -256,7 +256,36 @@
     "title": "Accounts",
     "totals": "Totals by currency",
     "estimatedBalance": "Estimated balance",
-    "balanceNote": "Computed from initial balance plus realised transactions."
+    "balanceNote": "Computed from initial balance plus realised transactions.",
+    "detail": {
+      "back": "Back",
+      "notFound": "Account not found.",
+      "backToList": "Back to Accounts",
+      "inflow": "Inflow",
+      "outflow": "Outflow",
+      "net": "Net",
+      "calibrateCta": "Calibrate balance",
+      "viewTransactions": "View transactions",
+      "adjustmentsTitle": "Manual calibrations",
+      "adjustmentsEmpty": "You haven't calibrated this account's balance yet.",
+      "targetedLabel": "Target balance: {{value}}",
+      "deleteAria": "Delete calibration",
+      "deleteConfirmTitle": "Delete calibration",
+      "deleteConfirmDescription": "Reverts this adjustment from the running balance. Can be undone from another device while the row still lives in the Sheet.",
+      "deleteConfirmAction": "Delete"
+    },
+    "adjust": {
+      "title": "Calibrate balance",
+      "description": "Match this account's balance to what your bank shows. Saved as an auditable adjustment without touching your transactions.",
+      "currentLabel": "Current balance",
+      "targetLabel": "Correct balance",
+      "notesLabel": "Notes (optional)",
+      "notesPlaceholder": "E.g. bank charge I had missed.",
+      "previewNoChange": "No change. The balance already matches.",
+      "previewPositive": "{{delta}} will be added to the running balance.",
+      "previewNegative": "{{delta}} will be subtracted from the running balance.",
+      "saveCta": "Save calibration"
+    }
   },
   "settlements": {
     "title": "Settlements",

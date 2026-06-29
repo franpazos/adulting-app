@@ -26,6 +26,7 @@
 import { exec, selectAll, selectOne, transaction } from "@/lib/db/client";
 import {
   parseAccount,
+  parseAccountAdjustment,
   parseAllocation,
   parseCategory,
   parseDebt,
@@ -45,6 +46,7 @@ import {
 } from "./conflicts";
 import type {
   Account,
+  AccountAdjustment,
   Category,
   Debt,
   DebtPayment,
@@ -183,6 +185,8 @@ function applyTab(tabTitle: string, rows: SheetRow[]): ReconcileStats {
       return reconcileDebts(rows);
     case "raw_debt_payments":
       return reconcileDebtPayments(rows);
+    case "raw_account_adjustments":
+      return reconcileAccountAdjustments(rows);
     case "raw_settlement_ledger":
       return reconcileSettlements(rows);
     case "raw_feedback":
@@ -312,6 +316,15 @@ function reconcileDebtPayments(rows: SheetRow[]) {
     parse: parseDebtPayment,
     insert: insertDebtPayment,
     update: updateDebtPayment,
+  });
+}
+function reconcileAccountAdjustments(rows: SheetRow[]) {
+  return reconcile(rows, {
+    table: "account_adjustments",
+    entityType: "account_adjustment",
+    parse: parseAccountAdjustment,
+    insert: insertAccountAdjustment,
+    update: updateAccountAdjustment,
   });
 }
 function reconcileSettlements(rows: SheetRow[]) {
@@ -705,6 +718,43 @@ function updateDebtPayment(p: DebtPayment): void {
   );
 }
 
+function insertAccountAdjustment(a: AccountAdjustment): void {
+  exec(
+    `INSERT INTO account_adjustments (id, account_id, date, target_balance,
+       delta, notes, is_deleted, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      a.id,
+      a.account_id,
+      a.date,
+      a.target_balance,
+      a.delta,
+      a.notes,
+      fromBool(a.is_deleted),
+      a.created_at,
+      a.updated_at,
+    ],
+  );
+}
+function updateAccountAdjustment(a: AccountAdjustment): void {
+  exec(
+    `UPDATE account_adjustments SET account_id = ?, date = ?,
+       target_balance = ?, delta = ?, notes = ?, is_deleted = ?,
+       updated_at = ?
+     WHERE id = ?`,
+    [
+      a.account_id,
+      a.date,
+      a.target_balance,
+      a.delta,
+      a.notes,
+      fromBool(a.is_deleted),
+      a.updated_at,
+      a.id,
+    ],
+  );
+}
+
 function insertSettlement(s: SettlementLedgerEntry): void {
   exec(
     `INSERT INTO settlement_ledger (id, date, source_transaction_id, from_party,
@@ -814,6 +864,9 @@ export function applyRemoteToLocal(
       break;
     case "debt_payment":
       updateDebtPayment(data as unknown as DebtPayment);
+      break;
+    case "account_adjustment":
+      updateAccountAdjustment(data as unknown as AccountAdjustment);
       break;
     case "settlement_ledger":
       updateSettlement(data as unknown as SettlementLedgerEntry);

@@ -39,6 +39,7 @@ const TAB_KEY_BY_TITLE: Record<string, keyof SnapshotData> = {
   raw_recurring_items: "recurring",
   raw_debts: "debts",
   raw_debt_payments: "debt_payments",
+  raw_account_adjustments: "account_adjustments",
   raw_settlement_ledger: "settlements",
   raw_feedback: "feedback",
 };

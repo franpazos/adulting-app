@@ -292,12 +292,20 @@ function round2(n: number): number {
  *   + Σ INCOME amounts hitting the account
  *   + Σ TRANSFER amounts landing in the account (destination_account_id)
  *   − Σ (EXPENSE | DEBT_PAYMENT | SETTLEMENT_PAYMENT | TRANSFER) leaving it
- *     (source_account_id).
+ *     (source_account_id)
+ *   + Σ delta of live account_adjustments rows (0.7.0).
  *
  * TRANSFER is the only tx type that's symmetrically counted on both
  * sides of an account move (added in 0.6.0). It appears as outflow on
  * the source and inflow on the destination — net zero across all
  * accounts, but each account's balance reflects the movement correctly.
+ *
+ * Adjustments live in their own table (0.7.0). Each row carries a
+ * signed `delta` (target_balance − computed balance at the moment of
+ * save) so the calibration sticks across reloads without needing to
+ * mutate `initial_balance` or fake a transaction. Soft-deleted rows
+ * are excluded — restoring a deleted adjustment would un-apply its
+ * calibration anyway.
  *
  * Mirrors the AccountsPage formula. Currency-agnostic — the caller knows
  * which currency the account is denominated in.
@@ -322,7 +330,12 @@ export function accountBalance(
        AND is_deleted = 0`,
     [accountId],
   );
-  return round2(initialBalance + inflow - outflow);
+  const adjustments = selectScalar(
+    `SELECT COALESCE(SUM(delta), 0) FROM account_adjustments
+     WHERE account_id = ? AND is_deleted = 0`,
+    [accountId],
+  );
+  return round2(initialBalance + inflow - outflow + adjustments);
 }
 
 /**

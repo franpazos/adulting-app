@@ -19,6 +19,7 @@ import { _resetDbForTests, selectAll, selectOne } from "@/lib/db/client";
 import { _mappers, buildSnapshot } from "@/lib/sync/writers";
 import {
   parseAccount,
+  parseAccountAdjustment,
   parseAllocation,
   parseCategory,
   parseDebt,
@@ -392,5 +393,107 @@ describe("conflict detection", () => {
     const stats = _pull.applyTab("raw_transactions", [row]);
     expect(stats.updated).toBe(1);
     expect(stats.conflicts).toBe(0);
+  });
+});
+
+describe("account_adjustment writer ↔ reader round-trip (0.7.0)", () => {
+  it("writer→reader preserves every field including the signed delta", () => {
+    const row = _mappers.accountAdjustmentToRow({
+      id: "adj-1",
+      account_id: SEED_IDS.accounts.franPersonal,
+      date: "2026-06-28",
+      target_balance: 1234.56,
+      delta: -45.5,
+      notes: "bank fee",
+      is_deleted: false,
+      created_at: "2026-06-28T10:00:00Z",
+      updated_at: "2026-06-28T10:00:00Z",
+    });
+    const parsed = parseAccountAdjustment(row as SheetRow);
+    expect(parsed.account_id).toBe(SEED_IDS.accounts.franPersonal);
+    expect(parsed.target_balance).toBeCloseTo(1234.56, 2);
+    expect(parsed.delta).toBeCloseTo(-45.5, 2);
+    expect(parsed.notes).toBe("bank fee");
+    expect(parsed.is_deleted).toBe(false);
+  });
+
+  it("null notes survive the round-trip", () => {
+    const row = _mappers.accountAdjustmentToRow({
+      id: "adj-2",
+      account_id: SEED_IDS.accounts.joint,
+      date: "2026-06-28",
+      target_balance: 500,
+      delta: 50,
+      notes: null,
+      is_deleted: false,
+      created_at: "x",
+      updated_at: "x",
+    });
+    expect(parseAccountAdjustment(row as SheetRow).notes).toBe(null);
+  });
+
+  it("applyTab inserts a brand-new remote adjustment and accountBalance picks it up", async () => {
+    const { accountBalance } = await import("@/lib/calculations");
+    const { accountsRepo } = await import("@/lib/db");
+    const fran = SEED_IDS.accounts.franPersonal;
+    const initial = accountsRepo
+      .list()
+      .find((a) => a.id === fran)!.initial_balance;
+    const before = accountBalance(fran, initial);
+
+    const remoteRow = _mappers.accountAdjustmentToRow({
+      id: "adj-remote",
+      account_id: fran,
+      date: "2026-06-28",
+      target_balance: before + 75,
+      delta: 75,
+      notes: "from other device",
+      is_deleted: false,
+      created_at: "2026-06-28T12:00:00Z",
+      updated_at: "2026-06-28T12:00:00Z",
+    }) as SheetRow;
+
+    const stats = _pull.applyTab("raw_account_adjustments", [remoteRow]);
+    expect(stats.inserted).toBe(1);
+    expect(accountBalance(fran, initial)).toBeCloseTo(before + 75, 2);
+  });
+
+  it("applyTab propagates a remote soft-delete and the balance reverts", async () => {
+    const { accountBalance } = await import("@/lib/calculations");
+    const { accountAdjustmentsRepo, accountsRepo } = await import("@/lib/db");
+    const sam = SEED_IDS.accounts.samPersonal;
+    const initial = accountsRepo
+      .list()
+      .find((a) => a.id === sam)!.initial_balance;
+    const before = accountBalance(sam, initial);
+
+    const adj = accountAdjustmentsRepo.create({
+      account_id: sam,
+      date: "2026-06-28",
+      target_balance: before + 100,
+      delta: 100,
+      notes: null,
+    });
+    expect(accountBalance(sam, initial)).toBeCloseTo(before + 100, 2);
+
+    // Flatten the local PENDING (from create()) so the next pull doesn't
+    // treat the remote update as a conflict and shelve it.
+    markAllSynced(listPending().map((p) => p.id));
+
+    // Remote bumps is_deleted=1.
+    const tombstone = _mappers.accountAdjustmentToRow({
+      id: adj.id,
+      account_id: sam,
+      date: adj.date,
+      target_balance: adj.target_balance,
+      delta: adj.delta,
+      notes: adj.notes,
+      is_deleted: true,
+      created_at: adj.created_at,
+      updated_at: "2099-01-01T00:00:00Z",
+    }) as SheetRow;
+    const stats = _pull.applyTab("raw_account_adjustments", [tombstone]);
+    expect(stats.updated).toBe(1);
+    expect(accountBalance(sam, initial)).toBeCloseTo(before, 2);
   });
 });

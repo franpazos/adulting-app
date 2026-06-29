@@ -155,6 +155,21 @@ export interface Debt {
   updated_at: string;
 }
 
+export interface AccountAdjustment {
+  id: string;
+  account_id: string;
+  /** ISO date (YYYY-MM-DD) the user applied the calibration. */
+  date: string;
+  /** The balance the user said the account should have at `date`. */
+  target_balance: number;
+  /** Signed: target_balance − accountBalance(account_id) at the moment of save. */
+  delta: number;
+  notes: string | null;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DebtPayment {
   id: string;
   debt_id: string;
