@@ -4,6 +4,30 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-06-29 — Version 0.7.1: `pullAll` ensures raw_* tabs exist before reading (fix 400)
+
+Hotfix on top of 0.7.0. Sync started failing with `400 Unable to parse range: raw_account_adjustments!A2:I` on user devices whose Sheet was bound before 0.7.0 shipped. Root cause: `pullAll` was calling `batchGetValues` directly without checking that every tab in `RAW_TABS` actually existed on the remote spreadsheet. `pushAll` calls `ensureRawTabs` first, so it would have created the tab — but `syncAll` runs pull *before* push, and pull failure aborts push (intentional, see `sync.ts`). Net result: a new entity ships, no device that pre-existed the release can sync until the tab is manually created.
+
+The fix is a single line at the top of `pullAll`:
+
+```ts
+await ensureRawTabs(spreadsheetId);
+```
+
+`ensureRawTabs` is idempotent — it only creates missing tabs and refreshes the header row, leaving existing data alone. The call costs one `getSpreadsheet` round-trip plus zero or one `batchUpdate` depending on what's missing. The previous device that already had every tab simply pays a `getSpreadsheet` per sync, which is well inside the Sheets API quota.
+
+**Why no migrations v4–v8 tripped this.** All previous schema changes were column additions to *existing* tabs (`is_active` in v4, `recurring_id` in v5, `debt_id` in v6, `is_deleted` in v7, `destination_account_id` in v8). Sheets API tolerates short rows on read — the missing cell just becomes `undefined` at the reader. v9 is the first migration that adds an entirely new tab from the user's perspective, and that exposed the latent assumption in `pullAll`.
+
+**Why this wasn't caught by tests.** The pull test suite drives `_pull.applyTab(tabTitle, rows)` directly with mock rows. It never instantiates a real `batchGetValues` call, so the "tab doesn't exist on the server" branch was unreachable from the test surface. Adding a test for this would require mocking the Sheets API client, and the value-vs-effort isn't great — the failure mode is concrete and the fix is structural (`ensureRawTabs` already exists and is tested in push). Documenting the invariant in the call site comment instead.
+
+**Lesson for the next agent.** Any future schema change that introduces a new `RAW_TABS` entry now works out of the box because `pullAll` self-heals. Column-only changes still work fine because Sheets tolerates short rows. The dangerous case (new tab + pullAll not self-healing) was real until 0.7.1.
+
+`pnpm exec tsc -b` clean. 236/236 tests green. `pnpm build` succeeds. Bump 0.7.0 → 0.7.1 patch.
+
+**Files touched**: `src/lib/sync/pull.ts`, `package.json`.
+
+---
+
 ## 2026-06-29 — Version 0.7.0: Account balance calibration + `/accounts/:id` detail page
 
 Opens the "honest accounting" era. After a few weeks of real use, the running balance shown in `/accounts` drifts from what the bank actually shows — small unrecorded fees, FX rounding on USD debt payments, mistyped amounts on past txs. Until 0.7.0 the only ways to reconcile were (a) hunt the discrepancy down across months of history or (b) mutate `accounts.initial_balance` directly. Both are unappealing: (a) is unbounded work; (b) loses provenance and is unsafe under multi-device sync (last-writer-wins on a scalar column silently drops one of two parallel corrections).

@@ -39,7 +39,7 @@ import {
 } from "./readers";
 import { batchGetValues, type SheetRow } from "@/lib/google/sheets-api";
 import { fromBool, nowIso } from "@/lib/db/repositories/_helpers";
-import { columnLetter, RAW_TABS } from "./tabs";
+import { columnLetter, ensureRawTabs, RAW_TABS } from "./tabs";
 import {
   hasPendingForEntity,
   recordConflict,
@@ -135,6 +135,17 @@ export async function pullAll(spreadsheetId: string): Promise<PullReport> {
   const updated: Record<string, number> = {};
   const skipped: Record<string, number> = {};
   const conflicts: Record<string, number> = {};
+
+  // Make sure every raw_* tab exists before we try to read from it.
+  // Sheets returns 400 "Unable to parse range" on a batchGet that
+  // references a missing tab — which happens whenever a new entity
+  // ships (e.g. raw_account_adjustments in 0.7.1) and the user's
+  // Sheet was bound to the app before that release. ensureRawTabs is
+  // idempotent: it only creates the tabs that are missing and
+  // overwrites the header row, leaving any existing data untouched.
+  // pushAll calls this too — putting it here closes the gap when pull
+  // runs first (which it always does inside syncAll).
+  await ensureRawTabs(spreadsheetId);
 
   // One network round-trip for every raw_* tab via `values:batchGet`.
   // Previously fired N parallel `getValues` requests which burned through
