@@ -9,7 +9,7 @@
  * Visual reference: docs/design-handoff/scripts/add-expense.jsx (`AddExpenseB`).
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
@@ -38,11 +38,6 @@ import {
   SOURCE_TO_USER,
   accountIdToCashSource,
 } from "./sources";
-import {
-  buildPatternKey,
-  lookupLastUsed,
-  recordLastUsed,
-} from "./lastUsed";
 
 export function AddTransactionPage() {
   const { t } = useTranslation();
@@ -55,51 +50,31 @@ export function AddTransactionPage() {
   const fromRecurringId = searchParams.get("fromRecurring");
 
   const defaults = useDefaultsStore.getState();
-  const [values, setValues] = useState<TransactionFormValues>(() => {
-    const base = {
-      ...defaultFormValues(),
-      source: defaults.source,
-      owner: defaults.owner,
-      splitFranPercent: defaults.splitFranPercent,
-    };
-    // Smart-default the category from the last save matching this pattern.
-    const memo = lookupLastUsed(
-      buildPatternKey(base.source, base.owner, base.splitFranPercent),
-    );
-    return memo
-      ? { ...base, categoryId: memo.categoryId ?? base.categoryId }
-      : base;
-  });
+  const [values, setValues] = useState<TransactionFormValues>(() => ({
+    ...defaultFormValues(),
+    source: defaults.source,
+    owner: defaults.owner,
+    splitFranPercent: defaults.splitFranPercent,
+  }));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Track whether the user has manually picked a category. While untouched,
-  // the smart suggestion follows source/owner/split changes; once they
-  // explicitly pick one, we stop overriding their choice.
-  const userTouchedCategoryRef = useRef(false);
   const handleChange = (next: TransactionFormValues) => {
-    if (next.categoryId !== values.categoryId) {
-      userTouchedCategoryRef.current = true;
-    }
     // Switching type changes the available categories — clear the
     // selection so an EXPENSE category doesn't survive into INCOME
     // (and vice versa).
     if (next.type !== values.type) {
       next.categoryId = null;
-      userTouchedCategoryRef.current = false;
     }
     setValues(next);
   };
 
   // Prefill from a recurring item when ?fromRecurring=<id> is present.
   // Date stays "today" — the user types the actual paid date if needed.
-  // Flagging the category as touched stops the pattern-suggestion effect
-  // from clobbering the recurring's category once source/owner mount.
   useEffect(() => {
     if (!dbReady || !fromRecurringId) return;
     const r = recurringRepo.getById(fromRecurringId);
     if (!r || r.type === "DEBT_PAYMENT") return;
-    userTouchedCategoryRef.current = true;
     const nextType: "EXPENSE" | "INCOME" | "TRANSFER" =
       r.type === "INCOME"
         ? "INCOME"
@@ -124,23 +99,6 @@ export function AddTransactionPage() {
       categoryId: nextType === "TRANSFER" ? null : r.category_id ?? prev.categoryId,
     }));
   }, [dbReady, fromRecurringId]);
-
-  // When the pattern (source/owner/split) changes and the user hasn't
-  // touched the category, refresh the suggestion from memory. Only runs
-  // for EXPENSE — INCOME has no smart-default memory yet.
-  useEffect(() => {
-    if (userTouchedCategoryRef.current) return;
-    if (values.type !== "EXPENSE") return;
-    const memo = lookupLastUsed(
-      buildPatternKey(values.source, values.owner, values.splitFranPercent),
-    );
-    const suggested = memo?.categoryId ?? null;
-    if (suggested !== values.categoryId) {
-      setValues((prev) => ({ ...prev, categoryId: suggested }));
-    }
-    // Only react to pattern changes — categoryId in deps would loop.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [values.type, values.source, values.owner, values.splitFranPercent]);
 
   const amount = parseAmount(values.amountText);
   const transferError =
@@ -195,13 +153,6 @@ export function AddTransactionPage() {
       if (!isIncome && !isTransfer) recomputeForTransaction(tx.id);
       bumpVersion();
       setMonthKey(tx.month_key);
-      // Smart-default memory is the expense pattern only.
-      if (!isIncome && !isTransfer) {
-        recordLastUsed(
-          buildPatternKey(values.source, values.owner, values.splitFranPercent),
-          { categoryId: values.categoryId },
-        );
-      }
       navigate(fromRecurringId ? `/recurring/${fromRecurringId}` : "/");
     } catch (err) {
       console.error("[add-expense] save failed", err);

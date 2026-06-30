@@ -4,6 +4,33 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-06-30 — Version 0.7.4: Inline category quick-add + drop the smart-default
+
+Two related UX changes to the /add flow's category picker, found while Fran was using the app with real data.
+
+**Quick-add chip ("+ New") at the end of the category scroller.** Before, creating a new category meant: bail out of /add → navigate to More → Categories → +Add → fill form → save → navigate back to /add → re-fill the whole expense. With the chip, you tap +, a sheet pops up with name + color (the kind is inferred from the form's current type — EXPENSE / INCOME), save, and the new category is **preselected** for the in-progress transaction. Zero context loss.
+
+Implementation: new `src/features/categories/CategoryQuickAddSheet.tsx` reuses the same color palette as the full `CategoryFormPage` (extracted to `src/features/categories/colors.ts` to share). `TransactionForm`'s `CategoryPicker` now receives a `kind` prop and hosts the sheet locally; on `onCreated` it calls `onChange(id)`. The form's category-loading effect picks up the new row because it now depends on `dbVersion` (the sheet's save calls `bumpVersion()`).
+
+**Dropped the per-pattern smart-default.** A Phase 10b feature kept a localStorage map of "last category used per `source|owner|split`" and pre-selected it on mount. Fran reported a recurring annoyance: the category preselect started to feel noisy — old clicks from months ago kept resurfacing as defaults for unrelated transactions, and the suggestion couldn't tell intentional patterns from accidents. The user wants a clean null default every time.
+
+Removed:
+- The `lookupLastUsed` call from the initial state factory in `AddTransactionPage`.
+- The `useEffect` that re-suggested a category when source/owner/split changed.
+- The `recordLastUsed` call after a successful save.
+- The `userTouchedCategoryRef` (no longer needed — there's no "is suggestion active" state to gate).
+- The file `src/features/add-expense/lastUsed.ts` entirely.
+
+Net: category always starts at `null` (the "—" chip on the left). The user explicitly picks one every time, or leaves the tx uncategorized. Tradeoff: 1-2 extra taps per save vs. zero risk of an old auto-suggestion masquerading as intent.
+
+**Lesson.** Smart-defaults are a classic case of "great for the first month, slowly wrong for the next eleven." When the underlying patterns drift, the memory still fires confidently from old clicks. Sometimes the right product call is to trust the user to choose every time — small friction now beats compounding wrongness later.
+
+236/236 tests green. tsc + build clean. Patch bump 0.7.3 → 0.7.4.
+
+**Files touched**: `src/features/add-expense/AddTransactionPage.tsx`, `src/features/add-expense/TransactionForm.tsx`, `src/features/add-expense/lastUsed.ts` (deleted), `src/features/categories/CategoryQuickAddSheet.tsx` (new), `src/features/categories/CategoryFormPage.tsx`, `src/features/categories/colors.ts` (new), `src/lib/i18n/en.json`, `src/lib/i18n/es.json`, `package.json`.
+
+---
+
 ## 2026-06-30 — Version 0.7.3: Revert SegmentedControl to equal slots + rename EN "Household" → "Home"
 
 0.7.2 weighted slot widths by `label.length` to fix the cramped "Household" pill. On localhost in a desktop browser it looked fine, but on the real phones the desks-of-different-size layout read as unbalanced — "Household" sat in a huge slot to the left, the other three options ("Fran", "Sam", "All") got pushed into the right half. The control felt lopsided in reset state even though the active pill was now well-fit.

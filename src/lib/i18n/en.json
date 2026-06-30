@@ -229,6 +229,16 @@
     "saveLabel": "Record settlement · {{amount}}",
     "txDescription": "Settlement: {{from}} → {{to}}"
   },
+  "categoryQuickAdd": {
+    "openLabel": "New",
+    "openAria": "Add new category",
+    "title": "New category",
+    "description": "Saves instantly and gets preselected for this transaction.",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. Subscriptions, Gifts…",
+    "colorLabel": "Color",
+    "saveCta": "Create category"
+  },
   "categories": {
     "title": "Categories",
     "add": "Add category",

@@ -228,6 +228,16 @@
     "saveLabel": "Registrar pago · {{amount}}",
     "txDescription": "Liquidación: {{from}} → {{to}}"
   },
+  "categoryQuickAdd": {
+    "openLabel": "Nueva",
+    "openAria": "Añadir nueva categoría",
+    "title": "Nueva categoría",
+    "description": "Se guarda al instante y se preselecciona para esta transacción.",
+    "nameLabel": "Nombre",
+    "namePlaceholder": "p. ej. Suscripciones, Regalos…",
+    "colorLabel": "Color",
+    "saveCta": "Crear categoría"
+  },
   "categories": {
     "title": "Categorías",
     "add": "Añadir categoría",

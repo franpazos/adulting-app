@@ -8,7 +8,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Calendar } from "lucide-react";
+import { Calendar, Plus } from "lucide-react";
 
 import {
   Card,
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui";
 import { FlowDiagram } from "@/components/FlowDiagram";
 import { SettlementChip } from "@/components/SettlementChip";
+import { CategoryQuickAddSheet } from "@/features/categories/CategoryQuickAddSheet";
 
 import { expenseAllocator } from "@/lib/calculations";
 import { categoriesRepo } from "@/lib/db";
@@ -121,6 +122,7 @@ export function TransactionForm({ values, onChange }: TransactionFormProps) {
     ? transferValidationError(values.source, values.destination)
     : null;
 
+  const dbVersion = useDbStore((s) => s.dbVersion);
   const [categories, setCategories] = useState<Category[]>([]);
   useEffect(() => {
     if (!dbReady) return;
@@ -129,7 +131,7 @@ export function TransactionForm({ values, onChange }: TransactionFormProps) {
       return;
     }
     setCategories(categoriesRepo.list(isIncome ? "INCOME" : "EXPENSE"));
-  }, [dbReady, isIncome, isTransfer]);
+  }, [dbReady, dbVersion, isIncome, isTransfer]);
 
   const typeOptions: ReadonlyArray<SegmentedOption<TxFormType>> = [
     { value: "EXPENSE", label: t("addExpense.type.expense") },
@@ -282,6 +284,7 @@ export function TransactionForm({ values, onChange }: TransactionFormProps) {
             categories={categories}
             value={values.categoryId}
             onChange={(id) => set("categoryId", id)}
+            kind={isIncome ? "INCOME" : "EXPENSE"}
           />
         </Section>
       )}
@@ -388,29 +391,55 @@ function CategoryPicker({
   categories,
   value,
   onChange,
+  kind,
 }: {
   categories: Category[];
   value: string | null;
   onChange: (id: string | null) => void;
+  kind: "EXPENSE" | "INCOME";
 }) {
+  const { t } = useTranslation();
+  const [addOpen, setAddOpen] = useState(false);
   return (
-    <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <CategoryChip
-        active={value === null}
-        onClick={() => onChange(null)}
-        color={null}
-        label="—"
-      />
-      {categories.map((c) => (
+    <>
+      <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <CategoryChip
-          key={c.id}
-          active={value === c.id}
-          onClick={() => onChange(c.id)}
-          color={c.color}
-          label={c.name}
+          active={value === null}
+          onClick={() => onChange(null)}
+          color={null}
+          label="—"
         />
-      ))}
-    </div>
+        {categories.map((c) => (
+          <CategoryChip
+            key={c.id}
+            active={value === c.id}
+            onClick={() => onChange(c.id)}
+            color={c.color}
+            label={c.name}
+          />
+        ))}
+        <button
+          type="button"
+          onClick={() => setAddOpen(true)}
+          aria-label={t("categoryQuickAdd.openAria")}
+          className={cn(
+            "inline-flex items-center gap-1.5 px-3 h-9 rounded-full whitespace-nowrap",
+            "text-sm font-medium border border-dashed transition-colors",
+            "border-violet/50 text-violet hover:bg-violet/10",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet/60",
+          )}
+        >
+          <Plus className="size-3.5" />
+          {t("categoryQuickAdd.openLabel")}
+        </button>
+      </div>
+      <CategoryQuickAddSheet
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        kind={kind}
+        onCreated={(id) => onChange(id)}
+      />
+    </>
   );
 }
 
