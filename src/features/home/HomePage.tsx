@@ -429,7 +429,7 @@ function PerAccountCard({
   const rest = name.slice(1);
   return (
     <Link
-      to="/transactions"
+      to="/accounts"
       aria-label={t("home.openPersonal", { name })}
       className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet/60"
     >
