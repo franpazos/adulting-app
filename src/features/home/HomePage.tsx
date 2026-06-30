@@ -449,19 +449,22 @@ function PerAccountCard({
             {fmt(balance)}
           </p>
         </div>
-        <MiniStat
-          label={t("home.inflowMonth")}
-          value={inflow}
-          tone="positive"
-        />
-        <MiniStat
-          label={t("home.outflowMonth")}
-          value={outflow}
-          tone="expense"
-        />
-        <div className="pt-1 border-t border-border/60">
+        <div className="pt-2 border-t border-border/60 space-y-1.5">
+          <p className="t-label text-[10px] uppercase tracking-wide text-text-muted">
+            {t("home.thisMonth")}
+          </p>
           <MiniStat
-            label={t("home.statNet")}
+            label={t("home.statInflowShort")}
+            value={inflow}
+            tone="positive"
+          />
+          <MiniStat
+            label={t("home.statOutflowShort")}
+            value={outflow}
+            tone="expense"
+          />
+          <MiniStat
+            label={t("home.statNetShort")}
             value={net}
             tone={net >= 0 ? "positive" : "expense"}
             big
