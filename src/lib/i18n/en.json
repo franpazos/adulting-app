@@ -23,7 +23,7 @@
   "home": {
     "title": "Home",
     "scope": {
-      "household": "Household",
+      "household": "Home",
       "fran": "Fran",
       "sam": "Sam",
       "all": "All"
@@ -122,7 +122,7 @@
     "who": {
       "fran": "Fran",
       "sam": "Sam",
-      "household": "Household",
+      "household": "Home",
       "joint": "Joint"
     },
     "flow": {
@@ -155,7 +155,7 @@
     "owner": {
       "fran": "Fran",
       "sam": "Sam",
-      "household": "Household"
+      "household": "Home"
     },
     "monthlyTotal": "Monthly minimum",
     "balance": "Balance",

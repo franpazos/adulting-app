@@ -4,6 +4,24 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-06-30 — Version 0.7.3: Revert SegmentedControl to equal slots + rename EN "Household" → "Home"
+
+0.7.2 weighted slot widths by `label.length` to fix the cramped "Household" pill. On localhost in a desktop browser it looked fine, but on the real phones the desks-of-different-size layout read as unbalanced — "Household" sat in a huge slot to the left, the other three options ("Fran", "Sam", "All") got pushed into the right half. The control felt lopsided in reset state even though the active pill was now well-fit.
+
+Recognised the real fix is upstream: keep the labels short so equal slots stay symmetrical. Renamed "Household" → "Home" in EN across the three segmented control surfaces (`home.scope`, `addExpense.who`, `debts.owner`). Pesos became 4/4/3/3 instead of 9/4/3/3 — within 33% of each other, no longer 300%. The Spanish locale already had "Hogar" (5 chars, balanced with Fran/Sam/Todo), so no change needed there.
+
+Reverted `SegmentedControl` to the pre-0.7.2 model: `gridTemplateColumns: repeat(N, minmax(0, 1fr))` + pill width `calc(100/N% - 8/N px)` + pill slide via `translateX(I × 100%)`. Same CSS-only, zero-DOM-measurement guarantees as before. Updated the component docstring to point at the renaming-the-label trick so future agents don't re-attempt the length-weighted version without seeing why it failed in real use.
+
+Left `more.household` ("Household" as a section header on the More page) unchanged — it's not a segmented control and renaming to "Home" would collide visually with the bottom-nav Home tab.
+
+**The lesson.** The length-weighted slots approach was a clever workaround for a problem that had a much simpler structural fix (rename the label). Cleverness in the component layer compensating for choices made in the content layer is a smell — the asymmetry was data, not layout. When two-sentence labels meet three-letter ones in the same control, the control isn't broken; the copy is.
+
+236/236 tests green. tsc + build clean. Patch bump 0.7.2 → 0.7.3.
+
+**Files touched**: `src/components/ui/SegmentedControl.tsx`, `src/lib/i18n/en.json`, `package.json`.
+
+---
+
 ## 2026-06-30 — Version 0.7.2: SegmentedControl pill proportional to label length
 
 Visual fix to `SegmentedControl`. The previous model gave every slot exactly `1/N` of the track width (CSS Grid `repeat(N, 1fr)`), which looks fine when labels are similar lengths but breaks down with mixed-length sets like Household/Fran/Sam/All. The active pill, also sized as `(100/N)% - 8/N px`, sat awkwardly under "Household" (too narrow for the long word) and oversized under "Fran"/"Sam"/"All" (too much empty space).
