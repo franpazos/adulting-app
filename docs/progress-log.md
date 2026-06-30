@@ -4,6 +4,42 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-06-30 — Version 0.7.2: SegmentedControl pill proportional to label length
+
+Visual fix to `SegmentedControl`. The previous model gave every slot exactly `1/N` of the track width (CSS Grid `repeat(N, 1fr)`), which looks fine when labels are similar lengths but breaks down with mixed-length sets like Household/Fran/Sam/All. The active pill, also sized as `(100/N)% - 8/N px`, sat awkwardly under "Household" (too narrow for the long word) and oversized under "Fran"/"Sam"/"All" (too much empty space).
+
+User's idea: weight slots by `label.length`. Each slot's width is proportional to its label's character count; the pill follows the active slot. Cero infrastructure (no `useLayoutEffect`, no refs, no `getBoundingClientRect`) — purely CSS-driven and SSR-safe. The race condition the earlier "no DOM measurement" comment warned against stays solved by construction.
+
+**Approximation that's good enough here.** Characters ≠ pixels in proportional fonts (Sora/Inter), so the proportions aren't pixel-perfect: "iiii" (4 chars) is much narrower than "WWWW" (4 chars). Floored by `Math.max(label.length, 3)` so very short labels ("A") don't collapse, and masked by the buttons' `px-4` (32px horizontal padding) which absorbs small width misallocations. For the 3-4-option short-label sets the project uses, the result is visually indistinguishable from DOM-measured ideal.
+
+**Implementation.**
+
+```tsx
+const weights = options.map((o) => Math.max(o.label.length, 3));
+const totalWeight = weights.reduce((s, w) => s + w, 0) || 1;
+const weightBefore = weights.slice(0, activeIndex).reduce((s, w) => s + w, 0);
+const offsetRatio = weightBefore / totalWeight;
+const widthRatio = (weights[activeIndex] ?? 1) / totalWeight;
+
+// Track has p-1 (4px each side). pillLeft = 4px + ratio × (trackW - 8px)
+// expands to (ratio × 100%) + (4 - ratio × 8)px — one un-nested calc().
+const pillLeftCss  = `calc(${offsetRatio * 100}% + ${(4 - offsetRatio * 8).toFixed(3)}px)`;
+const pillWidthCss = `calc(${widthRatio  * 100}% - ${(widthRatio  * 8).toFixed(3)}px)`;
+const gridTemplate = weights.map((w) => `${w}fr`).join(" ");
+```
+
+Grid columns become `9fr 4fr 3fr 3fr` for `["Household","Fran","Sam","All"]` instead of `1fr 1fr 1fr 1fr`. Household claims ~47% of the track, others split the remainder proportionally to their length. In ES (`Hogar` 5 / `Fran` 4 / `Sam` 3 / `Todo` 4 = `5fr 4fr 3fr 4fr`) the slots are closer to equal naturally — the formula adapts to the locale.
+
+**Animation switched** from `transition-transform` to `transition-[left,width]` because the pill no longer slides via `translateX(I × 100%)`. Both `left` and `width` are now percentages so they animate smoothly between any two active states regardless of weight distribution.
+
+**Why this is preferable to DOM measurement.** The original code's comment explicitly warned that an earlier `getBoundingClientRect`-based version had a race with the route-frame animation. The character-length model sidesteps that entirely: the calculation is a pure function of the props, runs at render time, no layout reads, no measurement timing to coordinate. For the imprecision cost (a few px here and there in proportional fonts), the simplicity dividend is large.
+
+236/236 tests green. `pnpm exec tsc -b` clean. `pnpm build` succeeds. Patch bump 0.7.1 → 0.7.2.
+
+**Files touched**: `src/components/ui/SegmentedControl.tsx`, `package.json`.
+
+---
+
 ## 2026-06-29 — Version 0.7.1: `pullAll` ensures raw_* tabs exist before reading (fix 400)
 
 Hotfix on top of 0.7.0. Sync started failing with `400 Unable to parse range: raw_account_adjustments!A2:I` on user devices whose Sheet was bound before 0.7.0 shipped. Root cause: `pullAll` was calling `batchGetValues` directly without checking that every tab in `RAW_TABS` actually existed on the remote spreadsheet. `pushAll` calls `ensureRawTabs` first, so it would have created the tab — but `syncAll` runs pull *before* push, and pull failure aborts push (intentional, see `sync.ts`). Net result: a new entity ships, no device that pre-existed the release can sync until the tab is manually created.
