@@ -4,6 +4,42 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-07-01 — Version 0.7.5: Refresh FX rate from the pay-debt screen
+
+For USD debts (the family loan) Fran had to leave the PayDebt screen, look up the EUR/USD rate on Google or the bank app, come back and type it in. The `1.08` placeholder was hard-coded since 0.4.x and rarely correct.
+
+0.7.5 adds an **"🔄 Update"** button inline with the `RATE (DEBT PER 1 EUR)` label. Tap → fetch live rate → fill the input. The user can still override manually afterwards.
+
+**Provider strategy.** Primary: [frankfurter.app](https://www.frankfurter.app/) (ECB-backed, no API key, no aggressive rate-limiting). Fallback: [open.er-api.com](https://open.er-api.com/) (broader currency coverage, no key). Sequential — the secondary only runs when the primary actually fails, never duplicated on success. Both are no-cookie public endpoints; we never send any user identity.
+
+Returns the rate as "units of <currency> per 1 EUR" so it slots directly into the existing FX form. Lives in `src/lib/fx/rates.ts` next to the pure FX math (`lib/calculations/fx.ts`).
+
+**Button states.**
+- `idle` — `🔄 Update` in violet, `bg-violet/10` background.
+- `loading` — icon spins (`animate-spin`), button disabled, opacity 70%.
+- `error` — swaps to `bg-warning/15 text-warning-ink` with `Sin conexión` / `Offline` for 2.5s, then auto-reverts. Rate input stays unchanged — a failed refresh never wipes the user's typed value.
+
+**UI iteration story worth capturing.** The first attempt kept the existing `🔄 1 € = $1,0800` pill as a big centered button — either above or below the YOU PAY / EUR IMPACT amounts. Both variants felt off on real phones: the pill duplicated info that already lives in the `RATE` input below (`1 € = $X` vs `1,08`), and its heavyweight visual made the amounts row cramped. Solution was to separate **information** from **action**: the rate value lives only in the input; the refresh is a small button next to the input's label. Single source of truth, no visual competition.
+
+**Layout fix (side effect of the iteration).** The old `flex items-end gap-3` for YOU PAY / pill / EUR IMPACT collapsed when either amount got wide — the pill got crushed and amounts overlapped. Even after switching to `grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]`, the middle-pill design failed on narrow phones (visible in Fran's real device: `0,00 U...` truncation, EUR IMPACT column showing empty). Final layout: `grid-cols-2` for the amounts, and the refresh button relocated to the rate row.
+
+**Tests** — 7 new in `src/lib/fx/__tests__/rates.test.ts`:
+- EUR returns 1 immediately without touching the network.
+- Frankfurter happy path with no secondary call.
+- Fallback kicks in on network error from the primary.
+- Fallback kicks in on non-OK HTTP status from the primary.
+- Both providers failing returns `ok: false` (no infinite retry).
+- No duplication of the primary on success.
+- Currency code uppercased before lookup (`gbp` → `GBP`).
+
+**Side fix — timezone bug in `aggregations.test.ts`.** The TRANSFER tests used `m.toISOString().slice(0,10)` (UTC) for the tx date but read the seed/scope via the same `M()` helper (also UTC). On 1 July at local CEST midnight, `new Date()` is still 30 June in UTC, so `M()` returned `"2026-06"` while `setDate(15)` operated in local time and yielded `"2026-07-15"` — month mismatch, tests failed only on that one day. Fixed by switching `makeTransfer` to `setUTCDate` / `setUTCMonth`, keeping both ends consistently in UTC. The bug only surfaces around month boundaries in positive-offset TZs; before 0.6.0 (TRANSFER) the test wasn't there to trip on it.
+
+236 → 243/243 tests green. tsc + build clean. Patch bump 0.7.4 → 0.7.5.
+
+**Files touched**: `src/lib/fx/rates.ts` (new), `src/lib/fx/__tests__/rates.test.ts` (new), `src/features/debts/PayDebtPage.tsx`, `src/lib/i18n/{en,es}.json`, `src/lib/calculations/__tests__/aggregations.test.ts`, `package.json`.
+
+---
+
 ## 2026-06-30 — Version 0.7.4: Inline category quick-add + drop the smart-default
 
 Two related UX changes to the /add flow's category picker, found while Fran was using the app with real data.

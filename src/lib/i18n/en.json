@@ -218,7 +218,12 @@
     "newBalance": "New balance after payment",
     "fxCaveat": "FX rate caveat: EUR impact is calculated at the rate above. Final bank rate may differ; we'll reconcile when the transaction syncs.",
     "saveLabel": "Record payment · {{amount}}",
-    "txDescription": "Payment — {{name}}"
+    "txDescription": "Payment — {{name}}",
+    "refreshRate": {
+      "aria": "Refresh exchange rate",
+      "update": "Update",
+      "error": "Offline"
+    }
   },
   "settleUp": {
     "title": "Settle up",

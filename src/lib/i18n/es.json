@@ -217,7 +217,12 @@
     "newBalance": "Saldo tras el pago",
     "fxCaveat": "Aviso de tipo de cambio: el impacto en EUR se calcula al tipo introducido. El tipo bancario final puede diferir; lo conciliaremos cuando se sincronice.",
     "saveLabel": "Registrar pago · {{amount}}",
-    "txDescription": "Pago — {{name}}"
+    "txDescription": "Pago — {{name}}",
+    "refreshRate": {
+      "aria": "Actualizar tipo de cambio",
+      "update": "Actualizar",
+      "error": "Sin conexión"
+    }
   },
   "settleUp": {
     "title": "Saldar",

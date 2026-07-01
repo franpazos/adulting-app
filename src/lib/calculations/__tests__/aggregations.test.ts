@@ -144,9 +144,14 @@ describe("TRANSFER tx and account flows (0.6.0)", () => {
     amount: number,
     monthOffset = 0,
   ) {
+    // Stay in UTC throughout so the resulting `date` lives in the same
+    // month as `M()` (which is also UTC-based). Local-time setDate/setMonth
+    // would silently shift across the day boundary in positive-offset
+    // timezones on the first of the month, leaving the tx in a different
+    // month_key than the one the test queries.
     const m = new Date();
-    m.setDate(15);
-    if (monthOffset) m.setMonth(m.getMonth() + monthOffset);
+    m.setUTCDate(15);
+    if (monthOffset) m.setUTCMonth(m.getUTCMonth() + monthOffset);
     const date = m.toISOString().slice(0, 10);
     return transactionsRepo.create({
       type: "TRANSFER",

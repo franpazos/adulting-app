@@ -43,6 +43,7 @@ import {
 } from "@/lib/db";
 import type { CashSource, Debt, OwnerType } from "@/lib/db/types";
 import { useDbStore } from "@/store/dbStore";
+import { fetchEurRate } from "@/lib/fx/rates";
 import {
   SOURCE_TO_ACCOUNT,
   SOURCE_TO_USER,
@@ -50,7 +51,6 @@ import {
 import { cn } from "@/lib/utils/cn";
 import {
   formatMoney as formatAmount,
-  formatRate,
   parseAmount,
   sanitizeAmountInput as sanitizeAmount,
   formatAmountForInput as formatForInput,
@@ -81,6 +81,13 @@ export function PayDebtPage() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Refresh-rate pill states: "idle" shows the current rate; "loading"
+  // spins while we fetch; "error" briefly shows a warning then drops
+  // back to idle (the previous rate stays — we never wipe the user's
+  // input on a failed refresh).
+  const [rateStatus, setRateStatus] = useState<"idle" | "loading" | "error">(
+    "idle",
+  );
 
   useEffect(() => {
     if (!dbReady || !id) return;
@@ -147,6 +154,24 @@ export function PayDebtPage() {
     } else {
       setDebtAmount(acct);
       setDebtAmountText(sanitized);
+    }
+  }
+
+  async function handleRefreshRate() {
+    if (!debt || !isFx || rateStatus === "loading") return;
+    setRateStatus("loading");
+    const result = await fetchEurRate(debt.currency_code);
+    if (result.ok) {
+      setRate(round4(result.rate));
+      setRateStatus("idle");
+    } else {
+      setRateStatus("error");
+      // Auto-clear the error state after a brief moment so the user
+      // can retry without an extra interaction. Previous rate stays
+      // visible — refresh failure never wipes the user's input.
+      window.setTimeout(() => {
+        setRateStatus((s) => (s === "error" ? "idle" : s));
+      }, 2500);
     }
   }
 
@@ -305,20 +330,16 @@ export function PayDebtPage() {
         <section className="mt-5 space-y-2">
           <CardEyebrow>{t("payDebt.exchange")}</CardEyebrow>
           <Card className="space-y-3">
-            <div className="flex items-end gap-3">
-              <div className="flex-1 min-w-0">
+            <div className="grid grid-cols-2 gap-3 items-start">
+              <div className="min-w-0">
                 <p className="text-[10px] uppercase tracking-widest font-semibold text-text-muted">
                   {t("payDebt.youPay")}
                 </p>
                 <p className="font-display text-xl font-semibold tabular-nums mt-0.5">
-                  {formatAmount(debtAmount, debt.currency_code)}
+                  {formatAmount(debtAmount, debt.currency_code, { minimumFractionDigits: 2, signDisplay: "never" })}
                 </p>
               </div>
-              <div className="px-2 py-1 rounded-md bg-violet/10 text-violet text-[11px] font-semibold flex items-center gap-1">
-                <RefreshCw className="size-3" />
-                <span>1 € = {debtSymbol}{formatRate(rate)}</span>
-              </div>
-              <div className="flex-1 text-right min-w-0">
+              <div className="text-right min-w-0">
                 <p className="text-[10px] uppercase tracking-widest font-semibold text-text-muted">
                   {t("payDebt.eurImpact")}
                 </p>
@@ -341,9 +362,38 @@ export function PayDebtPage() {
             </div>
 
             <div>
-              <label className="text-[10px] uppercase tracking-widest font-semibold text-text-muted">
-                {t("payDebt.rate")}
-              </label>
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-[10px] uppercase tracking-widest font-semibold text-text-muted">
+                  {t("payDebt.rate")}
+                </label>
+                <button
+                  type="button"
+                  onClick={handleRefreshRate}
+                  disabled={rateStatus === "loading"}
+                  aria-label={t("payDebt.refreshRate.aria")}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold",
+                    "transition-colors",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet/60",
+                    rateStatus === "error"
+                      ? "bg-warning/15 text-warning-ink"
+                      : "bg-violet/10 text-violet hover:bg-violet/20 active:bg-violet/25",
+                    rateStatus === "loading" && "opacity-70 cursor-progress",
+                  )}
+                >
+                  <RefreshCw
+                    className={cn(
+                      "size-3.5",
+                      rateStatus === "loading" && "animate-spin",
+                    )}
+                  />
+                  <span>
+                    {rateStatus === "error"
+                      ? t("payDebt.refreshRate.error")
+                      : t("payDebt.refreshRate.update")}
+                  </span>
+                </button>
+              </div>
               <input
                 type="number"
                 inputMode="decimal"
@@ -441,4 +491,8 @@ function currencySymbol(code: string): string {
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+function round4(n: number): number {
+  return Math.round(n * 10000) / 10000;
 }
