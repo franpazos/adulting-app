@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ListChecks, Search, SlidersHorizontal, X } from "lucide-react";
+import {
+  ArrowDownUp,
+  CalendarRange,
+  ChevronDown,
+  ListChecks,
+  Search,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 
 import {
   Button,
@@ -27,12 +35,23 @@ type SourceFilter = "ALL" | CashSource;
 type OwnerFilter = "ALL" | OwnerType;
 type FlagFilter = "ALL" | "SHARED" | "RECURRING" | "DEBT";
 
+/**
+ * Sort order for the list. Default is "recently added" (per Sam's request):
+ * the most recently *created* entry sits on top, regardless of its date.
+ */
+type SortKey = "ADDED" | "DATE_DESC" | "DATE_ASC" | "TITLE";
+const DEFAULT_SORT: SortKey = "ADDED";
+
 interface FilterState {
   source: SourceFilter;
   owner: OwnerFilter;
   flag: FlagFilter;
   categoryId: string | "ALL";
   query: string;
+  /** Inclusive `YYYY-MM-DD` bounds; null = open. When either is set the list
+   *  spans months (ignores the header's month selector). */
+  dateFrom: string | null;
+  dateTo: string | null;
 }
 
 const INITIAL: FilterState = {
@@ -41,18 +60,19 @@ const INITIAL: FilterState = {
   flag: "ALL",
   categoryId: "ALL",
   query: "",
+  dateFrom: null,
+  dateTo: null,
 };
 
 export function TransactionsPage() {
   const { t, i18n } = useTranslation();
-  const lang = i18n.language?.startsWith("es") ? "es" : "en";
-  console.log("🪵​​ ~ TransactionsPage ~ lang:", lang)
   const dbReady = useDbStore((s) => s.status === "ready");
   const dbVersion = useDbStore((s) => s.dbVersion);
   const monthKey = useUiStore((s) => s.monthKey);
 
   const [filters, setFilters] = useState<FilterState>(INITIAL);
   const [showFilters, setShowFilters] = useState(false);
+  const [sort, setSort] = useState<SortKey>(DEFAULT_SORT);
 
   // Allow other pages (e.g. /accounts/:id "Ver movimientos →") to
   // deep-link a pre-applied Source filter via `?source=<account_id>`.
@@ -79,10 +99,19 @@ export function TransactionsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const allTxs = useMemo(
-    () => (dbReady ? transactionsRepo.listByMonth(monthKey) : []),
-    [dbReady, dbVersion, monthKey],
-  );
+  const rangeActive = filters.dateFrom !== null || filters.dateTo !== null;
+
+  const allTxs = useMemo(() => {
+    if (!dbReady) return [];
+    if (filters.dateFrom || filters.dateTo) {
+      // Normalize swapped bounds so from > to still returns the span.
+      let from = filters.dateFrom;
+      let to = filters.dateTo;
+      if (from && to && from > to) [from, to] = [to, from];
+      return transactionsRepo.listByDateRange(from, to);
+    }
+    return transactionsRepo.listByMonth(monthKey);
+  }, [dbReady, dbVersion, monthKey, filters.dateFrom, filters.dateTo]);
 
   // Per-tx allocation summary in one pass — used both for the "shared" pill
   // and for the owner filter.
@@ -110,10 +139,16 @@ export function TransactionsPage() {
     [allTxs, filters, allocationOwners],
   );
 
+  const sorted = useMemo(() => sortTxs(filtered, sort), [filtered, sort]);
+
   const filterCount = countActiveFilters(filters);
   const hasFilters = filterCount > 0;
 
-  if (allTxs.length === 0) {
+  // Only short-circuit to the full-screen "nothing here yet" state when the
+  // month is genuinely empty AND no filter is narrowing the view. With a
+  // filter active (e.g. a date range that returns nothing) we must keep the
+  // controls on screen so the user can adjust or clear it.
+  if (allTxs.length === 0 && !hasFilters) {
     return (
       <div className="mx-auto max-w-md px-4 pt-4 pb-8 space-y-5">
         <AppHeader />
@@ -166,6 +201,33 @@ export function TransactionsPage() {
         </IconButton>
       </div>
 
+      {rangeActive && (
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-violet/30 bg-violet/10 px-3 py-2 text-xs text-violet">
+          <span className="inline-flex min-w-0 items-center gap-1.5">
+            <CalendarRange className="size-3.5 shrink-0" aria-hidden />
+            <span className="truncate">
+              {t("transactions.filters.dateRangeActive", {
+                from: filters.dateFrom
+                  ? formatBound(filters.dateFrom, i18n.language)
+                  : "…",
+                to: filters.dateTo
+                  ? formatBound(filters.dateTo, i18n.language)
+                  : "…",
+              })}
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={() =>
+              setFilters((f) => ({ ...f, dateFrom: null, dateTo: null }))
+            }
+            className="shrink-0 font-medium underline"
+          >
+            {t("transactions.filters.dateRangeClear")}
+          </button>
+        </div>
+      )}
+
       {showFilters && (
         <FilterPanel
           filters={filters}
@@ -174,10 +236,10 @@ export function TransactionsPage() {
         />
       )}
 
-      <div className="flex items-center justify-between text-text-secondary">
-        <div className="flex items-center gap-2">
-          <ListChecks className="size-4" />
-          <span className="t-label">
+      <div className="flex items-center justify-between gap-2 text-text-secondary">
+        <div className="flex items-center gap-2 min-w-0">
+          <ListChecks className="size-4 shrink-0" />
+          <span className="t-label truncate">
             {hasFilters
               ? t("transactions.filteredCount", {
                   shown: filtered.length,
@@ -186,18 +248,21 @@ export function TransactionsPage() {
               : t("transactions.count", { count: allTxs.length })}
           </span>
         </div>
-        {hasFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setFilters(INITIAL)}
-          >
-            <span className="inline-flex items-center gap-1.5 text-xs">
-              <X className="size-3.5" />
-              {t("transactions.filters.clear")}
-            </span>
-          </Button>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          <SortSelect value={sort} onChange={setSort} />
+          {hasFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setFilters(INITIAL)}
+            >
+              <span className="inline-flex items-center gap-1.5 text-xs">
+                <X className="size-3.5" />
+                {t("transactions.filters.clear")}
+              </span>
+            </Button>
+          )}
+        </div>
       </div>
 
       {filtered.length === 0 ? (
@@ -209,7 +274,7 @@ export function TransactionsPage() {
         />
       ) : (
         <ul className="space-y-2">
-          {filtered.map((tx) => (
+          {sorted.map((tx) => (
             <li key={tx.id}>
               <TransactionRow
                 tx={tx}
@@ -220,6 +285,47 @@ export function TransactionsPage() {
         </ul>
       )}
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sort control
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SortSelect({
+  value,
+  onChange,
+}: {
+  value: SortKey;
+  onChange: (v: SortKey) => void;
+}) {
+  const { t } = useTranslation();
+  const options: ReadonlyArray<{ value: SortKey; label: string }> = [
+    { value: "ADDED", label: t("transactions.sort.added") },
+    { value: "DATE_DESC", label: t("transactions.sort.dateDesc") },
+    { value: "DATE_ASC", label: t("transactions.sort.dateAsc") },
+    { value: "TITLE", label: t("transactions.sort.title") },
+  ];
+  return (
+    <label className="relative inline-flex items-center gap-1.5 h-8 pl-2.5 pr-6 rounded-full border border-border bg-surface text-xs font-medium text-text-secondary">
+      <ArrowDownUp className="size-3.5 shrink-0" aria-hidden />
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as SortKey)}
+        aria-label={t("transactions.sort.label")}
+        className="appearance-none bg-transparent outline-none cursor-pointer text-text-primary pr-0.5"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        className="size-3.5 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none"
+        aria-hidden
+      />
+    </label>
   );
 }
 
@@ -257,8 +363,54 @@ function FilterPanel({
     { value: "DEBT", label: t("transactions.filters.flag.debt") },
   ];
 
+  const rangeActive = filters.dateFrom !== null || filters.dateTo !== null;
+
   return (
     <div className="space-y-3 rounded-2xl border border-border bg-surface p-3 shadow-card">
+      <FilterRow label={t("transactions.filters.dateRange")}>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={filters.dateFrom ?? ""}
+            max={filters.dateTo ?? undefined}
+            onChange={(e) =>
+              onChange({ ...filters, dateFrom: e.target.value || null })
+            }
+            aria-label={t("transactions.filters.dateFrom")}
+            className="flex-1 min-w-0 h-9 rounded-xl border border-border bg-surface px-2.5 text-sm text-text-primary tabular-nums"
+          />
+          <span className="text-text-muted text-sm shrink-0" aria-hidden>
+            –
+          </span>
+          <input
+            type="date"
+            value={filters.dateTo ?? ""}
+            min={filters.dateFrom ?? undefined}
+            onChange={(e) =>
+              onChange({ ...filters, dateTo: e.target.value || null })
+            }
+            aria-label={t("transactions.filters.dateTo")}
+            className="flex-1 min-w-0 h-9 rounded-xl border border-border bg-surface px-2.5 text-sm text-text-primary tabular-nums"
+          />
+        </div>
+        {rangeActive && (
+          <div className="mt-1.5 flex items-center justify-between gap-2">
+            <p className="text-[11px] text-text-muted">
+              {t("transactions.filters.dateRangeNote")}
+            </p>
+            <button
+              type="button"
+              onClick={() =>
+                onChange({ ...filters, dateFrom: null, dateTo: null })
+              }
+              className="shrink-0 text-[11px] font-medium text-violet"
+            >
+              {t("transactions.filters.dateRangeClear")}
+            </button>
+          </div>
+        )}
+      </FilterRow>
+
       <FilterRow label={t("transactions.filters.source")}>
         <SegmentedControl
           options={sourceOptions}
@@ -420,6 +572,60 @@ function applyFilters(
   });
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Sorting logic
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Title used for the "by title" sort — mirrors the row's primary line. */
+function sortTitle(tx: Transaction): string {
+  return (tx.description || tx.merchant || "").trim().toLowerCase();
+}
+
+/** String compare that works for ISO timestamps and YYYY-MM-DD dates. */
+function cmp(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/** Format a `YYYY-MM-DD` bound for the active-range banner. */
+function formatBound(date: string, lang: string): string {
+  return new Date(date + "T00:00:00").toLocaleDateString(lang, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function sortTxs(txs: Transaction[], sort: SortKey): Transaction[] {
+  const arr = [...txs];
+  switch (sort) {
+    case "ADDED":
+      arr.sort((a, b) => cmp(b.created_at, a.created_at));
+      break;
+    case "DATE_DESC":
+      arr.sort(
+        (a, b) => cmp(b.date, a.date) || cmp(b.created_at, a.created_at),
+      );
+      break;
+    case "DATE_ASC":
+      arr.sort(
+        (a, b) => cmp(a.date, b.date) || cmp(a.created_at, b.created_at),
+      );
+      break;
+    case "TITLE": {
+      arr.sort((a, b) => {
+        const ta = sortTitle(a);
+        const tb = sortTitle(b);
+        // Untitled rows sink to the bottom regardless of direction.
+        if (!ta && tb) return 1;
+        if (ta && !tb) return -1;
+        return ta.localeCompare(tb, undefined, { sensitivity: "base" });
+      });
+      break;
+    }
+  }
+  return arr;
+}
+
 function countActiveFilters(f: FilterState): number {
   let n = 0;
   if (f.source !== "ALL") n++;
@@ -427,5 +633,6 @@ function countActiveFilters(f: FilterState): number {
   if (f.flag !== "ALL") n++;
   if (f.categoryId !== "ALL") n++;
   if (f.query.trim().length > 0) n++;
+  if (f.dateFrom !== null || f.dateTo !== null) n++;
   return n;
 }

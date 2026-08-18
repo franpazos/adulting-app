@@ -70,9 +70,22 @@
     },
     "searchPlaceholder": "Busca por descripción, comercio, notas…",
     "filteredCount": "{{shown}} de {{total}}",
+    "sort": {
+      "label": "Ordenar",
+      "added": "Añadido reciente",
+      "dateDesc": "Fecha (más nueva)",
+      "dateAsc": "Fecha (más antigua)",
+      "title": "Título (A–Z)"
+    },
     "filters": {
       "toggle": "Filtros",
       "clear": "Limpiar",
+      "dateRange": "Rango de fechas",
+      "dateFrom": "Desde",
+      "dateTo": "Hasta",
+      "dateRangeNote": "Abarca todos los meses del rango — ignora el mes de arriba.",
+      "dateRangeClear": "Quitar rango",
+      "dateRangeActive": "Rango: {{from}} – {{to}}",
       "all": "Todos",
       "source": "Pagado desde",
       "owner": "Pertenece a",

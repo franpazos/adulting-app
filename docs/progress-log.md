@@ -4,6 +4,55 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-08-19 — Version 0.7.7: Prominent date on rows + cross-month date-range filter
+
+Follow-up to 0.7.6, same day. Two refinements Fran asked for on the Transactions list.
+
+**1. Date given more weight on each row (`TransactionRow.tsx`).** The 0.7.6 date was muted `text-xs text-text-secondary`, visually equal to the category. Fran wanted it more of a protagonist. Chosen treatment (from a previewed A/B/C choice): **inline, same position, but `font-semibold text-text-primary`**, followed by a muted "·" separator before the category. Row secondary line now reads "**30 jun** · 🟢 Comida". No layout/height change; just visual hierarchy.
+
+**2. Cross-month date-range filter in the advanced panel (`TransactionsPage.tsx` + repo).** Decision (asked explicitly): the range is **free / spans months**, overriding the header month selector while active — not confined to the visible month.
+
+- New repo query `transactionsRepo.listByDateRange(from, to)` — inclusive `YYYY-MM-DD` bounds, either optional (open-ended), ignores `month_key`, same `date DESC, created_at DESC` ordering as `listByMonth`.
+- `FilterState` gains `dateFrom` / `dateTo` (null = open). The page's `allTxs` memo switches data source: if either bound is set → `listByDateRange` (swapped bounds normalized so from > to still works), else `listByMonth(monthKey)`.
+- Filter panel gets a "Date range" row with two native `<input type="date">` (From / To). Native pickers theme correctly because `ThemeProvider` already sets `root.style.colorScheme`. A note explains it ignores the month above, plus an inline "Clear range".
+- When a range is active, a violet banner appears above the filter panel ("Range: 5 ene 2026 – 20 feb 2026") with a clear button — so the overridden month selector isn't confusing.
+- Range counts as an active filter (`countActiveFilters`), so the filter badge + "Clear" reflect it.
+- **Empty-state trap fixed:** the full-screen "nothing here yet" short-circuit now only fires when `allTxs.length === 0 && !hasFilters`. Previously a date range that returned nothing would short-circuit *before* rendering the controls, stranding the user with no way to edit/clear the range.
+
+**Tests.** New `src/lib/db/repositories/__tests__/listByDateRange.test.ts` (5): cross-month inclusive window, open lower bound, open upper bound, newest-first ordering, soft-deleted excluded. Suite 243 → **248 green**.
+
+**Verification.** typecheck clean, build clean, 248/248 tests. Touched files lint clean (0 errors; the two `dbVersion` exhaustive-deps warnings are the pre-existing intentional bump-version pattern).
+
+**Files touched**: `src/features/transactions/TransactionRow.tsx`, `src/features/transactions/TransactionsPage.tsx`, `src/lib/db/repositories/transactions.ts`, `src/lib/db/repositories/__tests__/listByDateRange.test.ts` (new), `src/lib/i18n/en.json`, `src/lib/i18n/es.json`, `package.json`.
+
+---
+
+## 2026-08-19 — Version 0.7.6: Transactions list — date on rows + sort control, and description moved up
+
+Three suggestions Sam left in the in-app suggestion box, all touching the Transactions list and the Add/Edit form. Fran green-lit all three.
+
+**1. Date shown on each row (`TransactionRow.tsx`).** Rows previously showed avatar / title / category / pills / amount but never the transaction date, even though the list is month-scoped. Added a localized short date ("30 jun") as the first item on the secondary line, next to the category. Uses `i18n.language` via a new `useTranslation()` in the row.
+
+**2. Sort control on `/transactions` (`TransactionsPage.tsx`).** The list was hard-sorted in SQL (`date DESC, created_at DESC`) with no UI control. Added a compact pill `<select>` (`SortSelect`) next to the count line with four orders:
+- `ADDED` — `created_at DESC`, **the new default** (per Sam: "most recently added on top").
+- `DATE_DESC` — date newest first, tie-broken by `created_at`.
+- `DATE_ASC` — date oldest first.
+- `TITLE` — by `description || merchant`, case-insensitive; untitled rows sink to the bottom.
+
+Sorting happens client-side in a `sortTxs` memo over the already-filtered list (`listByMonth` still returns the SQL order; the client sort overrides it). The `date`/`created_at` string compares are safe because both are ISO/`YYYY-MM-DD`. Also removed a stray `console.log` (and the now-unused `lang`/`i18n` destructure) that had been left in the page.
+
+**3. Description moved directly below the amount (`TransactionForm.tsx`).** Sam wanted the "what was this about" text input near the top. The winning "Variation B" leads with the big amount as the hero, so rather than push description *above* the amount (Sam's literal ask) we took the middle ground Fran chose: description now sits in its own section **immediately below the amount card**, before Source/Owner/Split/Category — instead of dead last. Amount keeps `autoFocus`, so the hero moment is preserved.
+
+**i18n.** New `transactions.sort.*` keys in both `en.json` and `es.json` (label + 4 option labels).
+
+**Verification.** `pnpm typecheck` clean, `pnpm build` clean, 243/243 tests green. The files touched lint clean (0 errors); pre-existing lint errors elsewhere (`rates.test.ts` `_url`, `useAutoSync.ts` `_reason`) were left as-is — out of scope and only staged files gate the pre-commit hook.
+
+**Files touched**: `src/features/transactions/TransactionRow.tsx`, `src/features/transactions/TransactionsPage.tsx`, `src/features/add-expense/TransactionForm.tsx`, `src/lib/i18n/en.json`, `src/lib/i18n/es.json`, `package.json`.
+
+**Follow-up not done**: `git remote` (`origin/main`) returns "Repository not found" — the GitHub remote is unreachable, so this work is only on local disk. Worth reconnecting the remote before it accumulates.
+
+---
+
 ## 2026-07-01 — Version 0.7.5: Refresh FX rate from the pay-debt screen
 
 For USD debts (the family loan) Fran had to leave the PayDebt screen, look up the EUR/USD rate on Google or the bank app, come back and type it in. The `1.08` placeholder was hard-coded since 0.4.x and rarely correct.

@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ArrowLeftRight } from "lucide-react";
 import { Avatar, whoFromCashSource } from "@/components/Avatar";
 import { Pill } from "@/components/ui";
@@ -29,8 +30,14 @@ export function TransactionRow({
   className,
 }: TransactionRowProps) {
   const navigate = useNavigate();
+  const { i18n } = useTranslation();
   const handleClick =
     onClick ?? (() => navigate(`/transactions/${tx.id}`));
+
+  const dateLabel = new Date(tx.date + "T00:00:00").toLocaleDateString(
+    i18n.language,
+    { day: "numeric", month: "short" },
+  );
 
   const source = accountIdToCashSource(tx.source_account_id);
   const who = whoFromCashSource(source);
@@ -77,9 +84,15 @@ export function TransactionRow({
         <p className="text-sm font-semibold truncate">
           {tx.description || transferLabel || tx.merchant || cat?.name || "—"}
         </p>
-        <div className="flex items-center gap-2 mt-0.5">
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <span className="text-xs font-semibold text-text-primary tabular-nums shrink-0">
+            {dateLabel}
+          </span>
           {cat && (
             <span className="flex items-center gap-1.5 text-xs text-text-secondary">
+              <span className="text-text-muted" aria-hidden>
+                ·
+              </span>
               {cat.color && (
                 <span
                   className="size-2 rounded-full"

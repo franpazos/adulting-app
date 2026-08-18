@@ -204,6 +204,14 @@ export function TransactionForm({ values, onChange }: TransactionFormProps) {
         )}
       </Card>
 
+      <Section label={t("addExpense.description")}>
+        <Input
+          value={values.description}
+          onChange={(e) => set("description", e.target.value)}
+          placeholder={t("addExpense.descriptionPlaceholder")}
+        />
+      </Section>
+
       <Section
         label={
           isTransfer
@@ -288,14 +296,6 @@ export function TransactionForm({ values, onChange }: TransactionFormProps) {
           />
         </Section>
       )}
-
-      <Section label={t("addExpense.description")}>
-        <Input
-          value={values.description}
-          onChange={(e) => set("description", e.target.value)}
-          placeholder={t("addExpense.descriptionPlaceholder")}
-        />
-      </Section>
     </>
   );
 }

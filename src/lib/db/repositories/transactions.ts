@@ -166,6 +166,32 @@ export const transactionsRepo = {
     ).map(mapTx);
   },
 
+  /**
+   * Cross-month range query for the Transactions page date-range filter.
+   * `from`/`to` are inclusive `YYYY-MM-DD` bounds; either can be null for an
+   * open-ended range. Ignores `month_key` entirely (spans as many months as
+   * the range covers). Same ordering as `listByMonth` so downstream client
+   * sorting behaves identically.
+   */
+  listByDateRange(from: string | null, to: string | null): Transaction[] {
+    const clauses = ["is_deleted = 0"];
+    const params: string[] = [];
+    if (from) {
+      clauses.push("date >= ?");
+      params.push(from);
+    }
+    if (to) {
+      clauses.push("date <= ?");
+      params.push(to);
+    }
+    return selectAll<Record<string, unknown>>(
+      `SELECT * FROM transactions
+       WHERE ${clauses.join(" AND ")}
+       ORDER BY date DESC, created_at DESC`,
+      params,
+    ).map(mapTx);
+  },
+
   allocationsFor(transactionId: string): TransactionAllocation[] {
     return selectAll<Record<string, unknown>>(
       "SELECT * FROM transaction_allocations WHERE transaction_id = ?",

@@ -70,9 +70,22 @@
     },
     "searchPlaceholder": "Search description, merchant, notes…",
     "filteredCount": "{{shown}} of {{total}}",
+    "sort": {
+      "label": "Sort",
+      "added": "Recently added",
+      "dateDesc": "Date (newest)",
+      "dateAsc": "Date (oldest)",
+      "title": "Title (A–Z)"
+    },
     "filters": {
       "toggle": "Filters",
       "clear": "Clear",
+      "dateRange": "Date range",
+      "dateFrom": "From",
+      "dateTo": "To",
+      "dateRangeNote": "Spans every month in the range — ignores the month above.",
+      "dateRangeClear": "Clear range",
+      "dateRangeActive": "Range: {{from}} – {{to}}",
       "all": "All",
       "source": "Paid from",
       "owner": "Belongs to",
