@@ -48,7 +48,9 @@ export function AppBoot({ children }: { children: ReactNode }) {
       try {
         const init = await initDb();
         runMigrations();
-        const seeded = seedIfEmpty();
+        // Real installs seed only structural data (users/accounts/categories),
+        // never the demo movements — those are for tests/dev fixtures only.
+        const seeded = seedIfEmpty(false);
         // Materialize this month's recurring auto-gen items before the
         // UI renders. Idempotent — re-runs on every boot but only does
         // work when a recurring is genuinely unmaterialized this month.

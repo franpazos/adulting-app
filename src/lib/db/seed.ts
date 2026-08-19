@@ -46,14 +46,29 @@ export function isSeeded(): boolean {
   return selectScalar("SELECT COUNT(*) FROM users") > 0;
 }
 
-export function seedIfEmpty(): boolean {
+/**
+ * Seed a fresh database.
+ *
+ * `includeDemoData` splits structural scaffolding from demo content:
+ *   - Always seeded: users, accounts, categories — the app needs these to
+ *     function (you can't add an expense without an account + categories).
+ *   - Only with `includeDemoData` (default true): the sample recurring items,
+ *     debts, transactions and settlements that make the app look "lived-in".
+ *
+ * The real app (AppBoot) calls this with `false` so a genuine fresh install /
+ * cleared DB starts clean — no fictional movements polluting real months.
+ * Tests keep the default `true` so the Case A–E fixtures stay available.
+ */
+export function seedIfEmpty(includeDemoData = true): boolean {
   if (isSeeded()) return false;
   transaction(() => {
     seedUsersAndAccounts();
     seedCategories();
-    seedRecurring();
-    seedDebts();
-    seedTransactions();
+    if (includeDemoData) {
+      seedRecurring();
+      seedDebts();
+      seedTransactions();
+    }
   });
   return true;
 }
@@ -147,7 +162,7 @@ function seedRecurring() {
     amount: 950,
     currency_code: "EUR",
     frequency: "MONTHLY",
-    start_date: "2025-01-01",
+    start_date: "2026-05-01",
     end_date: null,
     category_id: SEED_IDS.categories.home,
     source_account_id: SEED_IDS.accounts.joint,
@@ -163,7 +178,7 @@ function seedRecurring() {
     amount: 45,
     currency_code: "EUR",
     frequency: "MONTHLY",
-    start_date: "2025-01-01",
+    start_date: "2026-05-01",
     end_date: null,
     category_id: SEED_IDS.categories.home,
     source_account_id: SEED_IDS.accounts.joint,
@@ -179,7 +194,7 @@ function seedRecurring() {
     amount: 1980,
     currency_code: "EUR",
     frequency: "MONTHLY",
-    start_date: "2025-01-01",
+    start_date: "2026-05-01",
     end_date: null,
     category_id: SEED_IDS.categories.salary,
     source_account_id: SEED_IDS.accounts.franPersonal,
@@ -195,7 +210,7 @@ function seedRecurring() {
     amount: 1000,
     currency_code: "EUR",
     frequency: "MONTHLY",
-    start_date: "2025-01-01",
+    start_date: "2026-05-01",
     end_date: null,
     category_id: SEED_IDS.categories.salary,
     source_account_id: SEED_IDS.accounts.samPersonal,

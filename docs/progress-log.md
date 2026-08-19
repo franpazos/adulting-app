@@ -4,6 +4,28 @@ Chronological record of substantive work on Adulting.app. Each entry: date, phas
 
 ---
 
+## 2026-08-19 — Version 0.7.8: May-2026 month floor + stop seeding demo data in the real app
+
+Bug from Sam's suggestion box (tagged Bug + S.O.S., Jun 21): "each month should be an individual sheet, and that data persists" + "months before May should not exist." Analysis with Fran resolved it into two parts.
+
+**Part A — "each month = an individual sheet" → declined as a misread of what the Sheet is.** The Google Sheet is a raw sync/backup mirror of SQLite (ADR: SQLite is source of truth, Sheets is a sync target, not a database), writing flat `raw_*` entity tabs with month as a column. The per-month "sheet" Sam pictures is a different spreadsheet concept; the per-month view lives in the app. No work — the `ensureMonthSheet` scaffold stays dormant. (Worth a one-line explanation to Sam about what the Sheet is for.)
+
+**Part B — "months before May should not exist" → fixed at the root + floored the UI.** Root cause: nothing defined a start month — the month selector was unbounded (walk back to any month), the demo seed floats with `new Date()`, and seeded recurring items were anchored at `2025-01-01`.
+
+- **Month floor.** New `APP_START_MONTH = "2026-05"` in `src/lib/date/month.ts`, plus `clampMonthKey` (never precedes the floor) and `isAtStartMonth` (for disabling the prev arrow). String compare is chronological since keys are `YYYY-MM`.
+  - `MonthSelector` disables + dims the "previous month" arrow at the floor and guards its onClick.
+  - `uiStore.setMonthKey` clamps every write (covers arrows, the post-save jump to a back-dated tx's month, etc.); the initial value clamps; and a persist `merge` clamps on rehydrate so a value stored before the floor existed can't boot us into a pre-May month.
+- **Stop injecting demo data into real installs.** `seedIfEmpty(includeDemoData = true)` now splits structural scaffolding (users/accounts/categories — always) from demo content (recurring/debts/transactions/settlements — only when `includeDemoData`). `AppBoot` calls `seedIfEmpty(false)`, so a genuine fresh install / cleared DB starts clean. Tests keep the default `true`, so the Case A–E fixtures are untouched (zero test changes needed).
+- **Recurring `start_date`** in the seed fixed `2025-01-01` → `2026-05-01` (only reachable via demo seed now, but correct regardless).
+
+**Scope note (important for Fran/Sam).** The seed change only affects *fresh* installs — their current devices already seeded long ago, so this does not delete any data they already have. The **floor** is what fixes their live experience: pre-May months become unreachable immediately. If real phantom rows exist in a pre-May month on a device, the floor hides them but does not purge them; purging would need a separate in-app cleanup or a manual DB action (their SQLite lives in the browser, not reachable from here).
+
+**Tests.** New `src/lib/date/__tests__/month.test.ts` (6): clamp below/at/after floor, `isAtStartMonth` boundaries, shift-then-clamp safety net. Suite 248 → **254 green**. typecheck + build clean; touched files lint clean.
+
+**Files touched**: `src/lib/date/month.ts`, `src/lib/date/__tests__/month.test.ts` (new), `src/store/uiStore.ts`, `src/components/MonthSelector.tsx`, `src/lib/db/seed.ts`, `src/app/AppBoot.tsx`, `package.json`.
+
+---
+
 ## 2026-08-19 — Version 0.7.7: Prominent date on rows + cross-month date-range filter
 
 Follow-up to 0.7.6, same day. Two refinements Fran asked for on the Transactions list.

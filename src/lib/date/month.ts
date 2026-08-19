@@ -9,8 +9,27 @@ export type MonthKey = string;
 
 const KEY_FORMAT = "yyyy-MM";
 
+/**
+ * The month Fran and Sam started using the app. There is no real data before
+ * this, so the month navigation is floored here — you cannot page to (or land
+ * on) any month earlier than this. Bump it only if the couple's history ever
+ * legitimately extends further back. Because month keys are `YYYY-MM`, plain
+ * string comparison against this constant is chronological.
+ */
+export const APP_START_MONTH: MonthKey = "2026-05";
+
 export function toMonthKey(date: Date): MonthKey {
   return format(date, KEY_FORMAT);
+}
+
+/** Never let a month key precede APP_START_MONTH. */
+export function clampMonthKey(key: MonthKey): MonthKey {
+  return key < APP_START_MONTH ? APP_START_MONTH : key;
+}
+
+/** True at (or before) the floor — used to disable the "previous month" arrow. */
+export function isAtStartMonth(key: MonthKey): boolean {
+  return key <= APP_START_MONTH;
 }
 
 export function fromMonthKey(key: MonthKey): Date {

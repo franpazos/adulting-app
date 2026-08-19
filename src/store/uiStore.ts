@@ -1,6 +1,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { currentMonthKey, type MonthKey } from "@/lib/date/month";
+import {
+  clampMonthKey,
+  currentMonthKey,
+  type MonthKey,
+} from "@/lib/date/month";
 
 export type Scope = "household" | "fran" | "sam" | "all";
 
@@ -20,9 +24,11 @@ interface UiState {
 export const useUiStore = create<UiState>()(
   persist(
     (set) => ({
-      monthKey: currentMonthKey(),
+      monthKey: clampMonthKey(currentMonthKey()),
       scope: "household",
-      setMonthKey: (m) => set({ monthKey: m }),
+      // Clamp so nothing (arrows, a jump after saving a back-dated tx, a stale
+      // persisted value) can put the view before the app's start month.
+      setMonthKey: (m) => set({ monthKey: clampMonthKey(m) }),
       setScope: (s) => set({ scope: s }),
     }),
     {
@@ -31,6 +37,16 @@ export const useUiStore = create<UiState>()(
         monthKey: state.monthKey,
         scope: state.scope,
       }),
+      // A value persisted before the floor existed could be pre-May; clamp it
+      // on rehydrate so the app never boots into a now-forbidden month.
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<UiState>;
+        return {
+          ...current,
+          ...p,
+          monthKey: clampMonthKey(p.monthKey ?? current.monthKey),
+        };
+      },
     },
   ),
 );

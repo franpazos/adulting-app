@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   formatMonthLabel,
+  isAtStartMonth,
   shiftMonthKey,
   type MonthKey,
 } from "@/lib/date/month";
@@ -23,6 +24,7 @@ export function MonthSelector({
   const { i18n } = useTranslation();
   const lang = (i18n.language?.startsWith("es") ? "es" : "en") as "es" | "en";
   const [open, setOpen] = useState(false);
+  const atStart = isAtStartMonth(value);
 
   return (
     <>
@@ -52,7 +54,12 @@ export function MonthSelector({
         <div className="flex items-center justify-between py-2">
           <IconButton
             aria-label="Previous month"
-            onClick={() => onChange(shiftMonthKey(value, -1))}
+            disabled={atStart}
+            className={cn(atStart && "opacity-30 pointer-events-none")}
+            onClick={() => {
+              if (atStart) return;
+              onChange(shiftMonthKey(value, -1));
+            }}
           >
             <ChevronLeft className="size-5" />
           </IconButton>
